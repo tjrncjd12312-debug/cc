@@ -33,4 +33,12 @@ const txCollector = require('./lib/transactionCollector');
 txCollector.start();
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+  // 서버 외부 IP 확인
+  require('https').get('https://api.ipify.org', (res) => {
+    let ip = '';
+    res.on('data', c => ip += c);
+    res.on('end', () => console.log('Server External IP:', ip));
+  });
+});
