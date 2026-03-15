@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BLACK CASINO</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<!-- ════ HEADER ════ -->
+<header>
+  <div class="logo" onclick="closeModal()">
+    BLACK CASINO
+    <small>PREMIUM ONLINE CASINO</small>
+  </div>
+
+  <div class="hdr-right" id="hdr-auth">
+    <button class="btn-ghost" onclick="openModal('login')">로그인</button>
+    <button class="btn-filled" onclick="openModal('register')">회원가입</button>
+    <button class="hamburger" id="ham" onclick="toggleMobile()">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<!-- ════ HERO ════ -->
+<section class="hero">
+  <canvas id="hero-particles"></canvas>
+  <div class="hero-bg">
+    <div class="hero-grid"></div>
+
+
+  </div>
+  <div class="hero-body">
+    <div class="hero-divider"></div>
+    <h1 class="hero-h1">BLACK CASINO</h1>
+    <p class="hero-sub">Premium Casino &amp; Slots</p>
+    <div class="hero-divider"></div>
+
+
+  </div>
+</section>
+
+<!-- ════ NAVBAR ════ -->
+<nav class="navbar">
+  <div class="nav-inner">
+    <div class="nav-links">
+      <div class="nav-link active" data-tab="casino" onclick="switchTab('casino',this)"><i class="fas fa-play-circle"></i>카지노게임</div>
+      <div class="nav-link" data-tab="slot" onclick="switchTab('slot',this)"><i class="fas fa-coins"></i>슬롯게임</div>
+      <div class="nav-link" onclick="openInfoModal('notice')"><i class="fas fa-bullhorn"></i>공지사항</div>
+      <div class="nav-link" onclick="switchTab('event',this)"><i class="fas fa-gift"></i>이벤트</div>
+      <div class="nav-link" onclick="switchTab('support',this)"><i class="fas fa-headset"></i>고객센터</div>
+    </div>
+
+  </div>
+</nav>
+
+<!-- ════ GAME SECTION WRAPPER ════ -->
+<div id="game-section-wrapper" style="background:radial-gradient(ellipse at 50% 0%, rgba(200,168,75,0.07) 0%, transparent 60%), linear-gradient(180deg,#060604 0%,#0a0904 50%,#060604 100%);">
+
+  <!-- GAME TABS -->
+  <div class="game-tabs">
+    <div class="game-tabs-inner">
+      <button class="g-tab toggle-btn active" onclick="setGTab(this)" data-side="left">
+        <span class="tab-icon">🎰</span>
+        <div class="text-panel">
+          <span class="text-kr">라이브 카지노</span>
+          <span class="text-en">LIVE CASINO</span>
+        </div>
+      </button>
+      <div class="tab-deco" id="gem-deco"><i class="fas fa-gem"></i></div>
+      <button class="g-tab toggle-btn" onclick="setGTab(this)" data-side="right">
+        <span class="tab-icon">🎲</span>
+        <div class="text-panel">
+          <span class="text-kr">슬롯머신</span>
+          <span class="text-en">SLOT MACHINE</span>
+        </div>
+      </button>
+    </div>
+  </div>
+
+<!-- ════ LIVE CASINO ════ -->
+<div id="live-section" style="position:relative;background:transparent;padding:0;overflow:hidden;">
+  <canvas id="live-particles" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;"></canvas>
+  <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(200,168,75,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(200,168,75,0.04) 1px,transparent 1px);background-size:50px 50px;mask-image:radial-gradient(ellipse at center,black 20%,transparent 80%);pointer-events:none;"></div>
+  <div class="main-wrap">
+
+    <!-- Section title -->
+    <div class="sec-title">
+      <div class="sec-title-line"></div>
+      <div class="sec-title-center">
+        <i class="fas fa-gem sec-title-icon"></i>
+        <span class="sec-title-text">LIVE CASINO</span>
+        <i class="fas fa-gem sec-title-icon"></i>
+      </div>
+      <div class="sec-title-line sec-title-line-r"></div>
+    </div>
+
+    <!-- JS에서 동적으로 채워짐 -->
+    <div class="live-grid" id="live-grid-row1"></div>
+
+  </div>
+</div>
+
+<!-- ════ SLOT SECTION ════ -->
+<div id="slot-section" style="display:none;position:relative;background:transparent;padding:0;overflow:hidden;">
+  <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(200,168,75,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(200,168,75,0.04) 1px,transparent 1px);background-size:50px 50px;mask-image:radial-gradient(ellipse at center,black 20%,transparent 80%);pointer-events:none;"></div>
+  <div class="main-wrap">
+
+    <!-- Section title -->
+    <div class="sec-title">
+      <div class="sec-title-line"></div>
+      <div class="sec-title-center">
+        <i class="fas fa-gem sec-title-icon"></i>
+        <span class="sec-title-text">SLOT MACHINE</span>
+        <i class="fas fa-gem sec-title-icon"></i>
+      </div>
+      <div class="sec-title-line sec-title-line-r"></div>
+    </div>
+
+    <!-- JS에서 동적으로 채워짐 -->
+    <div class="live-grid" id="slot-grid-row1"></div>
+
+  </div>
+</div>
+
+<!-- ════ EVENT SECTION ════ -->
+<div id="event-section" style="display:none;background:radial-gradient(ellipse at 50% 40%, rgba(200,168,75,0.12) 0%, transparent 65%), linear-gradient(180deg, #060503 0%, #0c0a06 100%);padding:32px 0;">
+  <div class="main-wrap">
+    <div id="event-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;"></div>
+  </div>
+</div>
+
+<!-- ════ SUPPORT SECTION ════ -->
+<div id="support-section" style="display:none;background:radial-gradient(ellipse at 50% 40%, rgba(200,168,75,0.12) 0%, transparent 65%), linear-gradient(180deg, #060503 0%, #0c0a06 100%);padding:32px 0;min-height:400px;">
+  <div class="main-wrap">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+      <!-- 문의 작성 -->
+      <div style="background:rgba(8,7,5,0.7);border:1px solid rgba(200,168,75,0.25);border-radius:10px;padding:24px;">
+        <h3 style="color:var(--gold);font-size:0.95rem;margin-bottom:16px;"><i class="fas fa-pen" style="margin-right:8px;"></i>1:1 문의하기</h3>
+        <div id="support-login-warn" style="display:none;color:#888;font-size:0.85rem;padding:20px;text-align:center;">로그인 후 문의하실 수 있습니다.</div>
+        <div id="support-form">
+          <input type="text" id="inq-title" placeholder="제목을 입력하세요" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.85rem;margin-bottom:10px;">
+          <textarea id="inq-content" placeholder="문의 내용을 입력하세요" rows="6" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.85rem;resize:vertical;font-family:inherit;margin-bottom:10px;"></textarea>
+          <button onclick="submitInquiry()" style="background:linear-gradient(135deg,#c8a84b,#d4af37);color:#000;border:none;border-radius:6px;padding:10px 28px;font-weight:700;cursor:pointer;font-size:0.85rem;">문의 제출</button>
+        </div>
+      </div>
+      <!-- 나의 문의 내역 -->
+      <div style="background:rgba(8,7,5,0.7);border:1px solid rgba(200,168,75,0.25);border-radius:10px;padding:24px;">
+        <h3 style="color:var(--gold);font-size:0.95rem;margin-bottom:16px;"><i class="fas fa-list" style="margin-right:8px;"></i>나의 문의 내역</h3>
+        <div id="my-inquiry-list"><div style="color:#666;font-size:0.82rem;text-align:center;padding:20px;">문의 내역이 없습니다.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /game-section-wrapper -->
+
+<!-- ════ INFO SECTION ════ -->
+<div class="info-section" id="info-section" style="position:relative;">
+  <canvas id="info-particles" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;"></canvas>
+  <div class="main-wrap" style="position:relative;z-index:1;">
+    <div class="info-grid">
+
+      <div class="info-box">
+        <div class="info-header">
+          <i class="fas fa-bullhorn info-header-icon"></i>
+          <span class="info-header-title">공지사항</span>
+        </div>
+        <div class="info-body" id="notice-list"></div>
+      </div>
+
+      <div class="info-box">
+        <div class="info-header">
+          <i class="fas fa-trophy info-header-icon"></i>
+          <span class="info-header-title">실시간 당첨</span>
+        </div>
+        <div class="info-body" style="padding:0;" id="win-list"></div>
+      </div>
+
+      <div class="info-box">
+        <div class="info-header">
+          <i class="fas fa-arrow-circle-down info-header-icon" style="color:#70c880;"></i>
+          <span class="info-header-title">입금 현황</span>
+        </div>
+        <div class="info-body" style="padding:0;" id="deposit-list"></div>
+      </div>
+
+      <div class="info-box">
+        <div class="info-header">
+          <i class="fas fa-star info-header-icon"></i>
+          <span class="info-header-title">이벤트</span>
+        </div>
+        <div class="info-body" id="event-info-list"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ════ PARTNERS ════ -->
+<div class="partners">
+  <div class="main-wrap">
+    <div style="text-align:center;margin-bottom:14px;">
+      <span style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.25em;color:var(--text3);">— OFFICIAL GAME PARTNERS —</span>
+    </div>
+    <div class="partner-logo-grid">
+      <div class="p-logo-img"><img src="/static/logos/logo_ag.png" alt="AG"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_bbin.png" alt="BBIN"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_blue.png" alt="Blue"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_booongo.png" alt="Booongo"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_cq9.png" alt="CQ9"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_dragoonsoft.png" alt="Dragoon Soft"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_dreamgaming.png" alt="Dream Gaming"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_elk.png" alt="ELK"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_evoplay.png" alt="Evoplay"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_fantasma.png" alt="Fantasma"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_gameart.png" alt="GameArt"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_hacksaw.png" alt="Hacksaw"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_mobilots.png" alt="Mobilots"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_nolimit.png" alt="Nolimit"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_1x2gaming.png" alt="1x2 Gaming"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_misc1.png" alt="Partner"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_playngo.png" alt="Play'n GO"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_playtech.png" alt="Playtech"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_pragmatic.png" alt="Pragmatic"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_relax.png" alt="Relax"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_spribe.png" alt="Spribe"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_white1.png" alt="Partner"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_skywind.png" alt="Skywind"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_white2.png" alt="Partner"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_white3.png" alt="Partner"></div>
+      <div class="p-logo-img"><img src="/static/logos/logo_vmcasino.png" alt="VM Casino"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ LOGIN MODAL ════ -->
+<div id="modal-login" class="modal-overlay">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('login')"><i class="fas fa-times"></i></button>
+    <div class="modal-title">LOGIN</div>
+    <div class="modal-sub">계정에 로그인하세요</div>
+    <div id="login-err" style="display:none;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);color:#f87171;padding:9px 12px;border-radius:6px;font-size:0.78rem;margin-bottom:10px;"></div>
+    <input id="login-username" class="m-input" type="text" placeholder="아이디">
+    <input id="login-password" class="m-input" type="password" placeholder="비밀번호">
+    <div style="display:flex;justify-content:space-between;margin-bottom:14px;">
+      <label style="font-size:0.74rem;color:var(--text2);display:flex;align-items:center;gap:5px;cursor:pointer;">
+        <input type="checkbox" id="login-remember" style="accent-color:var(--gold);"> 자동 로그인
+      </label>
+      <span style="font-size:0.74rem;color:var(--gold-dim);cursor:pointer;">아이디/비밀번호 찾기</span>
+    </div>
+    <button class="m-btn shine-wrap" id="login-btn" onclick="doLogin()">로그인</button>
+    <div class="m-divider"></div>
+    <div class="m-switch">계정이 없으신가요? <a onclick="switchModal('login','register')">회원가입 →</a></div>
+  </div>
+</div>
+
+<!-- ════ REGISTER MODAL ════ -->
+<div id="modal-register" class="modal-overlay">
+  <div class="modal-box" style="max-width:720px;width:95vw;">
+    <button class="modal-close" onclick="closeModal('register')"><i class="fas fa-times"></i></button>
+    <div class="modal-title">REGISTER</div>
+    <div class="modal-sub">가입 즉시 신규 보너스 지급</div>
+    <div id="reg-err" style="display:none;background:rgba(248,113,113,0.12);border:1px solid rgba(248,113,113,0.3);color:#f87171;padding:9px 12px;border-radius:6px;font-size:0.78rem;margin-bottom:10px;"></div>
+    <div id="reg-ok" style="display:none;background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.3);color:#4ade80;padding:9px 12px;border-radius:6px;font-size:0.78rem;margin-bottom:10px;"></div>
+
+    <div style="display:flex;gap:28px;">
+      <!-- ── 좌측: 계정 정보 ── -->
+      <div style="flex:1;min-width:0;">
+        <div class="reg-section-title"><i class="fas fa-user-circle"></i> 계정 정보</div>
+
+        <div class="reg-field">
+          <label class="reg-label">아이디 <span class="reg-req">*</span></label>
+          <div class="reg-input-wrap">
+            <input id="reg-username" class="m-input" type="text" placeholder="4자 이상 입력" style="margin-bottom:0;">
+            <span class="reg-check" id="chk-username"></span>
+          </div>
+          <div class="reg-msg" id="msg-username"></div>
+        </div>
+
+        <div class="reg-field">
+          <label class="reg-label">비밀번호 <span class="reg-req">*</span></label>
+          <div class="reg-input-wrap">
+            <input id="reg-password" class="m-input" type="password" placeholder="6자 이상 입력" style="margin-bottom:0;">
+            <span class="reg-check" id="chk-password"></span>
+          </div>
+          <div class="reg-msg" id="msg-password"></div>
+        </div>
+
+        <div class="reg-field">
+          <label class="reg-label">비밀번호 확인 <span class="reg-req">*</span></label>
+          <div class="reg-input-wrap">
+            <input id="reg-password2" class="m-input" type="password" placeholder="비밀번호 재입력" style="margin-bottom:0;">
+            <span class="reg-check" id="chk-password2"></span>
+          </div>
+          <div class="reg-msg" id="msg-password2"></div>
+        </div>
+
+        <div class="reg-field">
+          <label class="reg-label">닉네임 <span class="reg-req">*</span></label>
+          <div class="reg-input-wrap">
+            <input id="reg-nickname" class="m-input" type="text" placeholder="닉네임 입력" style="margin-bottom:0;">
+            <span class="reg-check" id="chk-nickname"></span>
+          </div>
+          <div class="reg-msg" id="msg-nickname"></div>
+        </div>
+
+        <div class="reg-field">
+          <label class="reg-label">휴대폰 번호 <span class="reg-req">*</span></label>
+          <div class="reg-input-wrap">
+            <input id="reg-phone" class="m-input" type="text" placeholder="숫자만 입력" style="margin-bottom:0;">
+            <span class="reg-check" id="chk-phone"></span>
+          </div>
+          <div class="reg-msg" id="msg-phone"></div>
+        </div>
+
+        <div class="reg-field">
+          <label class="reg-label">추천코드 <span class="reg-req">*</span></label>
+          <div class="reg-input-wrap">
+            <input id="reg-referral" class="m-input" type="text" placeholder="추천코드 입력" style="margin-bottom:0;">
+            <span class="reg-check" id="chk-referral"></span>
+          </div>
+          <div class="reg-msg" id="msg-referral"></div>
+        </div>
+      </div>
+
+      <!-- ── 우측: 은행 계좌 ── -->
+      <div style="flex:1;min-width:0;">
+        <div class="reg-section-title"><i class="fas fa-university"></i> 은행 계좌</div>
+
+        <div class="reg-field">
+          <label class="reg-label">은행 <span class="reg-req">*</span></label>
+          <input type="hidden" id="reg-bank" value="">
+          <div class="bank-dropdown" id="bank-dropdown">
+            <div class="bank-selected" id="bank-selected" onclick="toggleBankDropdown()">
+              <span class="bank-selected-text" id="bank-selected-text">은행을 선택하세요</span>
+              <i class="fas fa-chevron-down bank-arrow" id="bank-arrow"></i>
+            </div>
+            <div class="bank-options" id="bank-options">
+              <div class="bank-search-wrap">
+                <i class="fas fa-search bank-search-icon"></i>
+                <input type="text" class="bank-search" id="bank-search" placeholder="은행 검색..." oninput="filterBanks()">
+              </div>
+              <div class="bank-list" id="bank-list">
+                <div class="bank-option" data-value="KB국민은행" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>KB국민은행</div>
+                <div class="bank-option" data-value="신한은행" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>신한은행</div>
+                <div class="bank-option" data-value="우리은행" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>우리은행</div>
+                <div class="bank-option" data-value="하나은행" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>하나은행</div>
+                <div class="bank-option" data-value="NH농협은행" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>NH농협은행</div>
+                <div class="bank-option" data-value="IBK기업은행" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>IBK기업은행</div>
+                <div class="bank-option" data-value="SC제일은행" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>SC제일은행</div>
+                <div class="bank-option" data-value="씨티은행" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>씨티은행</div>
+                <div class="bank-option" data-value="경남은행" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>경남은행</div>
+                <div class="bank-option" data-value="광주은행" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>광주은행</div>
+                <div class="bank-option" data-value="대구은행" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>대구은행</div>
+                <div class="bank-option" data-value="부산은행" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>부산은행</div>
+                <div class="bank-option" data-value="전북은행" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>전북은행</div>
+                <div class="bank-option" data-value="제주은행" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>제주은행</div>
+                <div class="bank-option" data-value="산업은행" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>산업은행</div>
+                <div class="bank-option" data-value="수협은행" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>수협은행</div>
+                <div class="bank-option" data-value="새마을금고" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>새마을금고</div>
+                <div class="bank-option" data-value="신협" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>신협</div>
+                <div class="bank-option" data-value="우체국" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>우체국</div>
+                <div class="bank-option" data-value="케이뱅크" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>케이뱅크</div>
+                <div class="bank-option" data-value="카카오뱅크" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>카카오뱅크</div>
+                <div class="bank-option" data-value="토스뱅크" onclick="selectBank(this)"><i class="fas fa-university bank-opt-icon"></i>토스뱅크</div>
+              </div>
+            </div>
+          </div>
+          <div class="reg-msg" id="msg-bank"></div>
+        </div>
+
+        <div class="reg-field">
+          <label class="reg-label">계좌번호 <span class="reg-req">*</span></label>
+          <div class="reg-input-wrap">
+            <input id="reg-account" class="m-input" type="text" placeholder="계좌번호 입력" style="margin-bottom:0;">
+            <span class="reg-check" id="chk-account"></span>
+          </div>
+          <div class="reg-msg" id="msg-account"></div>
+        </div>
+
+        <div class="reg-field">
+          <label class="reg-label">예금주 <span class="reg-req">*</span></label>
+          <div class="reg-input-wrap">
+            <input id="reg-holder" class="m-input" type="text" placeholder="예금주명 입력" style="margin-bottom:0;">
+            <span class="reg-check" id="chk-holder"></span>
+          </div>
+          <div class="reg-msg" id="msg-holder"></div>
+        </div>
+      </div>
+    </div>
+
+    <label style="display:flex;align-items:flex-start;gap:8px;font-size:0.72rem;color:var(--text2);margin:18px 0 14px;cursor:pointer;line-height:1.5;">
+      <input type="checkbox" id="reg-agree" style="accent-color:var(--gold);margin-top:2px;flex-shrink:0;">
+      만 19세 이상이며 이용약관 및 개인정보처리방침에 동의합니다
+    </label>
+    <button class="m-btn shine-wrap" id="reg-btn" onclick="doRegister()"><i class="fas fa-user-plus" style="margin-right:6px;"></i>회원가입</button>
+    <div class="m-divider"></div>
+    <div class="m-switch">이미 계정이 있으신가요? <a onclick="switchModal('register','login')">로그인 →</a></div>
+  </div>
+</div>
+
+<!-- ════ USER INFO PANEL (로그인 후) ════ -->
+<div id="modal-mypage" class="modal-overlay">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('mypage')"><i class="fas fa-times"></i></button>
+    <div class="modal-title">MY PAGE</div>
+    <div style="text-align:center;padding:10px 0 20px;">
+      <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold2));display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:24px;">👤</div>
+      <div id="my-nickname" style="font-size:1.1rem;font-weight:700;color:var(--gold);margin-bottom:4px;"></div>
+      <div id="my-username" style="font-size:0.78rem;color:var(--text2);margin-bottom:16px;"></div>
+      <div style="display:flex;gap:10px;margin-bottom:20px;">
+        <div style="flex:1;background:var(--black3);border:1px solid var(--gold-border);border-radius:8px;padding:14px;">
+          <div style="font-size:0.72rem;color:var(--text2);margin-bottom:4px;">보유 잔액</div>
+          <div id="my-balance" style="font-size:1.4rem;font-weight:700;color:var(--gold);"></div>
+        </div>
+        <div style="flex:1;background:var(--black3);border:1px solid rgba(168,85,247,0.3);border-radius:8px;padding:14px;">
+          <div style="font-size:0.72rem;color:var(--text2);margin-bottom:4px;">보유 포인트</div>
+          <div id="my-point" style="font-size:1.4rem;font-weight:700;color:#a78bfa;">0P</div>
+          <button onclick="openPointConvert()" style="margin-top:8px;width:100%;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;border:none;border-radius:6px;padding:8px;font-weight:700;cursor:pointer;font-size:0.8rem;">포인트 전환</button>
+        </div>
+      </div>
+      <div id="my-status-wrap" style="margin-bottom:20px;"></div>
+    </div>
+    <button class="m-btn shine-wrap" onclick="doLogout()" style="background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.3);color:#f87171;">로그아웃</button>
+  </div>
+</div>
+
+<!-- 포인트 전환 모달 -->
+<div id="point-convert-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#1a1a2e;border:1px solid rgba(168,85,247,0.3);border-radius:12px;width:380px;max-width:90vw;overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(168,85,247,0.2);">
+      <span style="font-weight:700;color:#a78bfa;font-size:0.95rem;">🔄 포인트 → 머니 전환</span>
+      <button onclick="document.getElementById('point-convert-modal').style.display='none'" style="background:none;border:none;color:#888;font-size:1.2rem;cursor:pointer;">✕</button>
+    </div>
+    <div style="padding:20px;">
+      <div style="display:flex;gap:10px;margin-bottom:16px;">
+        <div style="flex:1;background:#12122a;border:1px solid rgba(168,85,247,0.2);border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:0.68rem;color:#888;margin-bottom:4px;">보유 포인트</div>
+          <div id="pc-current-point" style="font-size:1.1rem;font-weight:700;color:#a78bfa;">0P</div>
+        </div>
+        <div style="flex:1;background:#12122a;border:1px solid rgba(200,168,75,0.2);border-radius:8px;padding:12px;text-align:center;">
+          <div style="font-size:0.68rem;color:#888;margin-bottom:4px;">보유 머니</div>
+          <div id="pc-current-money" style="font-size:1.1rem;font-weight:700;color:var(--gold);">0</div>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:0.78rem;color:#aaa;display:block;margin-bottom:6px;">전환할 포인트</label>
+        <input type="number" id="pc-amount" placeholder="전환할 포인트를 입력하세요" min="1" style="width:100%;box-sizing:border-box;background:#0e0e1e;border:1px solid rgba(168,85,247,0.3);border-radius:6px;padding:10px 14px;color:#fff;font-size:0.9rem;">
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
+        <button onclick="addPcAmount(1000)" style="flex:1;min-width:55px;background:#1a1a2e;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.72rem;cursor:pointer;">+1천</button>
+        <button onclick="addPcAmount(5000)" style="flex:1;min-width:55px;background:#1a1a2e;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.72rem;cursor:pointer;">+5천</button>
+        <button onclick="addPcAmount(10000)" style="flex:1;min-width:55px;background:#1a1a2e;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.72rem;cursor:pointer;">+1만</button>
+        <button onclick="addPcAmount(50000)" style="flex:1;min-width:55px;background:#1a1a2e;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.72rem;cursor:pointer;">+5만</button>
+        <button onclick="setPcAll()" style="flex:1;min-width:55px;background:#1a1a2e;border:1px solid #7c3aed;color:#a78bfa;border-radius:4px;padding:5px;font-size:0.72rem;cursor:pointer;font-weight:600;">전체</button>
+        <button onclick="document.getElementById('pc-amount').value=''" style="flex:1;min-width:55px;background:#1a1a2e;border:1px solid #333;color:#f87171;border-radius:4px;padding:5px;font-size:0.72rem;cursor:pointer;">초기화</button>
+      </div>
+      <div style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:0.78rem;color:#a78bfa;">
+        💡 포인트 1P = 1원으로 전환됩니다.
+      </div>
+      <button onclick="submitPointConvert()" style="width:100%;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;border:none;border-radius:6px;padding:12px;font-weight:700;cursor:pointer;font-size:0.9rem;">전환하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 충전 모달 -->
+<div class="modal-backdrop" id="deposit-modal" style="display:none;">
+  <div class="modal-box" style="max-width:420px;">
+    <div class="modal-head">
+      <span>충전 신청</span>
+      <button class="modal-close" onclick="closeModal('deposit')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px;">
+      <div style="margin-bottom:14px;">
+        <label style="font-size:0.8rem;color:var(--text2);display:block;margin-bottom:6px;">충전 금액</label>
+        <input type="number" id="dep-amount" placeholder="금액을 입력하세요" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.9rem;">
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+          <button onclick="addDepAmount(10000)"   style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">+1만</button>
+          <button onclick="addDepAmount(50000)"   style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">+5만</button>
+          <button onclick="addDepAmount(100000)"  style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">+10만</button>
+          <button onclick="addDepAmount(500000)"  style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">+50만</button>
+          <button onclick="document.getElementById('dep-amount').value=''" style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#f87171;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">초기화</button>
+        </div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:0.8rem;color:var(--text2);display:block;margin-bottom:6px;">은행명</label>
+        <input type="text" id="dep-bank" placeholder="예) 국민은행" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.85rem;">
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:0.8rem;color:var(--text2);display:block;margin-bottom:6px;">예금주</label>
+        <input type="text" id="dep-holder" placeholder="예금주명" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.85rem;">
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="font-size:0.8rem;color:var(--text2);display:block;margin-bottom:6px;">계좌번호</label>
+        <input type="text" id="dep-account" placeholder="계좌번호" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.85rem;">
+      </div>
+      <div id="dep-err" style="display:none;color:#f87171;font-size:0.8rem;margin-bottom:10px;"></div>
+      <button onclick="submitDeposit()" style="width:100%;background:linear-gradient(135deg,#c8a84b,#d4af37);color:#000;border:none;border-radius:6px;padding:12px;font-weight:700;cursor:pointer;font-size:0.9rem;">충전 신청</button>
+    </div>
+  </div>
+</div>
+
+<!-- 환전 모달 -->
+<div class="modal-backdrop" id="withdraw-modal" style="display:none;">
+  <div class="modal-box" style="max-width:420px;">
+    <div class="modal-head">
+      <span>환전 신청</span>
+      <button class="modal-close" onclick="closeModal('withdraw')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:24px;">
+      <div id="wit-balance-info" style="background:rgba(200,168,75,0.08);border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:0.85rem;color:var(--gold);">보유 잔액: 0원</div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:0.8rem;color:var(--text2);display:block;margin-bottom:6px;">환전 금액</label>
+        <input type="number" id="wit-amount" placeholder="금액을 입력하세요" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.9rem;">
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+          <button onclick="addWitAmount(10000)"  style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">+1만</button>
+          <button onclick="addWitAmount(50000)"  style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">+5만</button>
+          <button onclick="addWitAmount(100000)" style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">+10만</button>
+          <button onclick="addWitAmount(500000)" style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">+50만</button>
+          <button onclick="document.getElementById('wit-amount').value=''" style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#f87171;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">초기화</button>
+        </div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:0.8rem;color:var(--text2);display:block;margin-bottom:6px;">은행명</label>
+        <input type="text" id="wit-bank" placeholder="예) 국민은행" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.85rem;">
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:0.8rem;color:var(--text2);display:block;margin-bottom:6px;">예금주</label>
+        <input type="text" id="wit-holder" placeholder="예금주명" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.85rem;">
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="font-size:0.8rem;color:var(--text2);display:block;margin-bottom:6px;">계좌번호</label>
+        <input type="text" id="wit-account" placeholder="계좌번호" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.85rem;">
+      </div>
+      <div id="wit-err" style="display:none;color:#f87171;font-size:0.8rem;margin-bottom:10px;"></div>
+      <button onclick="submitWithdraw()" style="width:100%;background:linear-gradient(135deg,#c8a84b,#d4af37);color:#000;border:none;border-radius:6px;padding:12px;font-weight:700;cursor:pointer;font-size:0.9rem;">환전 신청</button>
+    </div>
+  </div>
+</div>
+
+<script src="user.js?v=5"></script>
+
+</body>
+</html>

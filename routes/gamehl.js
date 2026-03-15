@@ -1,0 +1,252 @@
+// ══════════════════════════════════════
+//  HonorLink 게임 API 프록시 라우트
+// ══════════════════════════════════════
+const express = require('express');
+const router  = express.Router();
+const path    = require('path');
+const fs      = require('fs');
+const hl      = require('../lib/honorlink');
+const { gameSessionMap } = require('./auth');
+
+// ── API 캐시 (Rate Limit 방지) ──
+const _cache = {};
+function cachedGet(endpoint, params, ttlMs) {
+  const key = endpoint + '|' + JSON.stringify(params || {});
+  const now = Date.now();
+  if (_cache[key] && (now - _cache[key].ts) < ttlMs) {
+    return Promise.resolve(_cache[key].data);
+  }
+  return hl.get(endpoint, params).then(function(r) {
+    _cache[key] = { data: r, ts: now };
+    return r;
+  });
+}
+
+function readGameSettings() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'games.json'), 'utf8'));
+  } catch(e) { return {}; }
+}
+
+// ── 게임 노출설정 (유저용)
+router.get('/settings', (req, res) => {
+  res.json(readGameSettings());
+});
+
+// ── 에이전트 정보 (10초 캐시)
+router.get('/my-info', async (req, res) => {
+  try { res.json(await cachedGet('/my-info', {}, 10000)); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── 벤더(게임사) 목록
+router.get('/vendors', async (req, res) => {
+  try { res.json(await hl.get('/vendor-list')); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── 게임 목록
+router.get('/games', async (req, res) => {
+  try { res.json(await hl.get('/game-list', { vendor: req.query.vendor })); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── 로비 목록
+router.get('/lobbies', async (req, res) => {
+  try { res.json(await hl.get('/lobby-list')); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── 게임 실행 링크 (첫 접속 시 자동으로 게임사 유저 생성)
+router.post('/launch', async (req, res) => {
+  try {
+    const username = req.body.username;
+    const nickname = req.body.nickname || username;
+
+    // users.json에서 해당 유저의 api 필드 확인
+    const usersPath = path.join(__dirname, '..', 'data', 'users.json');
+    let users = [];
+    try { users = JSON.parse(fs.readFileSync(usersPath, 'utf8')); } catch(e) {}
+    const user = users.find(u => u.username === username);
+
+    // 베팅 권한 체크
+    if (user) {
+      if (user.casino === 'OFF') return res.status(403).json({ error: '현재 게임사가 점검중입니다.' });
+      if (user.slot === 'OFF') {
+        const vendor = (req.body.vendor || '').toLowerCase();
+        const gameId = (req.body.game_id || '').toLowerCase();
+        // 슬롯 관련 vendor/game 체크
+      }
+    }
+
+    // 게임 제한(점검/차단) 체크
+    const gameSettings = readGameSettings();
+    const hiddenList = (gameSettings.hiddenGames || {})[req.body.vendor] || [];
+    if (hiddenList.indexOf(String(req.body.game_id)) >= 0) {
+      return res.status(403).json({ error: '해당 게임은 현재 점검중입니다.' });
+    }
+    const blockedList = (gameSettings.blockedGames || {})[req.body.vendor] || [];
+    if (blockedList.indexOf(String(req.body.game_id)) >= 0) {
+      return res.status(403).json({ error: '해당 게임은 현재 이용이 제한되어 있습니다.' });
+    }
+
+    // HonorLink에 유저가 아직 등록되지 않았으면 자동 생성
+    if (!user || !user.api || !user.api.includes('honorlink')) {
+      try {
+        await hl.post('/user/create', { username, nickname });
+        if (user) {
+          if (!user.api) user.api = [];
+          if (!user.api.includes('honorlink')) user.api.push('honorlink');
+          fs.writeFileSync(usersPath, JSON.stringify(users, null, 2), 'utf8');
+        }
+      } catch(e) {
+        // 이미 존재하는 유저면 무시, api 필드만 업데이트
+        if (user && (!user.api || !user.api.includes('honorlink'))) {
+          if (!user.api) user.api = [];
+          user.api.push('honorlink');
+          fs.writeFileSync(usersPath, JSON.stringify(users, null, 2), 'utf8');
+        }
+      }
+    }
+
+    const r = await hl.get('/game-launch-link', {
+      username,
+      nickname,
+      game_id:  req.body.game_id,
+      vendor:   req.body.vendor,
+      skin:     req.body.skin || undefined,
+    });
+
+    // 게임 세션 추적
+    gameSessionMap[username] = {
+      vendor: req.body.vendor || '',
+      game_id: req.body.game_id || '',
+      gameTitle: req.body.gameTitle || '',
+      gameType: req.body.gameType || 'slot',
+      startedAt: new Date().toISOString(),
+    };
+
+    res.json(r);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── 유저 조회
+router.get('/user', async (req, res) => {
+  try { res.json(await hl.get('/user', { username: req.query.username })); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── 유저 목록
+router.get('/users', async (req, res) => {
+  try {
+    res.json(await hl.get('/user-list', {
+      page:    req.query.page    || 1,
+      perPage: req.query.perPage || 5000,
+    }));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── 유저 생성
+router.post('/user/create', async (req, res) => {
+  try {
+    const r = await hl.post('/user/create', {
+      username: req.body.username,
+      nickname: req.body.nickname || req.body.username,
+    });
+    res.json(r);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── 머니 지급
+router.post('/user/add-balance', async (req, res) => {
+  try {
+    const r = await hl.post('/user/add-balance', {
+      username: req.body.username,
+      amount:   req.body.amount,
+      uuid:     req.body.uuid || undefined,
+    });
+    res.json(r);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── 머니 부분 회수
+router.post('/user/sub-balance', async (req, res) => {
+  try {
+    const r = await hl.post('/user/sub-balance', {
+      username: req.body.username,
+      amount:   req.body.amount,
+      uuid:     req.body.uuid || undefined,
+    });
+    res.json(r);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── 머니 전액 회수
+router.post('/user/sub-balance-all', async (req, res) => {
+  try {
+    const r = await hl.post('/user/sub-balance-all', {
+      username: req.body.username,
+      uuid:     req.body.uuid || undefined,
+    });
+    res.json(r);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── 잔액 조회 (5초 캐시)
+router.get('/balance', async (req, res) => {
+  try {
+    const r = await cachedGet('/user', { username: req.query.username }, 5000);
+    res.json({ balance: r ? (r.balance !== undefined ? r.balance : (r.data ? r.data.balance : 0)) : 0 });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── 강제종료 (킥)
+router.post('/kick', async (req, res) => {
+  try {
+    const r = await hl.post('/user/kick', { username: req.body.username });
+    // 게임 세션 제거
+    delete gameSessionMap[req.body.username];
+    res.json(r);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── 트랜잭션 조회 (35초 캐시 – HonorLink 30초 제한 준수) — 실시간 API
+router.get('/transactions', async (req, res) => {
+  try {
+    const params = {
+      start:        req.query.start,
+      end:          req.query.end,
+      page:         req.query.page      || 1,
+      per_page:     req.query.per_page  || req.query.perPage || 100,
+      with_details: req.query.with_details || req.query.withDetails || 0,
+      order:        req.query.order     || 'desc',
+    };
+    const r = await cachedGet('/transactions', params, 35000);
+    res.json(r);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── 로컬 저장된 트랜잭션 조회 (rate limit 없음)
+const txCollector = require('../lib/transactionCollector');
+router.get('/transactions/local', (req, res) => {
+  try {
+    const usernames = req.query.usernames
+      ? req.query.usernames.split(',').filter(Boolean)
+      : [];
+    const types = req.query.types
+      ? req.query.types.split(',').filter(Boolean)
+      : [];
+    const result = txCollector.query({
+      start:     req.query.start,
+      end:       req.query.end,
+      usernames: usernames,
+      types:     types,
+      order:     req.query.order   || 'desc',
+      page:      req.query.page    || 1,
+      perPage:   req.query.perPage || 100,
+    });
+    res.json(result);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+module.exports = router;
