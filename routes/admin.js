@@ -576,6 +576,46 @@ router.patch('/inquiries/:id/reply', (req, res) => {
 });
 
 // ══════════════════════════════════════
+//  고정답변 API
+// ══════════════════════════════════════
+function readQuickReplies()      { try { return readData('quickreplies.json'); } catch(e) { return []; } }
+function writeQuickReplies(data) { writeData('quickreplies.json', data); }
+
+router.get('/quickreplies', (_req, res) => {
+  res.json({ success: true, data: readQuickReplies() });
+});
+
+router.post('/quickreplies', (req, res) => {
+  const list = readQuickReplies();
+  const item = {
+    id: Date.now() + '' + Math.floor(Math.random() * 1000),
+    title: req.body.title || '',
+    content: req.body.content || '',
+    createdAt: new Date().toISOString()
+  };
+  list.unshift(item);
+  writeQuickReplies(list);
+  res.json({ success: true, data: item });
+});
+
+router.put('/quickreplies/:id', (req, res) => {
+  const list = readQuickReplies();
+  const item = list.find(i => i.id === req.params.id);
+  if (!item) return res.json({ success: false, error: '항목 없음' });
+  if (req.body.title   !== undefined) item.title   = req.body.title;
+  if (req.body.content !== undefined) item.content = req.body.content;
+  writeQuickReplies(list);
+  res.json({ success: true });
+});
+
+router.delete('/quickreplies/:id', (req, res) => {
+  let list = readQuickReplies();
+  list = list.filter(i => i.id !== req.params.id);
+  writeQuickReplies(list);
+  res.json({ success: true });
+});
+
+// ══════════════════════════════════════
 //  이벤트 API
 // ══════════════════════════════════════
 function readEvents()      { try { return readData('events.json'); } catch(e) { return []; } }

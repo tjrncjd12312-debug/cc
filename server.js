@@ -15,6 +15,7 @@ app.use((req, res, next) => {
 
 // API 라우트
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/user',  require('./routes/user'));
 app.use('/api/auth',  require('./routes/auth').router);
 app.use('/api/game',  require('./routes/game'));
 app.use('/api/hl',    require('./routes/gamehl'));

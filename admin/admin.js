@@ -922,6 +922,12 @@ function renderPage(page) {
   } else if(page === 'settlement-provider') {
     document.getElementById('page-title').textContent = pageTitles[page] || page;
     renderSettlementProviderPage();
+  } else if(page === 'support-quickreply') {
+    document.getElementById('page-title').textContent = pageTitles[page] || page;
+    renderQuickReplyPage();
+  } else if(page === 'support-message') {
+    document.getElementById('page-title').textContent = pageTitles[page] || page;
+    renderMessagePage();
   } else if(page === 'point-rolling') {
     document.getElementById('page-title').textContent = pageTitles[page] || page;
     renderPointRollingPage();

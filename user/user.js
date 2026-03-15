@@ -105,12 +105,12 @@ function _loginSetHide(title) { localStorage.setItem(_loginHideKey(title), _logi
 async function showLoginPopupNotices() {
   try {
     // 공지사항
-    var res = await fetch('/api/admin/notices');
+    var res = await fetch('/api/user/notices');
     var data = await res.json();
     var all = data.success ? (data.data || []) : [];
     all.sort(function(a,b){ return (a.rank||99)-(b.rank||99); });
     // 이벤트
-    var evRes = await fetch('/api/admin/events');
+    var evRes = await fetch('/api/user/events');
     var evData = await evRes.json();
     var evAll = (evData.data || []).filter(function(ev){ return ev.loginPopup; });
     // 합치기 (공지 먼저, 이벤트 뒤)
@@ -1020,7 +1020,7 @@ async function launchHL(vendor, gameId, title) {
         body: JSON.stringify({ username: _session.username, amount: localBal })
       });
       // 로컬 잔액을 0으로 차감 (게임사로 이동했으므로) — 게임사 API 호출 안함
-      await fetch('/api/admin/users/money-local', {
+      await fetch('/api/user/users/money-local', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: _session.username, amount: -localBal })
@@ -1490,7 +1490,7 @@ function makeSlideList(containerId, rows) {
 
   async function loadAllNotices() {
     try {
-      var res = await fetch('/api/admin/notices');
+      var res = await fetch('/api/user/notices');
       var data = await res.json();
       var all = data.success ? (data.data || []) : [];
       return all.sort(function(a,b){ return (a.rank||99)-(b.rank||99); });
@@ -1524,7 +1524,7 @@ function makeSlideList(containerId, rows) {
     var popupList = all.filter(function(n){ return n.userPopup && !isHiddenToday(n.title); });
     // 이벤트 userPopup도 합침
     try {
-      var evRes = await fetch('/api/admin/events');
+      var evRes = await fetch('/api/user/events');
       var evData = await evRes.json();
       (evData.data || []).forEach(function(ev){ if(ev.userPopup && !isHiddenToday(ev.title)) popupList.push(ev); });
     } catch(e) {}
@@ -1599,7 +1599,7 @@ function makeSlideList(containerId, rows) {
     if(!el) return;
     var events = [];
     try {
-      var res = await fetch('/api/admin/events');
+      var res = await fetch('/api/user/events');
       var data = await res.json();
       if(data.success) events = data.data;
     } catch(e) {}
@@ -1647,7 +1647,7 @@ async function submitDeposit() {
   var dt = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
 
   try {
-    var res = await fetch('/api/admin/transfers', {
+    var res = await fetch('/api/user/transfers', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         type: 'deposit',
@@ -1685,7 +1685,7 @@ async function submitWithdraw() {
   var dt = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
 
   try {
-    var res = await fetch('/api/admin/transfers', {
+    var res = await fetch('/api/user/transfers', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         type: 'withdraw',
@@ -1717,7 +1717,7 @@ async function submitInquiry() {
   var dt = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
 
   try {
-    var res = await fetch('/api/admin/inquiries', {
+    var res = await fetch('/api/user/inquiries', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         userId: _session.username, nick: _session.nickname||_session.username,
@@ -1742,7 +1742,7 @@ async function loadEventSection() {
   if(!el) return;
   var events = [];
   try {
-    var res = await fetch('/api/admin/events');
+    var res = await fetch('/api/user/events');
     var data = await res.json();
     if(data.success) events = data.data;
   } catch(e) {}
@@ -1796,7 +1796,7 @@ async function loadSupportSection() {
 
   var mine = [];
   try {
-    var res = await fetch('/api/admin/inquiries?userId=' + encodeURIComponent(_session.username));
+    var res = await fetch('/api/user/inquiries?userId=' + encodeURIComponent(_session.username));
     var data = await res.json();
     if(data.success) mine = data.data;
   } catch(e) {}
@@ -1821,7 +1821,7 @@ async function loadSupportSection() {
 async function openMyInquiryDetail(id) {
   var item = null;
   try {
-    var res = await fetch('/api/admin/inquiries');
+    var res = await fetch('/api/user/inquiries');
     var data = await res.json();
     if(data.success) item = (data.data||[]).find(function(x){ return x.id===id; }) || null;
   } catch(e) {}
@@ -1905,7 +1905,7 @@ async function _itmRenderTab(tab) {
   if(tab === 'event') {
     var events = [];
     try {
-      var res = await fetch('/api/admin/events');
+      var res = await fetch('/api/user/events');
       var data = await res.json();
       if(data.success) events = data.data;
     } catch(e) {}
@@ -1928,7 +1928,7 @@ async function _itmRenderTab(tab) {
   } else if(tab === 'notice') {
     var notices = [];
     try {
-      var res2 = await fetch('/api/admin/notices');
+      var res2 = await fetch('/api/user/notices');
       var data2 = await res2.json();
       if(data2.success) notices = data2.data;
     } catch(e) {}
