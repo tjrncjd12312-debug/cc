@@ -104,6 +104,7 @@ function renderTransferDepositReq() {
         var r = await apiTransferAction(this.dataset.id, 'approve');
         if(!r.success) { alert(r.error||'처리 실패'); return; }
         refresh();
+        if(typeof fetchSidebarStats==='function') fetchSidebarStats();
         if(typeof resetAlarmState==='function') resetAlarmState();
         if(typeof updateTopbarCountsWithAlarm==='function') updateTopbarCountsWithAlarm();
       });
@@ -114,6 +115,7 @@ function renderTransferDepositReq() {
         if(!ok) return;
         await apiTransferAction(this.dataset.id, 'reject');
         refresh();
+        if(typeof fetchSidebarStats==='function') fetchSidebarStats();
         if(typeof resetAlarmState==='function') resetAlarmState();
         if(typeof updateTopbarCountsWithAlarm==='function') updateTopbarCountsWithAlarm();
       });
@@ -200,6 +202,7 @@ function renderTransferWithdrawReq() {
         var r = await apiTransferAction(this.dataset.id, 'approve');
         if(!r.success) { alert(r.error||'처리 실패'); return; }
         refresh();
+        if(typeof fetchSidebarStats==='function') fetchSidebarStats();
         if(typeof resetAlarmState==='function') resetAlarmState();
         if(typeof updateTopbarCountsWithAlarm==='function') updateTopbarCountsWithAlarm();
       });
@@ -210,6 +213,7 @@ function renderTransferWithdrawReq() {
         if(!ok) return;
         await apiTransferAction(this.dataset.id, 'reject');
         refresh();
+        if(typeof fetchSidebarStats==='function') fetchSidebarStats();
         if(typeof resetAlarmState==='function') resetAlarmState();
         if(typeof updateTopbarCountsWithAlarm==='function') updateTopbarCountsWithAlarm();
       });

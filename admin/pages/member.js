@@ -2,6 +2,25 @@
 //  회원 관리 페이지
 // ══════════════════════════════════════
 
+// ── 액션 로딩 오버레이 ──
+function _showActionSpinner(msg) {
+  var el = document.getElementById('action-spinner-overlay');
+  if(el) el.remove();
+  el = document.createElement('div');
+  el.id = 'action-spinner-overlay';
+  el.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px);';
+  el.innerHTML = '<div style="background:var(--card,#1a1a2e);border:1px solid var(--border,#333);border-radius:16px;padding:32px 48px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);">'
+    + '<i class="fas fa-circle-notch fa-spin" style="font-size:2rem;color:#3b82f6;"></i>'
+    + '<div style="margin-top:12px;color:var(--text1,#fff);font-size:0.88rem;font-weight:600;">' + (msg || '처리중...') + '</div>'
+    + '</div>';
+  document.body.appendChild(el);
+  return el;
+}
+function _hideActionSpinner() {
+  var el = document.getElementById('action-spinner-overlay');
+  if(el) el.remove();
+}
+
 // ── 은행 목록 ──
 var _bankList = ['KB국민은행','신한은행','우리은행','하나은행','NH농협은행','IBK기업은행','SC제일은행','씨티은행','경남은행','광주은행','대구은행','부산은행','전북은행','제주은행','산업은행','수협은행','새마을금고','신협','우체국','케이뱅크','카카오뱅크','토스뱅크'];
 function _bankOptions(selected) {
@@ -102,14 +121,17 @@ function _showKickConfirm(username, btn) {
     .then(function(r) { return r.json(); })
     .then(function(res) {
       if (res.success) {
+        _showActionSpinner('강제종료 반영중...');
         // 킥 후 서버에서 최신 유저 데이터 가져와서 partnerTree 반영
         fetch('/api/admin/users').then(function(r){return r.json();}).then(function(uRes) {
           var u = (uRes.data||[]).find(function(x){return x.username===username;});
           if (u) _updateTreeNode(username, { money: u.money||0 });
           if(typeof savePartnerTree === 'function') savePartnerTree();
+          if(typeof fetchSidebarStats === 'function') fetchSidebarStats();
         }).catch(function(){});
         _showToast(username + ' 강제종료가 완료되었습니다.', 'success');
         fetchMemberData().then(function() {
+          _hideActionSpinner();
           var tbody = document.getElementById('mb-tbody');
           if (tbody) { tbody.innerHTML = buildMemberRows(memberData); bindMemberRowEvents(); }
         });
@@ -819,10 +841,12 @@ function renderMemberPage(subPage) {
   if (!_memberDateStart) _memberDateStart = _todayKST();
   if (!_memberDateEnd) _memberDateEnd = _todayKST();
 
-  // 로딩 표시
+  // 로딩 표시 (스피너 오버레이)
+  _showActionSpinner('회원 목록 로드중...');
   document.getElementById('content').innerHTML = '<div style="text-align:center;padding:60px;color:var(--text3);"><i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i><p style="margin-top:12px;">회원 목록 로드중...</p></div>';
 
   fetchMemberData().then(function(data) {
+    _hideActionSpinner();
     // 페이지 이동했으면 렌더링 중단
     var title = document.getElementById('page-title');
     if (title && title.textContent.indexOf('회원') === -1) return;
@@ -1246,6 +1270,8 @@ function applyMoney(tr, amount, memo) {
       // partnerTree 머니 반영
       _updateTreeNode(id, { money: res.after || after });
       if(typeof savePartnerTree === 'function') savePartnerTree();
+      // 사이드바 즉시 갱신
+      if(typeof fetchSidebarStats === 'function') fetchSidebarStats();
       // API 연동된 유저면 게임사 잔액 조회해서 표시
       fetch('/api/hl/balance?username=' + encodeURIComponent(id))
         .then(function(r2){ return r2.json(); })
@@ -1529,7 +1555,7 @@ function bindMemberEvents() {
         return fetch('/api/admin/users/' + username + '/give', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({amount:amount}) }).then(function(r){return r.json();}).then(function(res) {
           if (res.success) _updateTreeNode(username, { money: res.after || 0 });
         });
-      })).then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); dim.remove(); renderMemberPage(); });
+      })).then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); if(typeof fetchSidebarStats === 'function') fetchSidebarStats(); dim.remove(); renderMemberPage(); });
     });
   });
 
@@ -2701,16 +2727,22 @@ function __removed_openMemberDetailModal(tr) {
     var isBlocked = m.status === 'blocked';
     if(!(await customConfirm(nick + ' 을(를) ' + (isBlocked?'정지 해제':'정지') + '하시겠습니까?'))) return;
     if (isBlocked) {
+      overlay.remove();
+      _showActionSpinner('정지 해제 처리중...');
       fetch('/api/admin/users/' + uid + '/unblock', { method: 'POST' }).then(function(){
         _updateTreeNode(uid, { status: '정상' });
         if(typeof savePartnerTree === 'function') savePartnerTree();
-        location.reload();
+        _showToast(nick + ' 정지 해제 완료', 'success');
+        renderMemberPage();
       });
     } else {
+      overlay.remove();
+      _showActionSpinner('정지 처리중...');
       fetch('/api/admin/users/' + uid + '/block', { method: 'POST' }).then(function(){
         _updateTreeNode(uid, { status: 'blocked' });
         if(typeof savePartnerTree === 'function') savePartnerTree();
-        location.reload();
+        _showToast(nick + ' 정지 처리 완료', 'success');
+        renderMemberPage();
       });
     }
   });
@@ -2719,12 +2751,14 @@ function __removed_openMemberDetailModal(tr) {
   overlay.querySelector('.mbd-delete-btn').addEventListener('click', async function() {
     if(!(await customConfirm(nick + ' 을(를) 정말 삭제하시겠습니까?'))) return;
     var uid = m.id || id;
+    overlay.remove();
+    _showActionSpinner('삭제 처리중...');
     fetch('/api/admin/users/' + uid + '/delete', { method: 'POST' }).then(function() {
       _removeFromTree(uid);
       if(typeof savePartnerTree === 'function') savePartnerTree();
-      location.reload();
+      _showToast(nick + ' 삭제 완료', 'success');
+      renderMemberPage();
     });
-    overlay.remove();
   });
 }
 
