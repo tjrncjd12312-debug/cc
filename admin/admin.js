@@ -1,4 +1,21 @@
 // ══════════════════════════════════════
+//  인증 헤더 자동 포함 fetch
+// ══════════════════════════════════════
+var _origFetch = window.fetch;
+window.fetch = function(url, opts) {
+  if (typeof url === 'string' && url.indexOf('/api/admin/') !== -1 && url.indexOf('/api/admin/login') === -1 && url.indexOf('/api/admin/check-session') === -1) {
+    var tk = sessionStorage.getItem('adminToken') || '';
+    if (!tk) return Promise.resolve(new Response(JSON.stringify({data:[]}), {status:200, headers:{'Content-Type':'application/json'}}));
+    opts = opts || {};
+    opts.headers = opts.headers || {};
+    if (!opts.headers['Authorization']) {
+      opts.headers['Authorization'] = 'Bearer ' + tk;
+    }
+  }
+  return _origFetch.call(window, url, opts);
+};
+
+// ══════════════════════════════════════
 //  커스텀 Confirm 모달
 // ══════════════════════════════════════
 function customConfirm(message) {
@@ -185,7 +202,10 @@ function _showAdminUI() {
   .then(function(res) {
     if (res.success) {
       if (typeof _loadPartnerTreeFromServer === 'function') _loadPartnerTreeFromServer();
+      if (typeof _loadDashboardData === 'function') _loadDashboardData();
       _showAdminUI();
+      fetchAgentBalance();
+      fetchSidebarStats();
     }
     else { _adminToken = ''; sessionStorage.removeItem('adminToken'); _showLoginScreen(); }
   })
@@ -224,10 +244,12 @@ function _doLogin() {
       _showAdminUI();
       // 파트너 트리 로드 (로그인 후)
       if (typeof _loadPartnerTreeFromServer === 'function') _loadPartnerTreeFromServer();
+      if (typeof _loadDashboardData === 'function') _loadDashboardData();
       // 초기 페이지 렌더
       var page = location.hash.replace('#', '') || 'dashboard';
       renderPage(page);
       fetchAgentBalance();
+      fetchSidebarStats();
     } else {
       errEl.textContent = res.error || '로그인 실패';
       errEl.style.display = 'block';
@@ -800,16 +822,23 @@ function renderDashboard() {
   `;
 
   // 대시보드 실제 데이터 연동 (서버 API)
-  (async function() {
+  window._loadDashboardData = async function() {
     try {
 
-      var [trRes, memberRes, betRes, onlineRes, ptRes] = await Promise.all([
-        fetch('/api/admin/transfers').then(function(r){ return r.json(); }),
-        fetch('/api/admin/users').then(function(r){ return r.json(); }),
-        (function(){ var k=new Date(Date.now()+9*60*60*1000).toISOString().slice(0,10); return fetch('/api/hl/transactions/local?types=bet,win&perPage=10000&start='+encodeURIComponent(k+' 00:00:00')+'&end='+encodeURIComponent(k+' 23:59:59')).then(function(r){return r.json();}); })(),
-        fetch('/api/auth/online').then(function(r){ return r.json(); }).catch(function(){ return {data:[]}; }),
-        fetch('/api/admin/partner-tree').then(function(r){ return r.json(); }).catch(function(){ return {data:[]}; })
+      var _tk = sessionStorage.getItem('adminToken') || '';
+      var _authH = { 'Authorization': 'Bearer ' + _tk };
+      var _results = await Promise.all([
+        fetch('/api/admin/transfers', {headers:_authH}).then(function(r){ return r.json(); }).catch(function(){ return {data:[]}; }),
+        fetch('/api/admin/users', {headers:_authH}).then(function(r){ return r.json(); }).catch(function(){ return {data:[]}; }),
+        (function(){ var k=new Date(Date.now()+9*60*60*1000).toISOString().slice(0,10); return fetch('/api/hl/transactions/local?types=bet,win&perPage=10000&start='+encodeURIComponent(k+' 00:00:00')+'&end='+encodeURIComponent(k+' 23:59:59'),{headers:_authH}).then(function(r){return r.json();}).catch(function(){ return {data:[]}; }); })(),
+        fetch('/api/auth/online',{headers:_authH}).then(function(r){ return r.json(); }).catch(function(){ return {data:[]}; }),
+        fetch('/api/admin/partner-tree',{headers:_authH}).then(function(r){ return r.json(); }).catch(function(){ return {data:[]}; })
       ]);
+      var trRes = _results[0];
+      var memberRes = _results[1];
+      var betRes = _results[2];
+      var onlineRes = _results[3];
+      var ptRes = _results[4];
 
       var transfers = trRes.data  || [];
       var members   = memberRes.data || [];
@@ -837,7 +866,14 @@ function renderDashboard() {
       var wits = transfers.filter(function(x){ return x.type === 'withdraw'; });
 
       var memberMoney = memberUsers.reduce(function(s,x){ return s+(x.money||0); }, 0);
-      var partnerMoney = partnerUsers.reduce(function(s,x){ return s+(x.money||0); }, 0);
+      // 파트너 머니는 트리 데이터 기준 (트리가 원본)
+      var partnerMoney = 0;
+      (function calcPartnerMoney(nodes) {
+        (nodes||[]).forEach(function(n) {
+          if (n.level !== 'admin' && n.level !== 'member') partnerMoney += (n.money || 0);
+          if (n.children) calcPartnerMoney(n.children);
+        });
+      })(partnerTree);
 
       // 베팅 데이터
       var bets = txs.filter(function(t){ return t.type === 'bet'; });
@@ -845,7 +881,13 @@ function renderDashboard() {
 
       // ── 4 상단 카드 업데이트 ──
       var memberRolling = memberUsers.reduce(function(s,x){ return s+((x.point||0)+(x.rollingPoint||0)); }, 0);
-      var partnerRolling = partnerUsers.reduce(function(s,x){ return s+((x.point||0)+(x.rollingPoint||0)); }, 0);
+      var partnerRolling = 0;
+      (function calcPartnerRolling(nodes) {
+        (nodes||[]).forEach(function(n) {
+          if (n.level !== 'admin' && n.level !== 'member') partnerRolling += ((n.point||0)+(n.rollingPoint||0));
+          if (n.children) calcPartnerRolling(n.children);
+        });
+      })(partnerTree);
       var e;
       e = document.getElementById('dsc-member-money'); if(e) e.textContent = '₩' + memberMoney.toLocaleString();
       e = document.getElementById('dsc-member-rolling'); if(e) e.textContent = '₩' + memberRolling.toLocaleString();
@@ -968,7 +1010,9 @@ function renderDashboard() {
         }).catch(function(){});
       }
     } catch(e){ console.error('dashboard data error', e); }
-  })();
+  };
+  // 정의 후 즉시 실행
+  if (sessionStorage.getItem('adminToken')) _loadDashboardData();
 
 }
 
@@ -1226,8 +1270,8 @@ function fetchAgentBalance() {
       if (el) { el.textContent = '연결 오류'; el.style.color = '#f87171'; }
     });
 }
-fetchAgentBalance();
-setInterval(fetchAgentBalance, 60000);
+if (sessionStorage.getItem('adminToken')) fetchAgentBalance();
+setInterval(function(){ if (sessionStorage.getItem('adminToken')) fetchAgentBalance(); }, 60000);
 document.getElementById('agent-balance-refresh').addEventListener('click', function() {
   var hlEl = document.getElementById('agent-balance-hl');
   var csEl = document.getElementById('agent-balance-cs');
@@ -1238,28 +1282,55 @@ document.getElementById('agent-balance-refresh').addEventListener('click', funct
 
 // ── 사이드바 파트너/회원 보유머니·롤링 ──
 function fetchSidebarStats() {
-  fetch('/api/admin/users').then(function(r){ return r.json(); }).then(function(res) {
-    var users = res.data || res || [];
-    var partnerLevels = ['head','subhead','sub','distributor','chong','store','mae'];
-    var pMoney = 0, pRolling = 0, mMoney = 0, mRolling = 0;
-    users.forEach(function(u) {
-      var lv = (u.level || u.role || 'member').toLowerCase();
-      if (partnerLevels.indexOf(lv) !== -1) {
-        pMoney += Number(u.money || u.balance || 0);
-        pRolling += Number(u.rollingPoint || u.point || 0);
-      } else if (lv === 'member' || lv === 'user') {
-        mMoney += Number(u.money || u.balance || 0);
-        mRolling += Number(u.rollingPoint || u.point || 0);
-      }
-    });
+  fetch('/api/admin/partner-tree').then(function(r){ return r.json(); }).catch(function(){ return {data:[]}; })
+  .then(function(res) {
+    var tree = res.data || [];
+    // 트리에서 파트너 ID와 회원 ID 분류
+    var partnerIds = {};
+    var memberIds = {};
+    (function walkTree(nodes) {
+      (nodes||[]).forEach(function(n) {
+        if (n.level === 'member') memberIds[n.id] = true;
+        else if (n.level !== 'admin') partnerIds[n.id] = true;
+        if (n.children) walkTree(n.children);
+      });
+    })(tree);
+    // 파트너 머니는 트리에서
+    var pMoney = 0, pRolling = 0;
+    (function calcPartner(nodes) {
+      (nodes||[]).forEach(function(n) {
+        if (n.level !== 'admin' && n.level !== 'member') {
+          pMoney += Number(n.money || 0);
+          pRolling += Number((n.point||0) + (n.rollingPoint||0));
+        }
+        if (n.children) calcPartner(n.children);
+      });
+    })(tree);
+    // 회원 머니는 트리의 member에서 (트리가 원본)
+    var mMoney = 0, mRolling = 0;
+    (function calcMember(nodes) {
+      (nodes||[]).forEach(function(n) {
+        if (n.level === 'member') {
+          mMoney += Number(n.money || 0);
+          mRolling += Number((n.point||0) + (n.rollingPoint||0));
+        }
+        if (n.children) calcMember(n.children);
+      });
+    })(tree);
     var e1 = document.getElementById('sidebar-partner-money'); if(e1) e1.textContent = Math.floor(pMoney).toLocaleString() + ' 원';
     var e2 = document.getElementById('sidebar-partner-rolling'); if(e2) e2.textContent = Math.floor(pRolling).toLocaleString() + ' P';
     var e3 = document.getElementById('sidebar-member-money'); if(e3) e3.textContent = Math.floor(mMoney).toLocaleString() + ' 원';
     var e4 = document.getElementById('sidebar-member-rolling'); if(e4) e4.textContent = Math.floor(mRolling).toLocaleString() + ' P';
   }).catch(function(){});
 }
-fetchSidebarStats();
-setInterval(fetchSidebarStats, 60000);
+if (sessionStorage.getItem('adminToken')) fetchSidebarStats();
+setInterval(function(){ if (sessionStorage.getItem('adminToken')) fetchSidebarStats(); }, 60000);
+document.getElementById('sidebar-stats-refresh').addEventListener('click', function() {
+  var icon = this.querySelector('i') || this;
+  icon.style.transform = 'rotate(360deg)';
+  setTimeout(function(){ icon.style.transform = ''; }, 600);
+  fetchSidebarStats();
+});
 
 // ── 즐겨찾기 ──
 function getFavorites() {
@@ -1632,8 +1703,8 @@ document.querySelectorAll('.sub-item[data-page]').forEach(function(item) {
     sessionStorage.removeItem('alarm-dismissed-counts');
   };
   window.updateTopbarCountsWithAlarm = updateTopbarCountsWithAlarm;
-  updateTopbarCountsWithAlarm();
-  setInterval(updateTopbarCountsWithAlarm, 3000);
+  if (sessionStorage.getItem('adminToken')) updateTopbarCountsWithAlarm();
+  setInterval(function(){ if (sessionStorage.getItem('adminToken')) updateTopbarCountsWithAlarm(); }, 3000);
 
   // 백그라운드에서 돌아올 때 즉시 체크
   document.addEventListener('visibilitychange', function() {

@@ -56,43 +56,36 @@
     </div>
 
     <div style="margin:0 14px 10px;padding:0;background:var(--bg3);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
-      <button id="sidebar-stats-toggle" style="width:100%;padding:8px 12px;background:none;border:none;color:var(--text2);font-size:0.7rem;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
-        <span>총 보유머니</span>
-        <i class="fas fa-chevron-down" id="sidebar-stats-icon" style="font-size:0.6rem;transition:transform 0.2s;"></i>
-      </button>
-      <div id="sidebar-stats-body" style="display:none;padding:0 12px 10px;display:flex;flex-direction:column;gap:6px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:0.65rem;color:#a78bfa;font-weight:600;">파트너 보유머니</span>
-          <span id="sidebar-partner-money" style="font-size:0.8rem;color:var(--text1);font-weight:700;">0 원</span>
+      <div style="padding:8px 12px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:0.7rem;color:var(--text2);font-weight:600;">총 보유머니</span>
+        <button id="sidebar-stats-refresh" style="background:none;border:1px solid var(--border2);color:var(--text3);border-radius:4px;cursor:pointer;font-size:0.7rem;padding:1px 6px;" title="새로고침">&#x21bb;</button>
+      </div>
+      <div style="padding:0 12px 10px;display:flex;flex-direction:column;gap:4px;">
+        <div style="padding:6px 8px;background:rgba(167,139,250,0.08);border-radius:6px;border-left:3px solid #a78bfa;">
+          <div style="font-size:0.6rem;color:#a78bfa;font-weight:600;margin-bottom:2px;">파트너</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:0.6rem;color:var(--text3);">보유머니</span>
+            <span id="sidebar-partner-money" style="font-size:0.8rem;color:#a78bfa;font-weight:700;">0 원</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:0.6rem;color:var(--text3);">보유롤링</span>
+            <span id="sidebar-partner-rolling" style="font-size:0.8rem;color:#f59e0b;font-weight:700;">0 P</span>
+          </div>
         </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:0.65rem;color:#a78bfa;font-weight:600;">파트너 보유롤링</span>
-          <span id="sidebar-partner-rolling" style="font-size:0.8rem;color:#f59e0b;font-weight:700;">0 P</span>
-        </div>
-        <div style="border-top:1px solid var(--border);margin:2px 0;"></div>
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:0.65rem;color:#60a5fa;font-weight:600;">회원 보유머니</span>
-          <span id="sidebar-member-money" style="font-size:0.8rem;color:var(--text1);font-weight:700;">0 원</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="font-size:0.65rem;color:#60a5fa;font-weight:600;">회원 보유롤링</span>
-          <span id="sidebar-member-rolling" style="font-size:0.8rem;color:#f59e0b;font-weight:700;">0 P</span>
+        <div style="padding:6px 8px;background:rgba(96,165,250,0.08);border-radius:6px;border-left:3px solid #60a5fa;">
+          <div style="font-size:0.6rem;color:#60a5fa;font-weight:600;margin-bottom:2px;">회원</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:0.6rem;color:var(--text3);">보유머니</span>
+            <span id="sidebar-member-money" style="font-size:0.8rem;color:#60a5fa;font-weight:700;">0 원</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:0.6rem;color:var(--text3);">보유롤링</span>
+            <span id="sidebar-member-rolling" style="font-size:0.8rem;color:#f59e0b;font-weight:700;">0 P</span>
+          </div>
         </div>
       </div>
     </div>
-    <script>
-    document.getElementById('sidebar-stats-toggle').addEventListener('click', function(){
-      var body = document.getElementById('sidebar-stats-body');
-      var icon = document.getElementById('sidebar-stats-icon');
-      if(body.style.display === 'none') {
-        body.style.display = 'flex';
-        icon.style.transform = 'rotate(180deg)';
-      } else {
-        body.style.display = 'none';
-        icon.style.transform = '';
-      }
-    });
-    </script>
+    <script></script>
 
     <nav class="sidebar-nav">
       <ul>
@@ -328,6 +321,6 @@
   <script src="/admin/pages/settlement.js?v=11"></script>
   <script src="/admin/pages/point.js?v=1"></script>
   <script src="/admin/pages/settings.js?v=1"></script>
-  <script src="/admin/admin.js?v=6"></script>
+  <script src="/admin/admin.js?v=7"></script>
 </body>
 </html>

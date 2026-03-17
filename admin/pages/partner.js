@@ -302,7 +302,6 @@ function _ptSubPoint(node) {
 
 function _ptFlattenTree(nodes, depth, result) {
   (nodes || []).forEach(function(n) {
-    if (n.level === 'member') return;
     result.push({ node: n, depth: depth });
     if ((n.level === 'admin' || n.expanded) && n.children) {
       _ptFlattenTree(n.children, depth + 1, result);
@@ -429,7 +428,7 @@ function _ptRenderTableBody() {
     var d = r.depth;
     var color = levelColor[n.level] || '#888';
     var lbl = levelLabel[n.level] || n.level;
-    var hasChildren = n.children && n.children.filter(function(c) { return c.level !== 'member'; }).length > 0;
+    var hasChildren = n.children && n.children.length > 0;
     var memberCount = _ptMemberCount(n);
     var subMoney = _ptSubMoney(n);
     var subPoint = _ptSubPoint(n);
@@ -619,7 +618,7 @@ function _ptBindListEvents() {
     localStorage.removeItem('userMoneyLog');
     localStorage.removeItem('partnerBettingCache');
     localStorage.removeItem('partnerTree');
-    alert('초기화 완료');
+    _showToast('초기화 완료', 'success');
     navigateToPage('partner-list');
   });
 
@@ -652,7 +651,7 @@ function _ptBindListEvents() {
         _ptRenderListPage();
       });
     }).catch(function() {
-      alert('동기화 실패');
+      _showToast('동기화 실패', 'error');
       syncBtn.disabled = false;
       syncBtn.innerHTML = '<i class="fas fa-sync" style="margin-right:4px;"></i>하부 잔액 동기화';
     });
@@ -1132,7 +1131,7 @@ function renderPartnerInfo(id) {
       if(!sel) return;
       node[field] = sel.value;
       savePartnerTree();
-      alert(field + ' → ' + sel.value + '% 변경 완료');
+      _showToast(field + ' → ' + sel.value + '% 변경 완료', 'success');
       renderPartnerInfo(id);
     });
   });
@@ -2337,13 +2336,13 @@ function openInfoPopup(title, mode, field, node) {
           overlay.remove();
           _showToast((isGive ? '✅ 지급' : '📤 회수') + ' 완료: ' + val.toLocaleString() + '원', isGive ? 'success' : 'warn');
         } else {
-          alert('처리 실패: ' + (res.error || ''));
+          _showToast('처리 실패: ' + (res.error || ''), 'error');
           confirmBtn.disabled = false;
           confirmBtn.textContent = '확인';
         }
       })
       .catch(function(e) {
-        alert('API 오류: ' + e.message);
+        _showToast('API 오류: ' + e.message, 'error');
         confirmBtn.disabled = false;
         confirmBtn.textContent = '확인';
       });
@@ -3707,6 +3706,12 @@ function openMoveParentModal(node) {
   var parentLevelMap = { head:'admin', subhead:'head', distributor:'subhead', store:'distributor', member:'store' };
   var requiredParentLevel = parentLevelMap[node.level];
 
+  // 회원은 매장뿐 아니라 모든 파트너 레벨로 이동 가능
+  var allowedParentLevels = requiredParentLevel ? [requiredParentLevel] : [];
+  if (node.level === 'member') {
+    allowedParentLevels = ['store','distributor','subhead','head'];
+  }
+
   // 자기 하위 노드 ID 수집 (순환 방지)
   function collectDescendantIds(n, result) {
     result[n.id] = true;
@@ -3719,7 +3724,7 @@ function openMoveParentModal(node) {
   var candidates = [];
   function collectCandidates(nodes) {
     (nodes||[]).forEach(function(n) {
-      if(n.level === requiredParentLevel && !descendantIds[n.id] && n.id !== node.id) {
+      if(allowedParentLevels.indexOf(n.level) !== -1 && !descendantIds[n.id] && n.id !== node.id) {
         candidates.push(n);
       }
       if(n.children) collectCandidates(n.children);
@@ -3844,7 +3849,7 @@ function openMoveParentModal(node) {
     savePartnerTree();
     overlay.remove();
     if(typeof _ptRenderListPage === 'function') _ptRenderListPage();
-    alert(node.label + '의 상위가 ' + (isTop ? '최상위(관리자)' : newParent.label) + '(으)로 변경되었습니다.');
+    _showToast(node.label + '의 상위가 ' + (isTop ? '최상위(관리자)' : newParent.label) + '(으)로 변경되었습니다.', 'success');
   });
 }
 
@@ -4400,7 +4405,7 @@ function openCreateModal(parentNode) {
       savePartnerTree();
       overlay.remove();
       if(typeof _ptRenderListPage === 'function') _ptRenderListPage();
-      alert(nick + ' 파트너 생성 완료');
+      _showToast(nick + ' 파트너 생성 완료', 'success');
     })
     .catch(function(){ alert('서버 오류'); });
   });
@@ -4835,7 +4840,7 @@ function bindPartnerEvents() {
           }).catch(function(){});
         }
       }
-      alert('"' + label + '" 값이 ' + val + ' 로 변경되었습니다.');
+      _showToast('"' + label + '" 값이 ' + val + '(으)로 변경되었습니다.', 'success');
     });
   }
 }

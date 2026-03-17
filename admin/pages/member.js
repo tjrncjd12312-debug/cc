@@ -1112,8 +1112,11 @@ function bindMemberTreeEvents() {
   // 노드 선택
   document.querySelectorAll('#mb-tree .pt-node').forEach(function(el) {
     el.addEventListener('click', function() {
-      _mbSelectedTreeId = this.dataset.id;
+      var clickedId = this.dataset.id;
+      // 같은 노드 다시 클릭하면 선택 해제
+      _mbSelectedTreeId = (_mbSelectedTreeId === clickedId) ? null : clickedId;
       renderMemberTree();
+      _filterAndRenderMembers();
     });
   });
 }
@@ -1713,6 +1716,53 @@ function _filterAndRenderMembers() {
   var sortVal = (document.getElementById('mb-sort-select') || {}).value || 'name';
 
   var filtered = memberData.slice();
+
+  // 트리에서 파트너 선택 시 해당 파트너 + 하부 회원 필터
+  if (_mbSelectedTreeId) {
+    var selNode = (typeof findNode === 'function') ? findNode(partnerTree, _mbSelectedTreeId) : null;
+    if (selNode) {
+      // 하부 회원 ID 수집
+      var subMemberIds = {};
+      (function collectMembers(n) {
+        if (n.level === 'member') subMemberIds[n.id] = true;
+        (n.children || []).forEach(collectMembers);
+      })(selNode);
+      // 선택된 파트너 자체도 포함 (파트너인 경우)
+      var partnerRow = null;
+      if (selNode.level !== 'admin' && selNode.level !== 'member') {
+        partnerRow = {
+          id: selNode.id,
+          odid: selNode.id,
+          nick: selNode.label || selNode.id,
+          name: selNode.holder || '',
+          phone: selNode.phone || '',
+          bank: selNode.bank || '',
+          account: selNode.account || '',
+          holder: selNode.holder || '',
+          group: selNode.gameGroup || '-',
+          money: selNode.money || 0,
+          point: selNode.point || 0,
+          rollingPoint: selNode.rollingPoint || 0,
+          belong: (levelLabel[selNode.level] || selNode.level).charAt(0),
+          belongId: '-',
+          casino: selNode['perm카지노'] !== false ? 'ON' : 'OFF',
+          slot: selNode['perm슬롯'] !== false ? 'ON' : 'OFF',
+          status: selNode.status === 'active' || selNode.status === '정상' ? '정상' : selNode.status,
+          memo: selNode.memo || '',
+          password: selNode.password || '',
+          gameGroup: selNode.gameGroup || '',
+          api: [],
+          registeredAt: selNode.registeredAt || '',
+          lastLoginAt: selNode.lastLoginAt || '',
+          lastLoginIp: selNode.lastLoginIp || '',
+          totalGive: 0, totalTake: 0, totalBet: 0, totalWin: 0,
+          _isPartner: true
+        };
+      }
+      filtered = filtered.filter(function(m) { return subMemberIds[m.id]; });
+      if (partnerRow) filtered.unshift(partnerRow);
+    }
+  }
 
   // 파트너 필터 (파트너 페이지에서 회원수 클릭 시)
   if (window._memberFilterPartner) {
