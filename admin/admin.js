@@ -183,7 +183,10 @@ function _showAdminUI() {
   })
   .then(function(r) { return r.json(); })
   .then(function(res) {
-    if (res.success) _showAdminUI();
+    if (res.success) {
+      if (typeof _loadPartnerTreeFromServer === 'function') _loadPartnerTreeFromServer();
+      _showAdminUI();
+    }
     else { _adminToken = ''; sessionStorage.removeItem('adminToken'); _showLoginScreen(); }
   })
   .catch(function() { _showLoginScreen(); });
@@ -219,6 +222,8 @@ function _doLogin() {
       sessionStorage.setItem('adminToken', res.token);
       errEl.style.display = 'none';
       _showAdminUI();
+      // 파트너 트리 로드 (로그인 후)
+      if (typeof _loadPartnerTreeFromServer === 'function') _loadPartnerTreeFromServer();
       // 초기 페이지 렌더
       var page = location.hash.replace('#', '') || 'dashboard';
       renderPage(page);

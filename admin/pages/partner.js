@@ -117,7 +117,42 @@ var _defaultPartnerTree = [
   }
 ];
 
-var partnerTree = (function() {
+var partnerTree = _defaultPartnerTree;
+var _treeLoadedFromServer = false;
+
+// expanded 상태 복원
+function _restoreExpanded(nodes, expandedMap) {
+  (nodes || []).forEach(function(n) {
+    if (typeof expandedMap[n.id] !== 'undefined') n.expanded = expandedMap[n.id];
+    if (n.children) _restoreExpanded(n.children, expandedMap);
+  });
+}
+
+// 트리가 머니/포인트의 원본 — DB와 동기화
+function syncTreeWithUsers(tree, userMap) {
+  (tree||[]).forEach(function(node) {
+    if(userMap[node.id]) {
+      var u = userMap[node.id];
+      if(u.api && u.api.length > 0) {
+        node.money = u.money || 0;
+      } else {
+        if((u.money || 0) > 0 && (node.money || 0) === 0) {
+          node.money = u.money;
+        }
+      }
+      node.point = u.point || 0;
+      node.rollingPoint = u.rollingPoint || 0;
+      node.gameGroup = u.gameGroup || '';
+    }
+    if(node.children) syncTreeWithUsers(node.children, userMap);
+  });
+}
+
+// 서버에서 파트너 트리 로드 (로그인 후 호출)
+function _loadPartnerTreeFromServer() {
+  var tk = sessionStorage.getItem('adminToken') || '';
+  if (!tk) return;
+
   // localStorage에서 expanded 상태 맵 추출
   var expandedMap = {};
   try {
@@ -130,70 +165,38 @@ var partnerTree = (function() {
     })(local);
   } catch(e) {}
 
-  // expanded 상태 복원
-  function restoreExpanded(nodes) {
-    (nodes || []).forEach(function(n) {
-      if (typeof expandedMap[n.id] !== 'undefined') {
-        n.expanded = expandedMap[n.id];
-      }
-      if (n.children) restoreExpanded(n.children);
-    });
-  }
-
-  // 항상 서버에서 최신 트리 로드
   try {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', '/api/admin/partner-tree', false);
+    xhr.setRequestHeader('Authorization', 'Bearer ' + tk);
     xhr.send();
     if (xhr.status === 200) {
       var res = JSON.parse(xhr.responseText);
       if (res.data && res.data.length) {
-        restoreExpanded(res.data);
+        _restoreExpanded(res.data, expandedMap);
+        partnerTree = res.data;
+        _treeLoadedFromServer = true;
         try { localStorage.setItem('partnerTree', JSON.stringify(res.data)); } catch(e) {}
-        return res.data;
       }
     }
   } catch(e) {}
-  // 서버 실패 시 localStorage 폴백
-  try {
-    var saved = localStorage.getItem('partnerTree');
-    if (saved) return JSON.parse(saved);
-  } catch(e) {}
-  return _defaultPartnerTree;
-})();
 
-// 트리가 머니/포인트의 원본 — DB와 동기화
-function syncTreeWithUsers(tree, userMap) {
-  (tree||[]).forEach(function(node) {
-    if(userMap[node.id]) {
-      var u = userMap[node.id];
-      if(u.api && u.api.length > 0) {
-        // HonorLink 연동 유저: API 실제 잔액으로 업데이트
-        node.money = u.money || 0;
-      } else {
-        // 비-HonorLink 유저: DB에 값이 있고 트리가 0이면 DB 값 반영
-        if((u.money || 0) > 0 && (node.money || 0) === 0) {
-          node.money = u.money;
-        }
-      }
-      // 포인트: 서버 값을 항상 사용
-      node.point = u.point || 0;
-      node.rollingPoint = u.rollingPoint || 0;
-      node.gameGroup = u.gameGroup || '';
-    }
-    if(node.children) syncTreeWithUsers(node.children, userMap);
-  });
+  // 유저 머니 동기화
+  fetch('/api/admin/users', { headers: { 'Authorization': 'Bearer ' + tk } })
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      var userMap = {};
+      (res.data||[]).forEach(function(u){ userMap[u.username] = u; });
+      syncTreeWithUsers(partnerTree, userMap);
+      if (_treeLoadedFromServer) savePartnerTree();
+      if (typeof renderTree === 'function') renderTree();
+    }).catch(function(){});
 }
 
-// 페이지 로드 시 서버에 파트너 트리 동기화 + 유저 머니 반영
-try {
-  fetch('/api/admin/users').then(function(r){ return r.json(); }).then(function(res){
-    var userMap = {};
-    (res.data||[]).forEach(function(u){ userMap[u.username] = u; });
-    syncTreeWithUsers(partnerTree, userMap);
-    savePartnerTree();
-  }).catch(function(){});
-} catch(e) {}
+// 토큰이 있으면 즉시 로드, 없으면 나중에 로드
+if (sessionStorage.getItem('adminToken')) {
+  _loadPartnerTreeFromServer();
+}
 
 function savePartnerTree() {
   try { localStorage.setItem('partnerTree', JSON.stringify(partnerTree)); } catch(e) {}
