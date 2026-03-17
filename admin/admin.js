@@ -2,6 +2,9 @@
 //  인증 헤더 자동 포함 fetch
 // ══════════════════════════════════════
 var _origFetch = window.fetch;
+// 머니 변동이 일어나는 API 패턴
+var _moneyApiPatterns = ['/money/', '/deposit', '/withdraw', '/give', '/take', '/approve', '/reject', '/add-balance', '/sub-balance', '/partner-tree'];
+var _sidebarRefreshTimer = null;
 window.fetch = function(url, opts) {
   if (typeof url === 'string' && url.indexOf('/api/admin/') !== -1 && url.indexOf('/api/admin/login') === -1 && url.indexOf('/api/admin/check-session') === -1) {
     var tk = sessionStorage.getItem('adminToken') || '';
@@ -12,7 +15,24 @@ window.fetch = function(url, opts) {
       opts.headers['Authorization'] = 'Bearer ' + tk;
     }
   }
-  return _origFetch.call(window, url, opts);
+  var result = _origFetch.call(window, url, opts);
+  // POST 요청 중 머니 관련 API 성공 시 사이드바 자동 갱신
+  if (typeof url === 'string' && opts && opts.method && opts.method.toUpperCase() === 'POST') {
+    var isMoneyApi = _moneyApiPatterns.some(function(p) { return url.indexOf(p) !== -1; });
+    if (isMoneyApi) {
+      result.then(function(res) {
+        if (res.ok) {
+          // 디바운스: 짧은 시간에 여러 요청이 오면 마지막 것만 실행
+          clearTimeout(_sidebarRefreshTimer);
+          _sidebarRefreshTimer = setTimeout(function() {
+            if (typeof fetchSidebarStats === 'function') fetchSidebarStats();
+          }, 1000);
+        }
+        return res;
+      });
+    }
+  }
+  return result;
 };
 
 // ══════════════════════════════════════
@@ -1282,20 +1302,24 @@ document.getElementById('agent-balance-refresh').addEventListener('click', funct
 
 // ── 사이드바 파트너/회원 보유머니·롤링 ──
 function fetchSidebarStats() {
-  fetch('/api/admin/partner-tree').then(function(r){ return r.json(); }).catch(function(){ return {data:[]}; })
-  .then(function(res) {
-    var tree = res.data || [];
-    // 트리에서 파트너 ID와 회원 ID 분류
+  // 파트너 트리 + users.json 동시 조회
+  Promise.all([
+    fetch('/api/admin/partner-tree').then(function(r){ return r.json(); }).catch(function(){ return {data:[]}; }),
+    fetch('/api/admin/users').then(function(r){ return r.json(); }).catch(function(){ return {data:[]}; })
+  ]).then(function(results) {
+    var tree = results[0].data || [];
+    var users = results[1].data || [];
+
+    // 트리에서 파트너 ID 수집
     var partnerIds = {};
-    var memberIds = {};
     (function walkTree(nodes) {
       (nodes||[]).forEach(function(n) {
-        if (n.level === 'member') memberIds[n.id] = true;
-        else if (n.level !== 'admin') partnerIds[n.id] = true;
+        if (n.level !== 'admin' && n.level !== 'member') partnerIds[n.id] = true;
         if (n.children) walkTree(n.children);
       });
     })(tree);
-    // 파트너 머니는 트리에서
+
+    // 파트너 머니는 트리에서 (트리가 파트너 원본)
     var pMoney = 0, pRolling = 0;
     (function calcPartner(nodes) {
       (nodes||[]).forEach(function(n) {
@@ -1306,21 +1330,37 @@ function fetchSidebarStats() {
         if (n.children) calcPartner(n.children);
       });
     })(tree);
-    // 회원 머니는 트리의 member에서 (트리가 원본)
-    var mMoney = 0, mRolling = 0;
-    (function calcMember(nodes) {
-      (nodes||[]).forEach(function(n) {
-        if (n.level === 'member') {
-          mMoney += Number(n.money || 0);
-          mRolling += Number((n.point||0) + (n.rollingPoint||0));
-        }
-        if (n.children) calcMember(n.children);
+
+    // 회원 = 파트너가 아닌 유저
+    var members = users.filter(function(u) {
+      return !partnerIds[u.username] && !partnerIds[u.id];
+    });
+
+    // API 연동 중인 회원의 게임사 잔액 조회
+    var apiMembers = members.filter(function(u) { return u.api && u.api.length > 0; });
+    var balancePromises = apiMembers.map(function(u) {
+      return fetch('/api/auth/balance?userId=' + encodeURIComponent(u.id))
+        .then(function(r){ return r.json(); })
+        .then(function(d){ return { id: u.id, balance: Number(d.balance) || 0 }; })
+        .catch(function(){ return { id: u.id, balance: Number(u.money) || 0 }; });
+    });
+
+    Promise.all(balancePromises).then(function(balResults) {
+      var balMap = {};
+      balResults.forEach(function(b){ balMap[b.id] = b.balance; });
+
+      var mMoney = 0, mRolling = 0;
+      members.forEach(function(u) {
+        // API 연동 중이면 게임사 잔액 포함된 값, 아니면 로컬 머니
+        mMoney += (balMap[u.id] !== undefined) ? balMap[u.id] : Number(u.money || 0);
+        mRolling += Number((u.point||0) + (u.rollingPoint||0));
       });
-    })(tree);
-    var e1 = document.getElementById('sidebar-partner-money'); if(e1) e1.textContent = Math.floor(pMoney).toLocaleString() + ' 원';
-    var e2 = document.getElementById('sidebar-partner-rolling'); if(e2) e2.textContent = Math.floor(pRolling).toLocaleString() + ' P';
-    var e3 = document.getElementById('sidebar-member-money'); if(e3) e3.textContent = Math.floor(mMoney).toLocaleString() + ' 원';
-    var e4 = document.getElementById('sidebar-member-rolling'); if(e4) e4.textContent = Math.floor(mRolling).toLocaleString() + ' P';
+
+      var e1 = document.getElementById('sidebar-partner-money'); if(e1) e1.textContent = Math.floor(pMoney).toLocaleString() + ' 원';
+      var e2 = document.getElementById('sidebar-partner-rolling'); if(e2) e2.textContent = Math.floor(pRolling).toLocaleString() + ' P';
+      var e3 = document.getElementById('sidebar-member-money'); if(e3) e3.textContent = Math.floor(mMoney).toLocaleString() + ' 원';
+      var e4 = document.getElementById('sidebar-member-rolling'); if(e4) e4.textContent = Math.floor(mRolling).toLocaleString() + ' P';
+    });
   }).catch(function(){});
 }
 if (sessionStorage.getItem('adminToken')) fetchSidebarStats();

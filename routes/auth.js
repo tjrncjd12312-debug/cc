@@ -102,6 +102,9 @@ async function _autoSettleOfflineUsers() {
     const user = users.find(u => u.id === userId);
     if (!user) continue;
 
+    // _delayedRecoverCheck 실행 중이면 스킵 (이중 회수 방지)
+    if (_recoverLock[user.username]) continue;
+
     try {
       // HonorLink 게임사 잔액 조회 + 회수
       const hlUser = await hl.get('/user', { username: user.username });
@@ -438,6 +441,89 @@ router.get('/balance', async (req, res) => {
   res.json({ success: true, balance: localBal + gameBal, local: localBal, game: gameBal });
 });
 
+// ── 게임 전환 후 지연 잔액 재확인 (당첨금 타이밍 이슈 방지) ──
+// source: 회수할 API ('honorlink' 또는 'csapi'), target: 입금할 API
+const _recoverLock = {}; // 유저별 중복 실행 방지
+async function _delayedRecoverCheck(username, source, target) {
+  // 이미 실행 중이면 중복 방지
+  if (_recoverLock[username]) {
+    console.log('[DelayedRecover] ' + username + ': skipped (already running)');
+    return;
+  }
+  _recoverLock[username] = true;
+
+  const delays = [5000, 40000]; // 5초, 40초 후 재확인 (아너링크 30초 rate limit 고려)
+  try {
+    for (const delay of delays) {
+      await new Promise(r => setTimeout(r, delay));
+
+      // 유저가 다시 게임 전환했으면 중단
+      const checkUsers = readUsers();
+      const checkUser = checkUsers.find(u => u.username === username);
+      if (!checkUser) break;
+      // source API에 다시 연동됐으면 = 유저가 다시 전환한 것 → 중단
+      if (checkUser.api && checkUser.api.includes(source)) {
+        console.log('[DelayedRecover] ' + username + ': aborted (user switched back to ' + source + ')');
+        break;
+      }
+
+      try {
+        let leftover = 0;
+
+        if (source === 'honorlink') {
+          const hlUser = await hl.get('/user', { username });
+          leftover = Number(hlUser && hlUser.balance || 0);
+          if (leftover > 0) {
+            await hl.post('/user/sub-balance-all', { username });
+          }
+        } else if (source === 'csapi') {
+          const csRes = await cs.post('/csapi/amount', { userid: username, amount: 0, type: '0' });
+          leftover = Number(csRes && csRes.balance || 0);
+          if (leftover > 0) {
+            await cs.post('/csapi/amount', { userid: username, amount: 0, type: '3' });
+          }
+        }
+
+        if (leftover > 0) {
+          console.log('[DelayedRecover] ' + username + ': ' + source + ' leftover=' + leftover + ' after ' + (delay/1000) + 's');
+
+          // 최신 유저 데이터로 다시 확인
+          const freshUsers = readUsers();
+          const freshUser = freshUsers.find(u => u.username === username);
+          if (!freshUser) continue;
+
+          const isTargetActive = freshUser.api && freshUser.api.includes(target);
+
+          if (isTargetActive && target === 'csapi') {
+            try {
+              await cs.post('/csapi/amount', { userid: username, amount: leftover, type: '1' });
+              console.log('[DelayedRecover] ' + username + ': auto-deposit ' + leftover + ' to csapi');
+            } catch(e) {
+              freshUser.money = (freshUser.money || 0) + leftover;
+              writeUsers(freshUsers);
+            }
+          } else if (isTargetActive && target === 'honorlink') {
+            try {
+              await hl.post('/user/add-balance', { username, amount: leftover });
+              console.log('[DelayedRecover] ' + username + ': auto-deposit ' + leftover + ' to honorlink');
+            } catch(e) {
+              freshUser.money = (freshUser.money || 0) + leftover;
+              writeUsers(freshUsers);
+            }
+          } else {
+            freshUser.money = (freshUser.money || 0) + leftover;
+            writeUsers(freshUsers);
+          }
+        }
+      } catch(e) {
+        console.error('[DelayedRecover] ' + username + ' error:', e.message);
+      }
+    }
+  } finally {
+    delete _recoverLock[username]; // 항상 잠금 해제
+  }
+}
+
 // ── 게임 전환용: 상대 API 잔액 회수 → 로컬로 복원 ──
 router.post('/recover-for-switch', async (req, res) => {
   const { username, target } = req.body; // target: 'honorlink' 또는 'csapi' (이동할 곳)
@@ -447,9 +533,11 @@ router.post('/recover-for-switch', async (req, res) => {
   if (!user) return res.json({ success: false });
 
   let recovered = 0;
+  let source = null; // 회수한 API
 
   // 오닉스로 이동 → 아너링크 잔액 회수
   if (target === 'csapi' && user.api && user.api.includes('honorlink')) {
+    source = 'honorlink';
     try {
       const hlUser = await hl.get('/user', { username });
       const hlBal = Number(hlUser && hlUser.balance || 0);
@@ -463,6 +551,7 @@ router.post('/recover-for-switch', async (req, res) => {
 
   // 아너링크로 이동 → 오닉스 잔액 회수
   if (target === 'honorlink' && user.api && user.api.includes('csapi')) {
+    source = 'csapi';
     try {
       const csRes = await cs.post('/csapi/amount', { userid: username, amount: 0, type: '0' });
       const csBal = Number(csRes && csRes.balance || 0);
@@ -478,6 +567,13 @@ router.post('/recover-for-switch', async (req, res) => {
     user.money = (user.money || 0) + recovered;
   }
   writeUsers(users);
+
+  // 백그라운드에서 지연 재확인 (당첨금 타이밍 이슈 방지)
+  if (source) {
+    _delayedRecoverCheck(username, source, target).catch(e => {
+      console.error('[DelayedRecover] background error:', e.message);
+    });
+  }
 
   res.json({ success: true, recovered, localBalance: user.money || 0 });
 });

@@ -206,8 +206,10 @@ function savePartnerTree() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(partnerTree)
-    }).catch(function(){});
-  } catch(e) {}
+    }).then(function(r){ return r.json(); })
+    .then(function(res){ console.log('[savePartnerTree] saved:', res); })
+    .catch(function(e){ console.error('[savePartnerTree] error:', e); });
+  } catch(e) { console.error('[savePartnerTree] exception:', e); }
 }
 
 var selectedPartnerId = localStorage.getItem('selectedPartnerId') || null;
