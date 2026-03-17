@@ -2179,27 +2179,44 @@ function __removed_openMemberDetailModal(tr) {
               </div>
 
               <!-- 누락(공베팅) 설정 -->
-              <div style="border:2px dashed var(--yellow);border-radius:10px;padding:14px;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                  <span style="color:var(--yellow);font-weight:700;font-size:0.85rem;">⚠ 누락(공베팅) 설정</span>
-                  <span style="background:rgba(245,158,11,0.2);color:var(--yellow);padding:2px 8px;border-radius:4px;font-size:0.65rem;">주의: 하위에게 상속됨</span>
-                </div>
-                <div style="font-size:0.72rem;color:var(--text2);margin-bottom:10px;">N회 베팅마다 1회 누락됩니다. 0=미적용.</div>
-                <div class="md-view-emptybet" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;font-size:0.75rem;">
-                  ${['카지노','슬롯','미니게임'].map(function(g){
+              ${(function(){
+                var parentHasEB = belongNode && ((belongNode['emptyBet카지노']||0) > 0 || (belongNode['emptyBet슬롯']||0) > 0 || (belongNode['emptyBet미니게임']||0) > 0);
+                var borderStyle = parentHasEB ? 'border:2px dashed var(--border);' : 'border:2px dashed var(--yellow);';
+                var html = '<div style="'+borderStyle+'border-radius:10px;padding:14px;">';
+                html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">';
+                html += '<span style="color:var(--yellow);font-weight:700;font-size:0.85rem;">⚠ 누락(공베팅) 설정</span>';
+                if(parentHasEB) {
+                  html += '<span style="background:rgba(239,68,68,0.2);color:#ef4444;padding:2px 8px;border-radius:4px;font-size:0.65rem;">상위('+belongNode.id+')에서 설정됨 — 수정 불가</span>';
+                }
+                html += '</div>';
+                if(parentHasEB) {
+                  html += '<div style="font-size:0.72rem;color:var(--text3);margin-bottom:10px;">상위 파트너에 공베팅이 설정되어 있으면 하위에서 별도 설정할 수 없습니다.</div>';
+                  html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;font-size:0.75rem;">';
+                  ['카지노','슬롯','미니게임'].forEach(function(g){
+                    var val = belongNode['emptyBet'+g] || 0;
+                    html += '<div><div style="color:var(--text3);margin-bottom:3px;">'+g+'</div><div style="font-weight:600;color:var(--text3);">'+(val?val+'회 (상속)':'미적용')+'</div></div>';
+                  });
+                  html += '</div>';
+                } else {
+                  html += '<div style="font-size:0.72rem;color:var(--text2);margin-bottom:10px;">N회 베팅마다 1회 누락됩니다. 0=미적용.</div>';
+                  html += '<div class="md-view-emptybet" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;font-size:0.75rem;">';
+                  ['카지노','슬롯','미니게임'].forEach(function(g){
                     var key = 'emptyBet' + g;
                     var val = m[key] || 0;
-                    return '<div><div style="color:var(--text2);margin-bottom:3px;">'+g+'</div><div style="font-weight:600;">'+(val?val+'회':'미적용')+'</div></div>';
-                  }).join('')}
-                </div>
-                <div class="md-edit-emptybet" style="display:none;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;font-size:0.75rem;">
-                  ${['카지노','슬롯','미니게임'].map(function(g){
+                    html += '<div><div style="color:var(--text2);margin-bottom:3px;">'+g+'</div><div style="font-weight:600;">'+(val?val+'회':'미적용')+'</div></div>';
+                  });
+                  html += '</div>';
+                  html += '<div class="md-edit-emptybet" style="display:none;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;font-size:0.75rem;">';
+                  ['카지노','슬롯','미니게임'].forEach(function(g){
                     var key = 'emptyBet' + g;
                     var val = m[key] || 0;
-                    return '<div><div style="color:var(--text2);margin-bottom:3px;">'+g+'</div><input type="number" class="md-edit-input md-emptybet-input" data-key="'+key+'" value="'+val+'" min="0" max="100" style="width:60px;background:var(--bg3);border:1px solid var(--border2);color:var(--text1);padding:4px;border-radius:4px;font-size:0.78rem;text-align:center;"></div>';
-                  }).join('')}
-                </div>
-              </div>
+                    html += '<div><div style="color:var(--text2);margin-bottom:3px;">'+g+'</div><input type="number" class="md-edit-input md-emptybet-input" data-key="'+key+'" value="'+val+'" min="0" max="100" style="width:60px;background:var(--bg3);border:1px solid var(--border2);color:var(--text1);padding:4px;border-radius:4px;font-size:0.78rem;text-align:center;"></div>';
+                  });
+                  html += '</div>';
+                }
+                html += '</div>';
+                return html;
+              })()}
             </div>
 
             <!-- ▼ 우측 칼럼 -->

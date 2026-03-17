@@ -2713,23 +2713,32 @@ function _renderPartnerModal(node) {
               </div>
 
               <!-- 누락(공베팅) 설정 -->
-              <div style="border:2px dashed #f59e0b;border-radius:10px;padding:14px;margin-bottom:10px;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                  <span style="color:#f59e0b;font-weight:700;font-size:0.85rem;">⚠ 누락(공베팅) 설정</span>
-                  <span style="background:#f59e0b33;color:#f59e0b;padding:2px 8px;border-radius:4px;font-size:0.65rem;">주의: 하위에게 상속됨</span>
-                </div>
-                <div style="font-size:0.72rem;color:var(--text2);margin-bottom:10px;">N회 베팅마다 1회 누락됩니다. 0=미적용. 상위 파트너 설정이 없으면 하위로 상속됩니다.</div>
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;font-size:0.75rem;">
-                  ${['카지노','슬롯','미니게임'].map(function(g){
-                    var key = 'emptyBet' + g;
-                    var val = node[key] || 0;
-                    return '<div><div style="color:var(--text2);margin-bottom:3px;">'+g+'</div><input type="number" class="pd-emptybet-input pt-modal-input" data-key="'+key+'" value="'+val+'" min="0" max="100" style="width:60px;text-align:center;padding:4px 6px;font-size:0.78rem;font-weight:600;border-radius:5px;"></div>';
-                  }).join('')}
-                </div>
-                <div style="text-align:right;margin-top:8px;">
-                  <button id="pd-emptybet-save" style="background:#f59e0b;color:#000;border:none;padding:5px 16px;border-radius:5px;font-size:0.72rem;font-weight:600;cursor:pointer;">변경</button>
-                </div>
-              </div>
+              ${(function(){
+                var _pHasEB = parentNode && ((parentNode['emptyBet카지노']||0) > 0 || (parentNode['emptyBet슬롯']||0) > 0 || (parentNode['emptyBet미니게임']||0) > 0);
+                if(_pHasEB) {
+                  return '<div style="border:2px dashed var(--border,#555);border-radius:10px;padding:14px;margin-bottom:10px;">'
+                    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+                    + '<span style="color:#f59e0b;font-weight:700;font-size:0.85rem;">⚠ 누락(공베팅) 설정</span>'
+                    + '<span style="background:rgba(239,68,68,0.2);color:#ef4444;padding:2px 8px;border-radius:4px;font-size:0.65rem;">상위('+parentNode.id+')에서 설정됨 — 수정 불가</span>'
+                    + '</div>'
+                    + '<div style="font-size:0.72rem;color:var(--text3);margin-bottom:10px;">상위 파트너에 공베팅이 설정되어 있으면 하위에서 별도 설정할 수 없습니다.</div>'
+                    + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;font-size:0.75rem;">'
+                    + ['카지노','슬롯','미니게임'].map(function(g){ var v=parentNode['emptyBet'+g]||0; return '<div><div style="color:var(--text3);margin-bottom:3px;">'+g+'</div><div style="font-weight:600;color:var(--text3);">'+(v?v+'회 (상속)':'미적용')+'</div></div>'; }).join('')
+                    + '</div></div>';
+                }
+                return '<div style="border:2px dashed #f59e0b;border-radius:10px;padding:14px;margin-bottom:10px;">'
+                  + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+                  + '<span style="color:#f59e0b;font-weight:700;font-size:0.85rem;">⚠ 누락(공베팅) 설정</span>'
+                  + '<span style="background:#f59e0b33;color:#f59e0b;padding:2px 8px;border-radius:4px;font-size:0.65rem;">주의: 하위에게 상속됨</span>'
+                  + '</div>'
+                  + '<div style="font-size:0.72rem;color:var(--text2);margin-bottom:10px;">N회 베팅마다 1회 누락됩니다. 0=미적용. 상위 파트너 설정이 없으면 하위로 상속됩니다.</div>'
+                  + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;font-size:0.75rem;">'
+                  + ['카지노','슬롯','미니게임'].map(function(g){ var key='emptyBet'+g; var val=node[key]||0; return '<div><div style="color:var(--text2);margin-bottom:3px;">'+g+'</div><input type="number" class="pd-emptybet-input pt-modal-input" data-key="'+key+'" value="'+val+'" min="0" max="100" style="width:60px;text-align:center;padding:4px 6px;font-size:0.78rem;font-weight:600;border-radius:5px;"></div>'; }).join('')
+                  + '</div>'
+                  + '<div style="text-align:right;margin-top:8px;">'
+                  + '<button id="pd-emptybet-save" style="background:#f59e0b;color:#000;border:none;padding:5px 16px;border-radius:5px;font-size:0.72rem;font-weight:600;cursor:pointer;">변경</button>'
+                  + '</div></div>';
+              })()}
 
               <!-- 메모 -->
               <div style="margin-top:10px;border:1px solid var(--border,#ddd);border-radius:10px;padding:14px;flex:1;display:flex;flex-direction:column;">
