@@ -102,6 +102,12 @@ function _showKickConfirm(username, btn) {
     .then(function(r) { return r.json(); })
     .then(function(res) {
       if (res.success) {
+        // 킥 후 서버에서 최신 유저 데이터 가져와서 partnerTree 반영
+        fetch('/api/admin/users').then(function(r){return r.json();}).then(function(uRes) {
+          var u = (uRes.data||[]).find(function(x){return x.username===username;});
+          if (u) _updateTreeNode(username, { money: u.money||0 });
+          if(typeof savePartnerTree === 'function') savePartnerTree();
+        }).catch(function(){});
         _showToast(username + ' 강제종료가 완료되었습니다.', 'success');
         fetchMemberData().then(function() {
           var tbody = document.getElementById('mb-tbody');
@@ -695,15 +701,32 @@ function updateMember(id, fields) {
   }).catch(function(e){ console.error('회원정보 업데이트 실패:', e); });
 }
 
+function _collectMembers(nodes, parentId, result) {
+  (nodes || []).forEach(function(n) {
+    if (n.level === 'member') {
+      result.push({ node: n, belongId: parentId || '-' });
+    }
+    if (n.children && n.children.length) {
+      _collectMembers(n.children, n.id, result);
+    }
+  });
+}
+
 function fetchMemberData() {
   return Promise.all([
     fetch('/api/admin/users').then(function(r){ return r.json(); }),
     fetch('/api/admin/users/stats?start=' + encodeURIComponent(_memberDateStart) + '&end=' + encodeURIComponent(_memberDateEnd)).then(function(r){ return r.json(); }).catch(function(){ return { data: {} }; })
   ])
     .then(function(results) {
-      var res = results[0];
+      var usersRes = results[0];
       var statsRes = results[1];
       var betStats = statsRes.data || {};
+
+      // users.json 데이터를 맵으로 변환 (보충용)
+      var userMap = {};
+      ((usersRes.data || [])).forEach(function(u) {
+        userMap[u.username] = u;
+      });
 
       // 지급/회수 집계 (localStorage 머니로그, 날짜 필터 적용)
       var moneyLogs = [];
@@ -731,48 +754,53 @@ function fetchMemberData() {
         else if (log.type === 'take') giveTakeMap[tid].take += amt;
       });
 
-      var users = (res.data || []).filter(function(u){ return u.status === 'active'; });
-      memberData = users.map(function(u) {
-        var gt = giveTakeMap[u.username] || { give: 0, take: 0 };
-        var bs = betStats[u.username] || { bet: 0, win: 0 };
+      // ★ partnerTree에서 회원(member) 노드 추출 — 파트너 페이지와 동일 소스
+      var treeMembers = [];
+      if (typeof partnerTree !== 'undefined' && partnerTree.length) {
+        _collectMembers(partnerTree, null, treeMembers);
+      }
+
+      memberData = treeMembers.map(function(entry) {
+        var n = entry.node;
+        var u = userMap[n.id] || {};  // users.json 보충 데이터
+        var gt = giveTakeMap[n.id] || { give: 0, take: 0 };
+        var bs = betStats[n.id] || { bet: 0, win: 0 };
         return {
-          id: u.username,
-          odid: u.id,
-          nick: u.nickname || u.username,
+          id: n.id,
+          odid: u.id || n.id,
+          nick: u.nickname || n.label || n.id,
           name: u.holder || '',
           phone: u.phone || '',
           bank: u.bank || '',
           account: u.account || '',
           holder: u.holder || '',
           group: '-',
-          money: u.money || 0,
-          point: u.point || 0,
-          rollingPoint: u.rollingPoint || 0,
+          money: n.money || u.money || 0,
+          point: n.point || u.point || 0,
+          rollingPoint: n.rollingPoint || u.rollingPoint || 0,
           belong: '회',
-          belongId: '-',
+          belongId: entry.belongId,
           casino: u.casino || 'ON',
           slot: u.slot || 'ON',
-          status: u.status === 'active' ? '정상' : u.status,
+          status: u.status === 'active' ? '정상' : (u.status || '정상'),
           memo: u.memo || '',
           password: u.password || '',
-          gameGroup: u.gameGroup || '',
+          gameGroup: n.gameGroup || u.gameGroup || '',
           api: u.api || [],
           registeredAt: u.registeredAt || '',
           lastLoginAt: u.lastLoginAt || '',
           lastLoginIp: u.lastLoginIp || '',
+          rollCasino: n.rollCasino || 0,
+          rollSlot: n.rollSlot || 0,
+          rollMini: n.rollMini || 0,
+          losingSlot: n.losingSlot || 0,
           totalGive: gt.give,
           totalTake: gt.take,
           totalBet: bs.bet,
           totalWin: bs.win
         };
       });
-      // 파트너 트리에 이미 존재하는 ID는 회원 목록에서 제외
-      if(typeof findNode === 'function' && typeof partnerTree !== 'undefined') {
-        memberData = memberData.filter(function(m) {
-          var node = findNode(partnerTree, m.id);
-          return !node || node.level === 'member';
-        });
-      }
+
       applyMemberOverrides(memberData);
       return memberData;
     })
@@ -812,8 +840,7 @@ function renderMemberPage(subPage) {
       });
     })(partnerTree);
 
-    // 회원 데이터를 파트너 트리에 반영
-    syncMembersToTree(data);
+    // (partnerTree가 기본 소스이므로 syncMembersToTree 불필요)
 
     // 통계
     var totalCount = data.length;
@@ -1053,42 +1080,27 @@ function updateMoneyCells() {
 }
 
 // 회원 데이터를 파트너 트리에 동기화
-function syncMembersToTree(members) {
-  // 먼저 기존 member 레벨 노드 제거 (중복 방지)
-  function removeMemberNodes(nodes) {
-    for(var i=0;i<nodes.length;i++) {
-      if(nodes[i].children) {
-        nodes[i].children = nodes[i].children.filter(function(c){ return c.level !== 'member'; });
-        removeMemberNodes(nodes[i].children);
+// partnerTree에서 회원 노드 제거 헬퍼
+function _removeFromTree(nodeId) {
+  if (typeof partnerTree === 'undefined') return;
+  (function walk(nodes) {
+    for (var i = 0; i < nodes.length; i++) {
+      if (nodes[i].children) {
+        var before = nodes[i].children.length;
+        nodes[i].children = nodes[i].children.filter(function(c) { return c.id !== nodeId; });
+        if (nodes[i].children.length < before) return true;
+        if (walk(nodes[i].children)) return true;
       }
     }
-  }
-  removeMemberNodes(partnerTree);
+    return false;
+  })(partnerTree);
+}
 
-  // 회원을 소속 파트너 하위에 추가 (이미 파트너로 존재하는 ID는 건너뜀)
-  members.forEach(function(m) {
-    if(typeof findNode === 'function' && findNode(partnerTree, m.id)) return;
-    var belongId = m.belong || m.belongId;
-    var parent = (typeof findNode === 'function') ? findNode(partnerTree, belongId) : null;
-    // 소속 파트너가 없으면 최하위 매장(store)을 찾아서 넣기
-    if(!parent) {
-      var stores = [];
-      if(typeof collectNodesByLevel === 'function') collectNodesByLevel(partnerTree, 'store', stores);
-      parent = stores.length > 0 ? stores[0] : null;
-      if(!parent) parent = partnerTree[0];
-    }
-    // 직상위 파트너 정보를 회원 데이터에 반영
-    if(parent) {
-      var pLbl = levelLabel[parent.level] || parent.level;
-      m.belong = pLbl.charAt(0);
-      m.belongId = parent.id;
-    }
-    if(!parent.children) parent.children = [];
-    parent.children.push({
-      id: m.id, label: m.nick || m.id, level: 'member', expanded: false,
-      money: m.money || 0, point: m.point || 0, children: []
-    });
-  });
+// partnerTree 노드 필드 업데이트 헬퍼
+function _updateTreeNode(nodeId, fields) {
+  if (typeof findNode !== 'function' || typeof partnerTree === 'undefined') return;
+  var node = findNode(partnerTree, nodeId);
+  if (node) Object.assign(node, fields);
 }
 
 var _mbSelectedTreeId = null;
@@ -1231,6 +1243,9 @@ function applyMoney(tr, amount, memo) {
   .then(function(r) { return r.json(); })
   .then(function(res) {
     if (res.success) {
+      // partnerTree 머니 반영
+      _updateTreeNode(id, { money: res.after || after });
+      if(typeof savePartnerTree === 'function') savePartnerTree();
       // API 연동된 유저면 게임사 잔액 조회해서 표시
       fetch('/api/hl/balance?username=' + encodeURIComponent(id))
         .then(function(r2){ return r2.json(); })
@@ -1511,8 +1526,10 @@ function bindMemberEvents() {
       this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 처리 중...';
       this.style.opacity = '0.7'; this.style.pointerEvents = 'none';
       Promise.all(ids.map(function(username) {
-        return fetch('/api/admin/users/' + username + '/give', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({amount:amount}) }).then(function(r){return r.json();});
-      })).then(function() { dim.remove(); renderMemberPage(); });
+        return fetch('/api/admin/users/' + username + '/give', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({amount:amount}) }).then(function(r){return r.json();}).then(function(res) {
+          if (res.success) _updateTreeNode(username, { money: res.after || 0 });
+        });
+      })).then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); dim.remove(); renderMemberPage(); });
     });
   });
 
@@ -1556,8 +1573,10 @@ function bindMemberEvents() {
       this.style.opacity = '0.7'; this.style.pointerEvents = 'none';
       Promise.all(ids.map(function(username) {
         var body = _takeAll ? {all:true} : {amount:amount};
-        return fetch('/api/admin/users/' + username + '/take', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }).then(function(r){return r.json();});
-      })).then(function() { dim.remove(); renderMemberPage(); });
+        return fetch('/api/admin/users/' + username + '/take', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }).then(function(r){return r.json();}).then(function(res) {
+          if (res.success) _updateTreeNode(username, { money: res.after || 0 });
+        });
+      })).then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); dim.remove(); renderMemberPage(); });
     });
   });
 
@@ -1571,8 +1590,10 @@ function bindMemberEvents() {
       confirmText:'변경', confirmColor:'#4ade80',
       onConfirm: function(close) {
         Promise.all(ids.map(function(username) {
-          return fetch('/api/admin/users/' + username + '/update', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({casino:'ON'}) }).then(function(r){return r.json();});
-        })).then(function() { close(); renderMemberPage(); });
+          return fetch('/api/admin/users/' + username + '/update', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({casino:'ON'}) }).then(function(r){return r.json();}).then(function() {
+            _updateTreeNode(username, { casino: 'ON' });
+          });
+        })).then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); close(); renderMemberPage(); });
       }
     });
   });
@@ -1587,8 +1608,10 @@ function bindMemberEvents() {
       confirmText:'변경', confirmColor:'#38bdf8',
       onConfirm: function(close) {
         Promise.all(ids.map(function(username) {
-          return fetch('/api/admin/users/' + username + '/update', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({casino:'OFF'}) }).then(function(r){return r.json();});
-        })).then(function() { close(); renderMemberPage(); });
+          return fetch('/api/admin/users/' + username + '/update', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({casino:'OFF'}) }).then(function(r){return r.json();}).then(function() {
+            _updateTreeNode(username, { casino: 'OFF' });
+          });
+        })).then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); close(); renderMemberPage(); });
       }
     });
   });
@@ -1633,8 +1656,10 @@ function bindMemberEvents() {
       confirmText:'차단', confirmColor:'#f59e0b',
       onConfirm: function(close) {
         Promise.all(ids.map(function(username) {
-          return fetch('/api/admin/users/' + username + '/block', { method:'POST' }).then(function(r){return r.json();});
-        })).then(function() { close(); renderMemberPage(); });
+          return fetch('/api/admin/users/' + username + '/block', { method:'POST' }).then(function(r){return r.json();}).then(function() {
+            _updateTreeNode(username, { status: 'blocked' });
+          });
+        })).then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); close(); renderMemberPage(); });
       }
     });
   });
@@ -1649,8 +1674,10 @@ function bindMemberEvents() {
       confirmText:'삭제', confirmColor:'#dc2626',
       onConfirm: function(close) {
         Promise.all(ids.map(function(username) {
-          return fetch('/api/admin/users/' + username + '/delete', { method:'POST' }).then(function(r){return r.json();});
-        })).then(function() { close(); renderMemberPage(); });
+          return fetch('/api/admin/users/' + username + '/delete', { method:'POST' }).then(function(r){return r.json();}).then(function() {
+            _removeFromTree(username);
+          });
+        })).then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); close(); renderMemberPage(); });
       }
     });
   });
@@ -2157,10 +2184,19 @@ function __removed_openMemberDetailModal(tr) {
                   <span style="color:var(--yellow);font-weight:700;font-size:0.85rem;">⚠ 누락(공베팅) 설정</span>
                   <span style="background:rgba(245,158,11,0.2);color:var(--yellow);padding:2px 8px;border-radius:4px;font-size:0.65rem;">주의: 하위에게 상속됨</span>
                 </div>
-                <div style="font-size:0.72rem;color:var(--text2);margin-bottom:10px;">N회 베팅마다 1회 누락됩니다. 0=미적용. 상위 파트너 설정이 없으면 하위로 상속됩니다.</div>
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;font-size:0.75rem;">
+                <div style="font-size:0.72rem;color:var(--text2);margin-bottom:10px;">N회 베팅마다 1회 누락됩니다. 0=미적용.</div>
+                <div class="md-view-emptybet" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;font-size:0.75rem;">
                   ${['카지노','슬롯','미니게임'].map(function(g){
-                    return '<div><div style="color:var(--text2);margin-bottom:3px;">'+g+'</div><div style="font-weight:600;">-</div></div>';
+                    var key = 'emptyBet' + g;
+                    var val = m[key] || 0;
+                    return '<div><div style="color:var(--text2);margin-bottom:3px;">'+g+'</div><div style="font-weight:600;">'+(val?val+'회':'미적용')+'</div></div>';
+                  }).join('')}
+                </div>
+                <div class="md-edit-emptybet" style="display:none;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;font-size:0.75rem;">
+                  ${['카지노','슬롯','미니게임'].map(function(g){
+                    var key = 'emptyBet' + g;
+                    var val = m[key] || 0;
+                    return '<div><div style="color:var(--text2);margin-bottom:3px;">'+g+'</div><input type="number" class="md-edit-input md-emptybet-input" data-key="'+key+'" value="'+val+'" min="0" max="100" style="width:60px;background:var(--bg3);border:1px solid var(--border2);color:var(--text1);padding:4px;border-radius:4px;font-size:0.78rem;text-align:center;"></div>';
                   }).join('')}
                 </div>
               </div>
@@ -2266,10 +2302,37 @@ function __removed_openMemberDetailModal(tr) {
 
         <!-- ===== 베팅 탭 ===== -->
         <div class="mbd-pane" data-pane="betlist">
-          <table class="db-table" style="font-size:0.78rem;">
-            <thead><tr><th>일시</th><th>게임사</th><th>게임명</th><th>베팅금</th><th>당첨금</th><th>손익</th><th>상태</th></tr></thead>
-            <tbody><tr><td colspan="7" style="color:var(--text3);padding:24px;text-align:center;">베팅 내역이 없습니다.</td></tr></tbody>
-          </table>
+          <!-- 필터 -->
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center;">
+            <div style="display:flex;gap:4px;">
+              <button class="mbd-bet-cat active" data-cat="casino" style="padding:4px 12px;border-radius:6px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid #f59e0b;background:rgba(245,158,11,0.15);color:#f59e0b;">카지노</button>
+              <button class="mbd-bet-cat" data-cat="slot" style="padding:4px 12px;border-radius:6px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text2);">슬롯</button>
+              <button class="mbd-bet-cat" data-cat="mini" style="padding:4px 12px;border-radius:6px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text2);">미니게임</button>
+            </div>
+            <div style="display:flex;gap:4px;">
+              <button class="mbd-bet-period active" data-period="today" style="padding:4px 10px;border-radius:6px;font-size:0.7rem;cursor:pointer;border:1px solid #3b82f6;background:rgba(59,130,246,0.15);color:#3b82f6;font-weight:600;">오늘</button>
+              <button class="mbd-bet-period" data-period="yesterday" style="padding:4px 10px;border-radius:6px;font-size:0.7rem;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text2);font-weight:600;">어제</button>
+              <button class="mbd-bet-period" data-period="7d" style="padding:4px 10px;border-radius:6px;font-size:0.7rem;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text2);font-weight:600;">7일</button>
+              <button class="mbd-bet-period" data-period="30d" style="padding:4px 10px;border-radius:6px;font-size:0.7rem;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text2);font-weight:600;">30일</button>
+            </div>
+          </div>
+          <!-- 통계 카드 -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+            <div style="background:var(--sidebar);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;">
+              <div style="font-size:0.7rem;color:var(--text2);">총 베팅</div>
+              <div id="mbd-bet-total" style="font-size:0.95rem;font-weight:700;color:#ef4444;">0</div>
+            </div>
+            <div style="background:var(--sidebar);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;">
+              <div style="font-size:0.7rem;color:var(--text2);">총 당첨</div>
+              <div id="mbd-bet-win" style="font-size:0.95rem;font-weight:700;color:#4ade80;">0</div>
+            </div>
+            <div style="background:var(--sidebar);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;">
+              <div style="font-size:0.7rem;color:var(--text2);">손익</div>
+              <div id="mbd-bet-profit" style="font-size:0.95rem;font-weight:700;color:var(--text1);">0</div>
+            </div>
+          </div>
+          <!-- 내역 테이블 -->
+          <div id="mbd-bet-list" style="color:var(--text3);text-align:center;padding:24px;font-size:0.82rem;">베팅 내역을 로드중...</div>
         </div>
 
         <!-- ===== 머니 탭 ===== -->
@@ -2315,6 +2378,121 @@ function __removed_openMemberDetailModal(tr) {
   overlay.querySelector('#mbd-close').addEventListener('click', function(){ overlay.remove(); });
   overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
 
+  // ── 베팅 내역 로드 함수 ──
+  var _mbdBetLoaded = false;
+  function _loadMemberBetting() {
+    var listEl = overlay.querySelector('#mbd-bet-list');
+    if(!listEl) return;
+    listEl.innerHTML = '<div style="color:#888;text-align:center;padding:24px;"><i class="fas fa-circle-notch fa-spin"></i> 로딩중...</div>';
+
+    var activeCat = overlay.querySelector('.mbd-bet-cat.active');
+    var cat = activeCat ? activeCat.dataset.cat : 'casino';
+
+    var activePeriod = overlay.querySelector('.mbd-bet-period.active');
+    var period = activePeriod ? activePeriod.dataset.period : 'today';
+    var kstNow = new Date(new Date().getTime() + 9*60*60*1000);
+    var today = kstNow.toISOString().split('T')[0];
+    var startDate, endDate;
+
+    if(period === 'today') { startDate = endDate = today; }
+    else if(period === 'yesterday') { var y = new Date(kstNow.getTime() - 86400000); startDate = endDate = y.toISOString().split('T')[0]; }
+    else if(period === '7d') { var d7 = new Date(kstNow.getTime() - 7*86400000); startDate = d7.toISOString().split('T')[0]; endDate = today; }
+    else if(period === '30d') { var d30 = new Date(kstNow.getTime() - 30*86400000); startDate = d30.toISOString().split('T')[0]; endDate = today; }
+    else { startDate = endDate = today; }
+
+    var url = '/api/hl/transactions/local?perPage=5000&order=desc&types=bet,win'
+      + '&start=' + encodeURIComponent(startDate + ' 00:00:00')
+      + '&end=' + encodeURIComponent(endDate + ' 23:59:59')
+      + '&usernames=' + encodeURIComponent(id);
+
+    fetch(url).then(function(r){return r.json();}).then(function(res) {
+      var allData = (res.data || []).filter(function(t){ return t.details && t.details.game; });
+      var catFiltered = allData.filter(function(t) {
+        var gt = (t.details.game.type || '').toLowerCase();
+        if(cat === 'casino') return gt !== 'slot' && gt !== 'slots' && gt !== 'mini';
+        if(cat === 'slot') return gt === 'slot' || gt === 'slots';
+        if(cat === 'mini') return gt === 'mini';
+        return true;
+      });
+
+      var totalBet = 0, totalWin = 0;
+      catFiltered.forEach(function(t) {
+        var amt = Math.abs(t.amount || 0);
+        if(t.type === 'bet') totalBet += amt; else totalWin += amt;
+      });
+      var profit = totalWin - totalBet;
+
+      var te = overlay.querySelector('#mbd-bet-total');
+      var we = overlay.querySelector('#mbd-bet-win');
+      var pe = overlay.querySelector('#mbd-bet-profit');
+      if(te) te.textContent = totalBet.toLocaleString();
+      if(we) we.textContent = totalWin.toLocaleString();
+      if(pe) { pe.textContent = (profit >= 0 ? '+' : '') + profit.toLocaleString(); pe.style.color = profit >= 0 ? '#4ade80' : '#ef4444'; }
+
+      // 라운드별 묶기
+      var roundMap = {}, roundOrder = [];
+      catFiltered.forEach(function(t) {
+        var key = (t.details.game.id||'') + '|' + (t.details.game.round||'') + '|' + ((t.user&&t.user.username)||'');
+        if(!roundMap[key]) { roundMap[key] = { bets:[], wins:[], game:t.details.game, user:t.user }; roundOrder.push(key); }
+        if(t.type === 'bet') roundMap[key].bets.push(t); else roundMap[key].wins.push(t);
+      });
+
+      if(roundOrder.length === 0) {
+        listEl.innerHTML = '<div style="color:#888;text-align:center;padding:24px;">베팅 내역이 없습니다</div>';
+        return;
+      }
+
+      var rows = roundOrder.map(function(key) {
+        var r = roundMap[key];
+        var betAmt = 0, winAmt = 0;
+        r.bets.forEach(function(t){ betAmt += Math.abs(t.amount||0); });
+        r.wins.forEach(function(t){ winAmt += Math.abs(t.amount||0); });
+        var pnl = winAmt - betAmt;
+        var firstTx = r.bets[0] || r.wins[0];
+        var date = firstTx.processed_at || firstTx.created_at || '-';
+        if(date !== '-') date = new Date(date).toLocaleString('ko-KR');
+        var gameName = r.game.title || r.game.identifier || '-';
+        var vendor = r.game.vendor || '-';
+        var resultLabel = r.wins.length > 0 && winAmt > 0
+          ? '<span style="color:#4ade80;font-weight:600;">승</span>'
+          : r.wins.length > 0
+            ? '<span style="color:#ef4444;font-weight:600;">패</span>'
+            : '<span style="color:#888;">대기</span>';
+        return '<tr>'
+          + '<td style="font-size:0.72rem;">' + date + '</td>'
+          + '<td>' + vendor + '</td>'
+          + '<td>' + gameName + '</td>'
+          + '<td style="color:#ef4444;font-weight:600;">' + betAmt.toLocaleString() + '</td>'
+          + '<td style="color:#4ade80;font-weight:600;">' + winAmt.toLocaleString() + '</td>'
+          + '<td style="color:' + (pnl>=0?'#4ade80':'#ef4444') + ';font-weight:600;">' + (pnl>=0?'+':'') + pnl.toLocaleString() + '</td>'
+          + '<td>' + resultLabel + '</td>'
+          + '</tr>';
+      }).join('');
+
+      listEl.innerHTML = '<table class="db-table" style="font-size:0.78rem;">'
+        + '<thead><tr><th>일시</th><th>게임사</th><th>게임명</th><th>베팅금</th><th>당첨금</th><th>손익</th><th>결과</th></tr></thead>'
+        + '<tbody>' + rows + '</tbody></table>';
+    }).catch(function() {
+      listEl.innerHTML = '<div style="color:#f87171;text-align:center;padding:24px;">데이터 로드 실패</div>';
+    });
+  }
+
+  // 베팅 탭 필터 이벤트
+  overlay.querySelectorAll('.mbd-bet-cat').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      overlay.querySelectorAll('.mbd-bet-cat').forEach(function(b){ b.classList.remove('active'); b.style.borderColor='var(--border)'; b.style.background='transparent'; b.style.color='var(--text2)'; });
+      this.classList.add('active'); this.style.borderColor='#f59e0b'; this.style.background='rgba(245,158,11,0.15)'; this.style.color='#f59e0b';
+      _loadMemberBetting();
+    });
+  });
+  overlay.querySelectorAll('.mbd-bet-period').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      overlay.querySelectorAll('.mbd-bet-period').forEach(function(b){ b.classList.remove('active'); b.style.borderColor='var(--border)'; b.style.background='transparent'; b.style.color='var(--text2)'; });
+      this.classList.add('active'); this.style.borderColor='#3b82f6'; this.style.background='rgba(59,130,246,0.15)'; this.style.color='#3b82f6';
+      _loadMemberBetting();
+    });
+  });
+
   // 탭 전환
   overlay.querySelectorAll('.mbd-tab').forEach(function(tab) {
     tab.addEventListener('click', function() {
@@ -2322,6 +2500,11 @@ function __removed_openMemberDetailModal(tr) {
       overlay.querySelectorAll('.mbd-pane').forEach(function(p){ p.classList.remove('active'); });
       this.classList.add('active');
       overlay.querySelector('.mbd-pane[data-pane="'+this.dataset.tab+'"]').classList.add('active');
+      // 베팅 탭 진입 시 자동 로드
+      if(this.dataset.tab === 'betlist' && !_mbdBetLoaded) {
+        _mbdBetLoaded = true;
+        _loadMemberBetting();
+      }
     });
   });
 
@@ -2402,6 +2585,8 @@ function __removed_openMemberDetailModal(tr) {
   var editRolling = overlay.querySelector('.md-edit-rolling');
   var viewPerm = overlay.querySelector('.md-view-perm');
   var editPerm = overlay.querySelector('.md-edit-perm');
+  var viewEmptyBet = overlay.querySelector('.md-view-emptybet');
+  var editEmptyBet = overlay.querySelector('.md-edit-emptybet');
 
   function enterEditMode() {
     viewVals.forEach(function(el){ el.style.display = 'none'; });
@@ -2410,6 +2595,8 @@ function __removed_openMemberDetailModal(tr) {
     if(editRolling) editRolling.style.display = 'grid';
     if(viewPerm) viewPerm.style.display = 'none';
     if(editPerm) editPerm.style.display = 'flex';
+    if(viewEmptyBet) viewEmptyBet.style.display = 'none';
+    if(editEmptyBet) editEmptyBet.style.display = 'grid';
     editBtn.style.display = 'none';
     saveBtn.style.display = '';
     cancelBtn.style.display = '';
@@ -2421,6 +2608,8 @@ function __removed_openMemberDetailModal(tr) {
     if(editRolling) editRolling.style.display = 'none';
     if(viewPerm) viewPerm.style.display = 'flex';
     if(editPerm) editPerm.style.display = 'none';
+    if(viewEmptyBet) viewEmptyBet.style.display = 'grid';
+    if(editEmptyBet) editEmptyBet.style.display = 'none';
     editBtn.style.display = '';
     saveBtn.style.display = 'none';
     cancelBtn.style.display = 'none';
@@ -2443,7 +2632,13 @@ function __removed_openMemberDetailModal(tr) {
     var updated = {};
     editInputs.forEach(function(inp) {
       var key = inp.dataset.key;
-      if(key) updated[key] = inp.value.trim();
+      if(!key) return;
+      // 공베팅 필드는 정수로 저장
+      if(inp.classList.contains('md-emptybet-input')) {
+        updated[key] = parseInt(inp.value) || 0;
+      } else {
+        updated[key] = inp.value.trim();
+      }
     });
     if(updated.nick) updated.nickname = updated.nick;
     overlay.querySelectorAll('.md-perm-toggle').forEach(function(btn) {
@@ -2489,21 +2684,30 @@ function __removed_openMemberDetailModal(tr) {
     var isBlocked = m.status === 'blocked';
     if(!(await customConfirm(nick + ' 을(를) ' + (isBlocked?'정지 해제':'정지') + '하시겠습니까?'))) return;
     if (isBlocked) {
-      fetch('/api/admin/users/' + uid + '/unblock', { method: 'POST' }).then(function(){ location.reload(); });
+      fetch('/api/admin/users/' + uid + '/unblock', { method: 'POST' }).then(function(){
+        _updateTreeNode(uid, { status: '정상' });
+        if(typeof savePartnerTree === 'function') savePartnerTree();
+        location.reload();
+      });
     } else {
-      fetch('/api/admin/users/' + uid + '/block', { method: 'POST' }).then(function(){ location.reload(); });
+      fetch('/api/admin/users/' + uid + '/block', { method: 'POST' }).then(function(){
+        _updateTreeNode(uid, { status: 'blocked' });
+        if(typeof savePartnerTree === 'function') savePartnerTree();
+        location.reload();
+      });
     }
   });
 
   // 삭제
   overlay.querySelector('.mbd-delete-btn').addEventListener('click', async function() {
     if(!(await customConfirm(nick + ' 을(를) 정말 삭제하시겠습니까?'))) return;
-    // 서버에서 삭제
     var uid = m.id || id;
-    fetch('/api/admin/users/' + uid + '/delete', { method: 'POST' }).then(function(){ location.reload(); });
-    alert(nick + ' 이(가) 삭제되었습니다.');
+    fetch('/api/admin/users/' + uid + '/delete', { method: 'POST' }).then(function() {
+      _removeFromTree(uid);
+      if(typeof savePartnerTree === 'function') savePartnerTree();
+      location.reload();
+    });
     overlay.remove();
-    if(tr.parentNode) tr.remove();
   });
 }
 
@@ -2914,6 +3118,12 @@ function _bindOnlineEvents() {
       .then(function(r){ return r.json(); })
       .then(function(res) {
         if (res.success) {
+          // 킥 후 partnerTree 머니 반영
+          fetch('/api/admin/users').then(function(r2){return r2.json();}).then(function(uRes) {
+            var u = (uRes.data||[]).find(function(x){return x.username===username;});
+            if (u) _updateTreeNode(username, { money: u.money||0 });
+            if(typeof savePartnerTree === 'function') savePartnerTree();
+          }).catch(function(){});
           customAlert(username + ' 강제종료 완료', { icon: 'fa-check-circle' });
           tr.style.opacity = '0.3';
           setTimeout(function() { tr.remove(); }, 500);

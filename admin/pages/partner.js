@@ -206,10 +206,8 @@ function savePartnerTree() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(partnerTree)
-    }).then(function(r){ return r.json(); })
-    .then(function(res){ console.log('[savePartnerTree] saved:', res); })
-    .catch(function(e){ console.error('[savePartnerTree] error:', e); });
-  } catch(e) { console.error('[savePartnerTree] exception:', e); }
+    }).catch(function(){});
+  } catch(e) {}
 }
 
 var selectedPartnerId = localStorage.getItem('selectedPartnerId') || null;
@@ -1126,7 +1124,8 @@ function renderPartnerInfo(id) {
 
   // 롤링/루징 변경 버튼
   document.querySelectorAll('.pt-info-roll-save').forEach(function(btn) {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation(); // 이벤트 위임 핸들러 중복 실행 방지
       var field = this.getAttribute('data-field');
       var inputId = this.getAttribute('data-input');
       var sel = document.getElementById(inputId);
@@ -1134,6 +1133,7 @@ function renderPartnerInfo(id) {
       node[field] = sel.value;
       savePartnerTree();
       _showToast(field + ' → ' + sel.value + '% 변경 완료', 'success');
+      if (typeof renderTree === 'function') renderTree();
       renderPartnerInfo(id);
     });
   });
