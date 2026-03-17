@@ -1415,6 +1415,58 @@ function bindMemberEvents() {
   if(expandBtn)   expandBtn.addEventListener('click', function(){ setAllExpanded(partnerTree, true);  renderMemberTree(); });
   if(collapseBtn) collapseBtn.addEventListener('click', function(){ setAllExpanded(partnerTree, false); renderMemberTree(); });
 
+  // 트리 검색
+  var treeSearchInput = document.getElementById('mb-tree-search');
+  if(treeSearchInput) {
+    var treeSearchTimer = null;
+    treeSearchInput.addEventListener('input', function() {
+      clearTimeout(treeSearchTimer);
+      var val = treeSearchInput.value.toLowerCase().trim();
+      treeSearchTimer = setTimeout(function() {
+        var treeEl = document.getElementById('mb-tree');
+        if(!treeEl) return;
+        if(!val) {
+          // 검색어 없으면 전체 표시
+          renderMemberTree();
+          return;
+        }
+        // 검색어가 있으면 매칭되는 노드만 하이라이트하고 부모 펼치기
+        function expandParents(nodes, targetId) {
+          for(var i=0;i<nodes.length;i++) {
+            if(nodes[i].id === targetId) return true;
+            if(nodes[i].children && nodes[i].children.length) {
+              if(expandParents(nodes[i].children, targetId)) {
+                nodes[i].expanded = true;
+                return true;
+              }
+            }
+          }
+          return false;
+        }
+        // 매칭 노드 찾기
+        var matched = [];
+        (function findAll(nodes) {
+          nodes.forEach(function(n) {
+            if(n.id.toLowerCase().indexOf(val) !== -1 || n.label.toLowerCase().indexOf(val) !== -1) {
+              matched.push(n.id);
+            }
+            if(n.children) findAll(n.children);
+          });
+        })(partnerTree);
+        // 매칭된 노드의 부모 펼치기
+        matched.forEach(function(mid) { expandParents(partnerTree, mid); });
+        renderMemberTree();
+        // 매칭 노드 하이라이트
+        document.querySelectorAll('#mb-tree .pt-node').forEach(function(el) {
+          if(matched.indexOf(el.dataset.id) !== -1) {
+            el.style.background = 'rgba(59,130,246,0.2)';
+            el.style.borderRadius = '6px';
+          }
+        });
+      }, 300);
+    });
+  }
+
   var checkAll = document.getElementById('mb-check-all');
   if(checkAll) checkAll.addEventListener('change', function(){
     document.querySelectorAll('.mb-row-check').forEach(function(c){ c.checked = checkAll.checked; });
