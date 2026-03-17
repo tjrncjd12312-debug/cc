@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ══════════════════════════════════════
    테마 시스템: 다크모드 / 화이트모드
@@ -98,7 +99,7 @@ body {
 /* ── 사이드바 ── */
 .sidebar {
   width: var(--sidebar-w);
-  min-height: 100vh;
+  height: 100vh;
   background: var(--bg2);
   border-right: 1px solid var(--border);
   display: flex;
@@ -467,22 +468,22 @@ body {
 .pt-node { display:flex; align-items:center; gap:5px; padding:5px 8px; cursor:pointer; font-size:0.78rem; color:var(--text2); border-left:2px solid transparent; transition:background 0.12s, color 0.12s; }
 .pt-node:hover { background:var(--primary-dim); color:var(--text1); }
 .pt-node.selected { background:var(--primary-dim); color:var(--primary); border-left-color:var(--primary); }
-.pt-toggle { width:20px; text-align:center; font-size:1.1rem; color:var(--text2); flex-shrink:0; cursor:pointer; }
-.pt-toggle:hover { color:var(--text1); }
-.pt-toggle-empty { width:20px; flex-shrink:0; }
+.pt-toggle { width:26px; height:26px; text-align:center; font-size:1.2rem; color:#60a5fa; flex-shrink:0; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; border-radius:4px; background:rgba(96,165,250,0.1); }
+.pt-toggle:hover { color:#93c5fd; background:rgba(96,165,250,0.2); }
+.pt-toggle-empty { width:26px; flex-shrink:0; }
 .pt-badge { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:3px; font-size:0.6rem; font-weight:700; color:#fff; flex-shrink:0; }
 .pt-node-label { flex:1; }
 
 .pt-right { flex:1; display:flex; flex-direction:column; gap:12px; min-width:0; }
 .pt-right-top { display:flex; align-items:center; gap:8px; background:var(--bg3); border:1px solid var(--border); border-radius:6px; padding:10px; flex-wrap:wrap; }
-.pt-date-input { padding:4px 8px; background:#0f172a; border:1px solid #334155; border-radius:6px; color:#e2e8f0; font-size:0.72rem; font-family:inherit; outline:none; }
+.pt-date-input { padding:4px 8px; background:var(--input-bg); border:1px solid var(--input-border); border-radius:6px; color:var(--text1); font-size:0.72rem; font-family:inherit; outline:none; }
 .date-filter-bar { display:flex; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
-.date-filter-bar .df-search-box { display:flex; align-items:center; gap:8px; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:6px 12px; }
-.date-filter-bar .df-search-box input { background:none; border:none; color:#e2e8f0; font-size:0.8rem; outline:none; width:100%; }
-.df-preset { background:#1e293b; color:#94a3b8; border:1px solid #334155; border-radius:6px; padding:5px 12px; font-size:0.72rem; cursor:pointer; font-weight:600; transition:all 0.15s; }
+.date-filter-bar .df-search-box { display:flex; align-items:center; gap:8px; background:var(--input-bg); border:1px solid var(--input-border); border-radius:8px; padding:6px 12px; }
+.date-filter-bar .df-search-box input { background:none; border:none; color:var(--text1); font-size:0.8rem; outline:none; width:100%; }
+.df-preset { background:var(--bg3); color:var(--text2); border:1px solid var(--input-border); border-radius:6px; padding:5px 12px; font-size:0.72rem; cursor:pointer; font-weight:600; transition:all 0.15s; }
 .df-preset.active, .df-preset:hover { background:#6366f1; color:#fff; border-color:#6366f1; }
 .df-date-range { margin-left:auto; display:flex; align-items:center; gap:6px; }
-.df-date-range input[type="date"] { background:#0f172a; border:1px solid #334155; color:#e2e8f0; padding:4px 8px; border-radius:6px; font-size:0.72rem; outline:none; }
+.df-date-range input[type="date"] { background:var(--input-bg); border:1px solid var(--input-border); color:var(--text1); padding:4px 8px; border-radius:6px; font-size:0.72rem; outline:none; }
 .df-date-range .df-query-btn { background:#6366f1; color:#fff; border:none; border-radius:6px; padding:5px 10px; font-size:0.72rem; cursor:pointer; font-weight:600; }
 .pt-info-label { font-size:0.74rem; color:var(--text3); padding:2px 0; }
 .pt-info-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }

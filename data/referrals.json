@@ -1,10 +1,14 @@
 [
   {
-    "id": "1773504258028516",
-    "userId": "test1",
-    "code": "test1",
-    "usedCount": 0,
-    "usedBy": [],
-    "createdAt": "2026-03-14T16:04:18.028Z"
+    "id": "1773609563009481",
+    "userId": "test3",
+    "code": "test3",
+    "usedCount": 3,
+    "usedBy": [
+      "test6",
+      "test6",
+      "aaaaa"
+    ],
+    "createdAt": "2026-03-15T21:19:23.009Z"
   }
 ]

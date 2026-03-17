@@ -67,20 +67,39 @@ function renderNoticePage() {
     </div>
   `;
 
+  // 도메인 드롭다운 채우기
+  fetch('/api/admin/domains').then(function(r){ return r.json(); }).then(function(res) {
+    if(res.success && Array.isArray(res.data)) {
+      var sel = document.getElementById('nc-domain');
+      if(!sel) return;
+      res.data.forEach(function(d) {
+        var opt = document.createElement('option');
+        opt.value = d.domain;
+        opt.textContent = d.domain;
+        sel.appendChild(opt);
+      });
+    }
+  }).catch(function(){});
+
   document.getElementById('nc-write-btn').addEventListener('click', function() {
     openNoticeWriteModal(null);
   });
 
-  document.getElementById('nc-search-btn').addEventListener('click', function() {
-    var keyword  = document.getElementById('nc-keyword').value.trim().toLowerCase();
+  function doSearch() {
+    var keyword = document.getElementById('nc-keyword').value.trim().toLowerCase();
+    var domain  = document.getElementById('nc-domain').value;
     var filtered = loadNotices().filter(function(n) {
       if(keyword && !(n.title||'').toLowerCase().includes(keyword)) return false;
+      if(domain && (n.domain||'') !== domain) return false;
       return true;
     });
     document.getElementById('nc-tbody').innerHTML = buildNoticeRows(filtered);
     document.getElementById('nc-count').textContent = filtered.length;
     bindNoticeRowEvents();
-  });
+  }
+
+  document.getElementById('nc-search-btn').addEventListener('click', doSearch);
+  document.getElementById('nc-domain').addEventListener('change', doSearch);
 
   bindNoticeRowEvents();
 }
@@ -177,8 +196,8 @@ function bindNoticeRowEvents() {
 
   // 삭제 버튼
   document.querySelectorAll('.nc-del-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      if(!confirm('공지사항을 삭제하시겠습니까?')) return;
+    btn.addEventListener('click', async function() {
+      if(!(await customConfirm('공지사항을 삭제하시겠습니까?'))) return;
       var list = loadNotices();
       var idx  = parseInt(this.dataset.idx);
       list.splice(idx, 1);
@@ -189,7 +208,7 @@ function bindNoticeRowEvents() {
 }
 
 // ── 공지 작성/수정 모달 ──
-function openNoticeWriteModal(editIdx) {
+async function openNoticeWriteModal(editIdx) {
   var existing = document.getElementById('nc-write-overlay');
   if(existing) existing.remove();
 
@@ -197,6 +216,29 @@ function openNoticeWriteModal(editIdx) {
   var n = (editIdx !== null && list[editIdx]) ? list[editIdx] : {};
   var isEdit = editIdx !== null && list[editIdx];
   var title  = isEdit ? '공지사항 수정' : '신규공지 작성';
+
+  // 등록된 도메인 목록 가져오기
+  var regDomains = [];
+  try {
+    var dr = await fetch('/api/admin/domains');
+    var dd = await dr.json();
+    if(dd.success) regDomains = (dd.data||[]).map(function(d){ return d.domain; });
+  } catch(e){}
+
+  var selDomains = n.domains || [];
+  var isAll = !selDomains || selDomains.length === 0;
+
+  var domainCheckboxes = regDomains.length === 0
+    ? '<div style="color:#666;font-size:0.78rem;padding:6px 0;">등록된 도메인이 없습니다. (설정 > 도메인목록에서 추가)</div>'
+    : '<label style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;cursor:pointer;font-size:0.82rem;color:var(--text1);">' +
+        '<input type="checkbox" class="ncm-dom-all" '+(isAll?'checked':'')+'> 전체' +
+      '</label>' +
+      regDomains.map(function(d){
+        var checked = isAll || selDomains.indexOf(d) >= 0;
+        return '<label style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;cursor:pointer;font-size:0.82rem;color:var(--text2);">' +
+          '<input type="checkbox" class="ncm-dom-item" value="'+d+'" '+(checked?'checked':'')+'> '+d +
+        '</label>';
+      }).join('');
 
   var overlay = document.createElement('div');
   overlay.id = 'nc-write-overlay';
@@ -209,6 +251,13 @@ function openNoticeWriteModal(editIdx) {
       </div>
       <div class="pt-modal-body">
         <div class="pt-modal-section">
+
+          <div class="pt-modal-field">
+            <label>표시 도메인</label>
+            <div id="ncm-domain-list" style="display:flex;flex-wrap:wrap;gap:4px 0;padding:6px 0;">
+              ${domainCheckboxes}
+            </div>
+          </div>
 
           <div class="pt-modal-field">
             <label>제목</label>
@@ -278,6 +327,21 @@ function openNoticeWriteModal(editIdx) {
   document.getElementById('ncm-cancel').addEventListener('click', function(){ overlay.remove(); });
   overlay.addEventListener('click', function(e){ if(e.target === overlay) overlay.remove(); });
 
+  // 전체 체크 ↔ 개별 체크 연동
+  var allCb = overlay.querySelector('.ncm-dom-all');
+  if(allCb) {
+    allCb.addEventListener('change', function(){
+      overlay.querySelectorAll('.ncm-dom-item').forEach(function(cb){ cb.checked = allCb.checked; });
+    });
+    overlay.querySelectorAll('.ncm-dom-item').forEach(function(cb){
+      cb.addEventListener('change', function(){
+        var items = overlay.querySelectorAll('.ncm-dom-item');
+        var allChecked = Array.from(items).every(function(c){ return c.checked; });
+        allCb.checked = allChecked;
+      });
+    });
+  }
+
   // 이미지 파일 선택 → canvas 압축 후 base64
   var _imageBase64 = n.image || '';
   document.getElementById('ncm-img-file').addEventListener('change', function() {
@@ -316,6 +380,16 @@ function openNoticeWriteModal(editIdx) {
     var titleVal = document.getElementById('ncm-title').value.trim();
     if(!titleVal) { alert('제목을 입력하세요.'); return; }
 
+    // 선택된 도메인 수집
+    var allCb = overlay.querySelector('.ncm-dom-all');
+    var domItems = overlay.querySelectorAll('.ncm-dom-item');
+    var selectedDomains = [];
+    if(!allCb || allCb.checked || domItems.length === 0) {
+      selectedDomains = []; // 빈 배열 = 전체
+    } else {
+      domItems.forEach(function(cb){ if(cb.checked) selectedDomains.push(cb.value); });
+    }
+
     var entry = {
       title:        titleVal,
       content:      document.getElementById('ncm-content').value,
@@ -326,7 +400,8 @@ function openNoticeWriteModal(editIdx) {
       partnerShow:  document.getElementById('ncm-partner-show').checked,
       userShow:     document.getElementById('ncm-user-show').checked,
       rank:         parseInt(document.getElementById('ncm-rank').value) || 1,
-      domain:       '',
+      domains:      selectedDomains,
+      domain:       selectedDomains.length === 0 ? '전체' : selectedDomains.join(', '),
       createdAt:    isEdit ? (n.createdAt || nowStr()) : nowStr(),
     };
 

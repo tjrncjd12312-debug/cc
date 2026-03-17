@@ -2,6 +2,13 @@
 //  회원 관리 페이지
 // ══════════════════════════════════════
 
+// ── 은행 목록 ──
+var _bankList = ['KB국민은행','신한은행','우리은행','하나은행','NH농협은행','IBK기업은행','SC제일은행','씨티은행','경남은행','광주은행','대구은행','부산은행','전북은행','제주은행','산업은행','수협은행','새마을금고','신협','우체국','케이뱅크','카카오뱅크','토스뱅크'];
+function _bankOptions(selected) {
+  return '<option value="">은행 선택</option>' + _bankList.map(function(b){ return '<option value="'+b+'"'+(b===selected?' selected':'')+'>'+b+'</option>'; }).join('');
+}
+function _bankSelectStyle() { return 'width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;cursor:pointer;'; }
+
 // ── 커스텀 토스트 알림 ──
 function _showToast(message, type) {
   type = type || 'info';
@@ -13,12 +20,12 @@ function _showToast(message, type) {
   var c = colors[type] || colors.info;
   var toast = document.createElement('div');
   toast.style.cssText = 'position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-20px);z-index:99999;'
-    + 'background:#0f172a;border:1px solid ' + c.border + ';border-radius:12px;padding:14px 24px;'
-    + 'display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,0.5);'
+    + 'background:var(--bg);border:1px solid ' + c.border + ';border-radius:12px;padding:14px 24px;'
+    + 'display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px var(--shadow);'
     + 'opacity:0;transition:all 0.3s ease;min-width:300px;max-width:500px;';
   toast.innerHTML = '<div style="width:32px;height:32px;border-radius:50%;background:' + c.bg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
     + '<span style="color:#fff;font-size:1rem;font-weight:700;">' + c.icon + '</span></div>'
-    + '<span style="color:#e2e8f0;font-size:0.85rem;font-weight:500;">' + message + '</span>';
+    + '<span style="color:var(--text1);font-size:0.85rem;font-weight:500;">' + message + '</span>';
   document.body.appendChild(toast);
   requestAnimationFrame(function() {
     toast.style.opacity = '1';
@@ -38,10 +45,10 @@ function _showKickConfirm(username, btn) {
 
   var overlay = document.createElement('div');
   overlay.id = 'mb-kick-modal';
-  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:99998;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:var(--shadow);z-index:99998;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
 
   overlay.innerHTML =
-    '<div style="background:#0f172a;border:1px solid #334155;border-radius:16px;padding:0;width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.5);overflow:hidden;animation:kickModalIn 0.2s ease-out;">'
+    '<div style="background:var(--bg);border:1px solid var(--input-border);border-radius:16px;padding:0;width:420px;box-shadow:0 20px 60px var(--shadow);overflow:hidden;animation:kickModalIn 0.2s ease-out;">'
     // 상단 빨간 바
     + '<div style="background:linear-gradient(135deg,#dc2626,#b91c1c);padding:20px 24px;display:flex;align-items:center;gap:14px;">'
     +   '<div style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;">'
@@ -49,20 +56,20 @@ function _showKickConfirm(username, btn) {
     +   '</div>'
     +   '<div>'
     +     '<div style="font-size:1rem;font-weight:700;color:#fff;">강제종료</div>'
-    +     '<div style="font-size:0.75rem;color:rgba(255,255,255,0.7);margin-top:2px;">게임 킥 + 잔액회수 + 로그아웃</div>'
+    +     '<div style="font-size:0.75rem;color:rgba(255,255,255,0.7);margin-top:2px;">동기화해제 + 로그아웃</div>'
     +   '</div>'
     + '</div>'
     // 본문
     + '<div style="padding:24px;">'
-    +   '<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px;display:flex;align-items:center;gap:12px;margin-bottom:20px;">'
-    +     '<div style="width:36px;height:36px;border-radius:50%;background:#374151;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-weight:700;font-size:0.85rem;">' + username.charAt(0).toUpperCase() + '</div>'
+    +   '<div style="background:var(--bg3);border:1px solid var(--input-border);border-radius:10px;padding:16px;display:flex;align-items:center;gap:12px;margin-bottom:20px;">'
+    +     '<div style="width:36px;height:36px;border-radius:50%;background:var(--input-border);display:flex;align-items:center;justify-content:center;color:var(--text2);font-weight:700;font-size:0.85rem;">' + username.charAt(0).toUpperCase() + '</div>'
     +     '<div>'
-    +       '<div style="font-size:0.9rem;font-weight:700;color:#e2e8f0;">' + username + '</div>'
-    +       '<div style="font-size:0.72rem;color:#64748b;">해당 유저를 강제종료 하시겠습니까?</div>'
+    +       '<div style="font-size:0.9rem;font-weight:700;color:var(--text1);">' + username + '</div>'
+    +       '<div style="font-size:0.72rem;color:var(--text3);">해당 유저를 강제종료 하시겠습니까?</div>'
     +     '</div>'
     +   '</div>'
     +   '<div style="display:flex;gap:10px;justify-content:flex-end;">'
-    +     '<button id="kick-cancel-btn" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:9px 24px;border-radius:8px;font-size:0.82rem;cursor:pointer;font-weight:600;transition:all 0.15s;">취소</button>'
+    +     '<button id="kick-cancel-btn" style="background:var(--bg3);border:1px solid var(--input-border);color:var(--text2);padding:9px 24px;border-radius:8px;font-size:0.82rem;cursor:pointer;font-weight:600;transition:all 0.15s;">취소</button>'
     +     '<button id="kick-confirm-btn" style="background:linear-gradient(135deg,#dc2626,#b91c1c);border:none;color:#fff;padding:9px 24px;border-radius:8px;font-size:0.82rem;cursor:pointer;font-weight:600;transition:all 0.15s;">강제종료</button>'
     +   '</div>'
     + '</div>'
@@ -121,7 +128,7 @@ function _showCreateMemberModal(initTab, presetPartnerId) {
 
   var overlay = document.createElement('div');
   overlay.id = 'mb-create-modal';
-  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:99998;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:var(--shadow);z-index:99998;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
 
   // 파트너 옵션 빌드
   var partnerOpts = '<option value="">선택안함</option>';
@@ -142,43 +149,45 @@ function _showCreateMemberModal(initTab, presetPartnerId) {
   var singleBody =
       '<div style="padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:20px;">'
     +   '<div>'
-    +     '<div style="font-size:0.82rem;font-weight:700;color:#e2e8f0;margin-bottom:12px;display:flex;align-items:center;gap:6px;">'
+    +     '<div style="font-size:0.82rem;font-weight:700;color:var(--text1);margin-bottom:12px;display:flex;align-items:center;gap:6px;">'
     +       '<span style="color:#2dd4bf;">●</span> 계정 정보'
     +     '</div>'
     +     '<div style="display:flex;flex-direction:column;gap:10px;">'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">아이디 <span style="color:#ef4444;">*</span></label>'
-    +         '<input type="text" id="create-username" placeholder="영문, 숫자 4자 이상" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">비밀번호 <span style="color:#ef4444;">*</span></label>'
-    +         '<input type="text" id="create-password" placeholder="비밀번호 입력" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">닉네임</label>'
-    +         '<input type="text" id="create-nickname" placeholder="닉네임 입력" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">연락처</label>'
-    +         '<input type="text" id="create-phone" placeholder="010-0000-0000" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">아이디 <span style="color:#ef4444;">*</span></label>'
+    +         '<div style="position:relative;"><input type="text" id="create-username" placeholder="영문, 숫자 4자 이상" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;">'
+    +         '<span id="create-username-status" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:0.7rem;"></span></div>'
+    +         '<div id="create-username-msg" style="font-size:0.68rem;margin-top:3px;min-height:14px;"></div></div>'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">비밀번호 <span style="color:#ef4444;">*</span></label>'
+    +         '<input type="text" id="create-password" placeholder="비밀번호 입력" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">닉네임</label>'
+    +         '<input type="text" id="create-nickname" placeholder="닉네임 입력" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">연락처</label>'
+    +         '<input type="text" id="create-phone" placeholder="010-0000-0000" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
     +     '</div>'
     +   '</div>'
     +   '<div>'
-    +     '<div style="font-size:0.82rem;font-weight:700;color:#e2e8f0;margin-bottom:12px;display:flex;align-items:center;gap:6px;">'
+    +     '<div style="font-size:0.82rem;font-weight:700;color:var(--text1);margin-bottom:12px;display:flex;align-items:center;gap:6px;">'
     +       '<span style="color:#60a5fa;">●</span> 회원 설정'
     +     '</div>'
     +     '<div style="display:flex;flex-direction:column;gap:10px;">'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">파트너</label>'
-    +         '<select id="create-partner" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;cursor:pointer;">' + partnerOpts + '</select></div>'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">회원등급</label>'
-    +         '<select id="create-grade" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;cursor:pointer;">'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">파트너</label>'
+    +         '<select id="create-partner" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;cursor:pointer;">' + partnerOpts + '</select></div>'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">회원등급</label>'
+    +         '<select id="create-grade" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;cursor:pointer;">'
     +           '<option value="normal">일반회원</option><option value="vip">VIP</option><option value="vvip">VVIP</option></select></div>'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">은행명</label>'
-    +         '<input type="text" id="create-bank" placeholder="은행명" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">계좌번호</label>'
-    +         '<input type="text" id="create-account" placeholder="계좌번호" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">예금주</label>'
-    +         '<input type="text" id="create-holder" placeholder="예금주" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">관리자 메모</label>'
-    +         '<textarea id="create-memo" placeholder="관리자용 메모 입력" rows="2" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;resize:vertical;font-family:inherit;"></textarea></div>'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">은행명</label>'
+    +         '<select id="create-bank" style="'+_bankSelectStyle()+'">'+_bankOptions('')+'</select></div>'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">계좌번호</label>'
+    +         '<input type="text" id="create-account" placeholder="계좌번호" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">예금주</label>'
+    +         '<input type="text" id="create-holder" placeholder="예금주" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">관리자 메모</label>'
+    +         '<textarea id="create-memo" placeholder="관리자용 메모 입력" rows="2" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;resize:vertical;font-family:inherit;"></textarea></div>'
     +     '</div>'
     +   '</div>'
     + '</div>'
     + '<div style="padding:0 24px 24px;display:flex;gap:10px;justify-content:flex-end;">'
-    +   '<button id="create-cancel-btn" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:10px 24px;border-radius:8px;font-size:0.82rem;cursor:pointer;font-weight:600;">취소</button>'
+    +   '<button id="create-cancel-btn" style="background:var(--bg3);border:1px solid var(--input-border);color:var(--text2);padding:10px 24px;border-radius:8px;font-size:0.82rem;cursor:pointer;font-weight:600;">취소</button>'
     +   '<button id="create-submit-btn" style="background:linear-gradient(135deg,#0d9488,#0f766e);border:none;color:#fff;padding:10px 24px;border-radius:8px;font-size:0.82rem;cursor:pointer;font-weight:600;">회원 추가</button>'
     + '</div>';
 
@@ -186,54 +195,58 @@ function _showCreateMemberModal(initTab, presetPartnerId) {
   var bulkBody =
       '<div style="padding:24px;">'
     +   '<div style="margin-bottom:20px;">'
-    +     '<div style="font-size:0.82rem;font-weight:700;color:#e2e8f0;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span style="color:#a78bfa;">●</span> 필수 정보</div>'
+    +     '<div style="font-size:0.82rem;font-weight:700;color:var(--text1);margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span style="color:#a78bfa;">●</span> 필수 정보</div>'
     +     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">프리픽스</label>'
-    +         '<input type="text" id="bulk-prefix" placeholder="user" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">시작번호</label>'
-    +         '<input type="number" id="bulk-start" placeholder="1" value="1" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">종료번호</label>'
-    +         '<input type="number" id="bulk-end" placeholder="10" value="10" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">프리픽스</label>'
+    +         '<input type="text" id="bulk-prefix" placeholder="user" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">시작번호</label>'
+    +         '<input type="text" id="bulk-start" placeholder="01" value="01" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">종료번호</label>'
+    +         '<input type="text" id="bulk-end" placeholder="10" value="10" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
     +     '</div>'
-    +     '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">비밀번호</label>'
-    +       '<input type="text" id="bulk-password" placeholder="공통 비밀번호 입력" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
+    +     '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">비밀번호</label>'
+    +       '<input type="text" id="bulk-password" placeholder="공통 비밀번호 입력" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
     +   '</div>'
     +   '<div style="margin-bottom:20px;">'
-    +     '<div style="font-size:0.82rem;font-weight:700;color:#e2e8f0;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span style="color:#60a5fa;">●</span> 추가 설정</div>'
+    +     '<div style="font-size:0.82rem;font-weight:700;color:var(--text1);margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span style="color:#60a5fa;">●</span> 추가 설정</div>'
     +     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">파트너 (추천인)</label>'
-    +         '<select id="bulk-partner" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;cursor:pointer;">' + partnerOpts + '</select></div>'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">회원등급</label>'
-    +         '<select id="bulk-grade" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;cursor:pointer;">'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">파트너 (추천인)</label>'
+    +         '<select id="bulk-partner" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;cursor:pointer;">' + partnerOpts + '</select></div>'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">회원등급</label>'
+    +         '<select id="bulk-grade" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;cursor:pointer;">'
     +           '<option value="normal">일반회원</option><option value="vip">VIP</option><option value="vvip">VVIP</option></select></div>'
     +     '</div>'
     +     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">연락처</label>'
-    +         '<input type="text" id="bulk-phone" placeholder="010-0000-0000" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">은행명</label>'
-    +         '<input type="text" id="bulk-bank" placeholder="은행명" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
-    +       '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">계좌번호</label>'
-    +         '<input type="text" id="bulk-account" placeholder="계좌번호" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">연락처</label>'
+    +         '<input type="text" id="bulk-phone" placeholder="010-0000-0000" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">은행명</label>'
+    +         '<select id="bulk-bank" style="'+_bankSelectStyle()+'">'+_bankOptions('')+'</select></div>'
+    +       '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">계좌번호</label>'
+    +         '<input type="text" id="bulk-account" placeholder="계좌번호" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
     +     '</div>'
-    +     '<div><label style="display:block;font-size:0.72rem;color:#94a3b8;margin-bottom:4px;">예금주</label>'
-    +       '<input type="text" id="bulk-holder" placeholder="예금주" style="width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
+    +     '<div><label style="display:block;font-size:0.72rem;color:var(--text2);margin-bottom:4px;">예금주</label>'
+    +       '<input type="text" id="bulk-holder" placeholder="예금주" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--input-border);color:var(--text1);padding:8px 10px;border-radius:8px;font-size:0.8rem;outline:none;"></div>'
     +   '</div>'
     +   '<div style="margin-bottom:20px;">'
-    +     '<div id="bulk-detail-toggle" style="font-size:0.78rem;color:#64748b;cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 0;border-top:1px solid #1e293b;">'
-    +       '<svg id="bulk-detail-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" style="transition:transform 0.2s;"><polyline points="9 18 15 12 9 6"/></svg> 상세옵션</div>'
+    +     '<div id="bulk-detail-toggle" style="font-size:0.78rem;color:var(--text3);cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 0;border-top:1px solid var(--bg3);">'
+    +       '<svg id="bulk-detail-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" style="transition:transform 0.2s;"><polyline points="9 18 15 12 9 6"/></svg> 상세옵션</div>'
     +     '<div id="bulk-detail-body" style="display:none;margin-top:10px;"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
-    +       '<label style="display:flex;align-items:center;gap:8px;font-size:0.78rem;color:#94a3b8;cursor:pointer;"><input type="checkbox" id="bulk-opt-casino" checked style="accent-color:#7c3aed;"> 카지노 활성화</label>'
-    +       '<label style="display:flex;align-items:center;gap:8px;font-size:0.78rem;color:#94a3b8;cursor:pointer;"><input type="checkbox" id="bulk-opt-slot" checked style="accent-color:#7c3aed;"> 슬롯 활성화</label>'
+    +       '<label style="display:flex;align-items:center;gap:8px;font-size:0.78rem;color:var(--text2);cursor:pointer;"><input type="checkbox" id="bulk-opt-casino" checked style="accent-color:#7c3aed;"> 카지노 활성화</label>'
+    +       '<label style="display:flex;align-items:center;gap:8px;font-size:0.78rem;color:var(--text2);cursor:pointer;"><input type="checkbox" id="bulk-opt-slot" checked style="accent-color:#7c3aed;"> 슬롯 활성화</label>'
     +     '</div></div>'
     +   '</div>'
-    +   '<div style="background:#1e293b;border-radius:8px;padding:12px 14px;margin-bottom:20px;">'
-    +     '<div style="font-size:0.72rem;color:#64748b;line-height:1.6;">'
+    +   '<div style="background:var(--bg3);border-radius:8px;padding:12px 14px;margin-bottom:12px;">'
+    +     '<div style="font-size:0.72rem;color:var(--text3);line-height:1.6;">'
     +       '• 생성 형식: <span style="color:#a78bfa;">[프리픽스][번호]</span> (예: user01, user02...)<br>'
     +       '• 중복된 아이디는 자동으로 건너뜁니다<br>'
     +       '• 생성된 회원은 <span style="color:#10b981;">활성</span> 상태로 등록됩니다</div>'
     +   '</div>'
+    +   '<div id="bulk-preview-box" style="background:var(--bg3);border-radius:8px;padding:12px 14px;margin-bottom:20px;display:none;">'
+    +     '<div style="font-size:0.72rem;color:var(--text2);margin-bottom:8px;font-weight:600;">생성될 아이디 미리보기</div>'
+    +     '<div id="bulk-preview-list" style="display:flex;flex-wrap:wrap;gap:4px;max-height:120px;overflow-y:auto;"></div>'
+    +   '</div>'
     +   '<div style="display:flex;gap:10px;justify-content:flex-end;">'
-    +     '<button id="bulk-cancel-btn" style="background:#1e293b;border:1px solid #334155;color:#94a3b8;padding:10px 24px;border-radius:8px;font-size:0.82rem;cursor:pointer;font-weight:600;">취소</button>'
+    +     '<button id="bulk-cancel-btn" style="background:var(--bg3);border:1px solid var(--input-border);color:var(--text2);padding:10px 24px;border-radius:8px;font-size:0.82rem;cursor:pointer;font-weight:600;">취소</button>'
     +     '<button id="bulk-submit-btn" style="background:linear-gradient(135deg,#7c3aed,#6d28d9);border:none;color:#fff;padding:10px 24px;border-radius:8px;font-size:0.82rem;cursor:pointer;font-weight:600;"><span id="bulk-count-label">10</span>명 생성</button>'
     +   '</div>'
     + '</div>';
@@ -241,7 +254,7 @@ function _showCreateMemberModal(initTab, presetPartnerId) {
   var activeTab = initTab || 'single';
 
   overlay.innerHTML =
-    '<div style="background:#0f172a;border:1px solid #334155;border-radius:16px;width:620px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:kickModalIn 0.2s ease-out;">'
+    '<div style="background:var(--bg);border:1px solid var(--input-border);border-radius:16px;width:620px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px var(--shadow);animation:kickModalIn 0.2s ease-out;">'
     // 헤더
     + '<div id="cm-header" style="background:linear-gradient(135deg,#0d9488,#0f766e);padding:20px 24px;display:flex;align-items:center;gap:14px;border-radius:16px 16px 0 0;">'
     +   '<div id="cm-header-icon" style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;">'
@@ -256,9 +269,9 @@ function _showCreateMemberModal(initTab, presetPartnerId) {
     +   '</div>'
     + '</div>'
     // 탭
-    + '<div style="display:flex;border-bottom:1px solid #334155;">'
-    +   '<button id="cm-tab-single" style="flex:1;padding:12px 0;font-size:0.82rem;font-weight:600;border:none;cursor:pointer;transition:all 0.2s;background:transparent;color:#94a3b8;border-bottom:2px solid transparent;">회원 생성</button>'
-    +   '<button id="cm-tab-bulk" style="flex:1;padding:12px 0;font-size:0.82rem;font-weight:600;border:none;cursor:pointer;transition:all 0.2s;background:transparent;color:#94a3b8;border-bottom:2px solid transparent;">대량 생성</button>'
+    + '<div style="display:flex;border-bottom:1px solid var(--input-border);">'
+    +   '<button id="cm-tab-single" style="flex:1;padding:12px 0;font-size:0.82rem;font-weight:600;border:none;cursor:pointer;transition:all 0.2s;background:transparent;color:var(--text2);border-bottom:2px solid transparent;">회원 생성</button>'
+    +   '<button id="cm-tab-bulk" style="flex:1;padding:12px 0;font-size:0.82rem;font-weight:600;border:none;cursor:pointer;transition:all 0.2s;background:transparent;color:var(--text2);border-bottom:2px solid transparent;">대량 생성</button>'
     + '</div>'
     // 본문 컨테이너
     + '<div id="cm-body"></div>'
@@ -277,9 +290,9 @@ function _showCreateMemberModal(initTab, presetPartnerId) {
     var icon = document.getElementById('cm-header-icon');
 
     if (tab === 'single') {
-      tabSingle.style.color = '#e2e8f0';
+      tabSingle.style.color = 'var(--text1)';
       tabSingle.style.borderBottom = '2px solid #0d9488';
-      tabBulk.style.color = '#94a3b8';
+      tabBulk.style.color = 'var(--text2)';
       tabBulk.style.borderBottom = '2px solid transparent';
       header.style.background = 'linear-gradient(135deg,#0d9488,#0f766e)';
       title.textContent = '회원 생성';
@@ -292,9 +305,9 @@ function _showCreateMemberModal(initTab, presetPartnerId) {
       }
       _bindSingleEvents();
     } else {
-      tabBulk.style.color = '#e2e8f0';
+      tabBulk.style.color = 'var(--text1)';
       tabBulk.style.borderBottom = '2px solid #7c3aed';
-      tabSingle.style.color = '#94a3b8';
+      tabSingle.style.color = 'var(--text2)';
       tabSingle.style.borderBottom = '2px solid transparent';
       header.style.background = 'linear-gradient(135deg,#7c3aed,#6d28d9)';
       title.textContent = '대량 생성';
@@ -308,6 +321,40 @@ function _showCreateMemberModal(initTab, presetPartnerId) {
   // ── 개별 생성 이벤트 ──
   function _bindSingleEvents() {
     document.getElementById('create-cancel-btn').addEventListener('click', function() { overlay.remove(); });
+
+    // 실시간 아이디 중복 체크
+    var _dupTimer = null;
+    document.getElementById('create-username').addEventListener('input', function() {
+      var val = this.value.trim();
+      var statusEl = document.getElementById('create-username-status');
+      var msgEl = document.getElementById('create-username-msg');
+      if (_dupTimer) clearTimeout(_dupTimer);
+      if (!val) { statusEl.innerHTML = ''; msgEl.innerHTML = ''; return; }
+      if (val.length < 4) { statusEl.innerHTML = ''; msgEl.innerHTML = '<span style="color:#f59e0b;">4자 이상 입력하세요</span>'; return; }
+      statusEl.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:var(--text2);"></i>';
+      msgEl.innerHTML = '';
+      _dupTimer = setTimeout(function() {
+        // users.json에서 중복 체크
+        fetch('/api/admin/users')
+          .then(function(r) { return r.json(); })
+          .then(function(res) {
+            var users = res.data || res || [];
+            var exists = users.some(function(u) { return u.username === val; });
+            // 파트너 트리에서도 체크
+            if (!exists && typeof findNode === 'function' && typeof partnerTree !== 'undefined') {
+              exists = !!findNode(partnerTree, val);
+            }
+            if (exists) {
+              statusEl.innerHTML = '<i class="fas fa-times-circle" style="color:#ef4444;"></i>';
+              msgEl.innerHTML = '<span style="color:#ef4444;">이미 사용중인 아이디입니다</span>';
+            } else {
+              statusEl.innerHTML = '<i class="fas fa-check-circle" style="color:#10b981;"></i>';
+              msgEl.innerHTML = '<span style="color:#10b981;">사용 가능한 아이디입니다</span>';
+            }
+          })
+          .catch(function() { statusEl.innerHTML = ''; msgEl.innerHTML = ''; });
+      }, 300);
+    });
     document.getElementById('create-submit-btn').addEventListener('click', function() {
       var username = (document.getElementById('create-username').value || '').trim();
       var password = (document.getElementById('create-password').value || '').trim();
@@ -323,7 +370,7 @@ function _showCreateMemberModal(initTab, presetPartnerId) {
       if (!username) { _showToast('아이디를 입력해주세요.', 'error'); return; }
       if (username.length < 4) { _showToast('아이디는 4자 이상이어야 합니다.', 'error'); return; }
       if (!password) { _showToast('비밀번호를 입력해주세요.', 'error'); return; }
-      if (password.length < 4) { _showToast('비밀번호는 4자 이상이어야 합니다.', 'error'); return; }
+      if (password.length < 3) { _showToast('비밀번호는 3자 이상이어야 합니다.', 'error'); return; }
 
       var btn = document.getElementById('create-submit-btn');
       btn.disabled = true; btn.textContent = '생성 중...';
@@ -362,6 +409,7 @@ function _showCreateMemberModal(initTab, presetPartnerId) {
   }
 
   // ── 대량 생성 이벤트 ──
+  var _allUsernames = null; // 기존 유저 목록 캐시
   function _bindBulkEvents() {
     function _updateBulkCount() {
       var s = parseInt(document.getElementById('bulk-start').value) || 0;
@@ -369,8 +417,45 @@ function _showCreateMemberModal(initTab, presetPartnerId) {
       var label = document.getElementById('bulk-count-label');
       if (label) label.textContent = Math.max(0, e - s + 1);
     }
-    document.getElementById('bulk-start').addEventListener('input', _updateBulkCount);
-    document.getElementById('bulk-end').addEventListener('input', _updateBulkCount);
+    function _updateBulkPreview() {
+      _updateBulkCount();
+      var prefix = (document.getElementById('bulk-prefix').value || '').trim();
+      var startRaw = (document.getElementById('bulk-start').value || '').trim();
+      var endRaw = (document.getElementById('bulk-end').value || '').trim();
+      var startN = parseInt(startRaw) || 0;
+      var endN = parseInt(endRaw) || 0;
+      var pLen = Math.max(startRaw.length, endRaw.length);
+      var box = document.getElementById('bulk-preview-box');
+      var list = document.getElementById('bulk-preview-list');
+      if (!prefix || !startN || !endN || endN < startN) {
+        box.style.display = 'none';
+        return;
+      }
+      var count = endN - startN + 1;
+      if (count > 200) { box.style.display = 'none'; return; }
+      var html = '';
+      for (var i = startN; i <= endN; i++) {
+        var numStr = String(i);
+        while (numStr.length < pLen) numStr = '0' + numStr;
+        var uname = prefix + numStr;
+        var isDup = _allUsernames && _allUsernames.indexOf(uname) !== -1;
+        if (isDup) {
+          html += '<span style="display:inline-block;padding:3px 8px;border-radius:4px;font-size:0.7rem;font-weight:600;background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);">' + uname + ' (중복)</span>';
+        } else {
+          html += '<span style="display:inline-block;padding:3px 8px;border-radius:4px;font-size:0.7rem;font-weight:600;background:rgba(16,185,129,0.1);color:#10b981;border:1px solid rgba(16,185,129,0.3);">' + uname + '</span>';
+        }
+      }
+      list.innerHTML = html;
+      box.style.display = 'block';
+    }
+    // 기존 유저 목록 가져오기
+    fetch('/api/admin/users').then(function(r) { return r.json(); }).then(function(d) {
+      _allUsernames = (d.data || []).map(function(u) { return u.username || u.id; });
+      _updateBulkPreview();
+    }).catch(function() {});
+    document.getElementById('bulk-prefix').addEventListener('input', _updateBulkPreview);
+    document.getElementById('bulk-start').addEventListener('input', _updateBulkPreview);
+    document.getElementById('bulk-end').addEventListener('input', _updateBulkPreview);
 
     document.getElementById('bulk-detail-toggle').addEventListener('click', function() {
       var body = document.getElementById('bulk-detail-body');
@@ -382,8 +467,11 @@ function _showCreateMemberModal(initTab, presetPartnerId) {
     document.getElementById('bulk-cancel-btn').addEventListener('click', function() { overlay.remove(); });
     document.getElementById('bulk-submit-btn').addEventListener('click', function() {
       var prefix = (document.getElementById('bulk-prefix').value || '').trim();
-      var startN = parseInt(document.getElementById('bulk-start').value) || 0;
-      var endN = parseInt(document.getElementById('bulk-end').value) || 0;
+      var startRaw = (document.getElementById('bulk-start').value || '').trim();
+      var endRaw = (document.getElementById('bulk-end').value || '').trim();
+      var startN = parseInt(startRaw) || 0;
+      var endN = parseInt(endRaw) || 0;
+      var padLen = Math.max(startRaw.length, endRaw.length);
       var pw = (document.getElementById('bulk-password').value || '').trim();
       var partner = document.getElementById('bulk-partner').value;
       var grade = document.getElementById('bulk-grade').value;
@@ -396,8 +484,21 @@ function _showCreateMemberModal(initTab, presetPartnerId) {
 
       if (!prefix) { _showToast('프리픽스를 입력해주세요.', 'error'); return; }
       if (!pw) { _showToast('비밀번호를 입력해주세요.', 'error'); return; }
-      if (pw.length < 4) { _showToast('비밀번호는 4자 이상이어야 합니다.', 'error'); return; }
+      if (pw.length < 3) { _showToast('비밀번호는 3자 이상이어야 합니다.', 'error'); return; }
       if (endN < startN) { _showToast('종료번호가 시작번호보다 작습니다.', 'error'); return; }
+
+      // 전부 중복이면 생성 차단
+      if (_allUsernames) {
+        var dupCount = 0;
+        var totalCount = endN - startN + 1;
+        for (var ci = startN; ci <= endN; ci++) {
+          var cNum = String(ci);
+          while (cNum.length < padLen) cNum = '0' + cNum;
+          if (_allUsernames.indexOf(prefix + cNum) !== -1) dupCount++;
+        }
+        if (dupCount === totalCount) { _showToast('모든 아이디가 중복입니다. 번호를 변경해주세요.', 'error'); return; }
+        if (dupCount > 0 && !confirm(dupCount + '개의 중복 아이디는 건너뛰고 ' + (totalCount - dupCount) + '명만 생성합니다. 계속하시겠습니까?')) return;
+      }
 
       var btn = document.getElementById('bulk-submit-btn');
       btn.disabled = true; btn.textContent = '생성 중...';
@@ -410,7 +511,6 @@ function _showCreateMemberModal(initTab, presetPartnerId) {
           renderMemberPage();
           return;
         }
-        var padLen = String(endN).length;
         var numStr = String(idx);
         while (numStr.length < padLen) numStr = '0' + numStr;
         var username = prefix + numStr;
@@ -507,11 +607,23 @@ function _openMemberAsPartnerModal(tr) {
   var id = tr.dataset.id || tr.querySelector('td:nth-child(2) div').textContent.trim();
   var m = getMemberById(id) || {};
 
+  // 실제 잔액(로컬+게임사) 조회 후 모달 열기
+  fetch('/api/admin/users/balance?username=' + encodeURIComponent(id))
+    .then(function(r){ return r.json(); })
+    .then(function(res) {
+      var realMoney = res.success ? (res.balance || 0) : (m.money || 0);
+      _doOpenMemberModal(id, m, realMoney);
+    })
+    .catch(function() {
+      _doOpenMemberModal(id, m, m.money || 0);
+    });
+}
+
+function _doOpenMemberModal(id, m, realMoney) {
   // partnerTree에서 해당 유저 노드 찾기
   if(typeof findNode === 'function' && typeof partnerTree !== 'undefined') {
     var existing = findNode(partnerTree, id);
     if(existing) {
-      // 회원 데이터 병합
       if(m.nick) existing.label = m.nick;
       if(m.phone) existing.phone = m.phone;
       if(m.bank) existing.bank = m.bank;
@@ -527,16 +639,16 @@ function _openMemberAsPartnerModal(tr) {
       if(m.gameGroup !== undefined) existing.gameGroup = m.gameGroup;
       existing.username = id;
       existing.status = m.status || existing.status;
+      existing.money = realMoney;
       openPartnerModal(existing); return;
     }
   }
 
-  // 트리에 없으면 회원 데이터로 node 호환 객체 생성
   var node = {
     id: m.id || id,
     label: m.nick || m.nickname || id,
     level: m.level || '회원',
-    money: m.money || 0,
+    money: realMoney,
     point: m.point || 0,
     rollingPoint: m.rollingPoint || 0,
     status: m.status || '정상',
@@ -680,7 +792,7 @@ function renderMemberPage(subPage) {
   if (!_memberDateEnd) _memberDateEnd = _todayKST();
 
   // 로딩 표시
-  document.getElementById('content').innerHTML = '<div style="text-align:center;padding:60px;color:#888;"><i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i><p style="margin-top:12px;">회원 목록 로드중...</p></div>';
+  document.getElementById('content').innerHTML = '<div style="text-align:center;padding:60px;color:var(--text3);"><i class="fas fa-spinner fa-spin" style="font-size:2rem;"></i><p style="margin-top:12px;">회원 목록 로드중...</p></div>';
 
   fetchMemberData().then(function(data) {
     // 페이지 이동했으면 렌더링 중단
@@ -714,8 +826,8 @@ function renderMemberPage(subPage) {
       // ── 헤더 ──
       + '<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;">'
       +   '<div>'
-      +     '<h2 style="margin:0;font-size:1.3rem;font-weight:700;color:var(--text,#e2e8f0);">👤 회원 관리</h2>'
-      +     '<p style="margin:4px 0 0;font-size:0.78rem;color:#64748b;">전체 회원 목록 및 관리</p>'
+      +     '<h2 style="margin:0;font-size:1.3rem;font-weight:700;color:var(--text1);">👤 회원 관리</h2>'
+      +     '<p style="margin:4px 0 0;font-size:0.78rem;color:var(--text3);">전체 회원 목록 및 관리</p>'
       +   '</div>'
       +   '<div style="display:flex;gap:8px;">'
       +     '<button class="pt-action-btn pt-btn-purple" id="mb-add-user-btn" style="padding:6px 14px;font-size:0.78rem;">회원 생성</button>'
@@ -726,19 +838,19 @@ function renderMemberPage(subPage) {
       // ── 상단 카드 3개 ──
       + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;">'
       // 전체회원
-      +   '<div style="background:var(--card,#1e293b);border:1px solid #334155;border-radius:12px;padding:18px 22px;display:flex;align-items:center;gap:14px;">'
+      +   '<div style="background:var(--card);border:1px solid var(--input-border);border-radius:12px;padding:18px 22px;display:flex;align-items:center;gap:14px;">'
       +     '<div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>'
-      +     '<div><div style="font-size:1.5rem;font-weight:800;color:var(--text,#e2e8f0);">' + totalCount + '</div><div style="font-size:0.75rem;color:#64748b;">전체회원</div></div>'
+      +     '<div><div style="font-size:1.5rem;font-weight:800;color:var(--text1);">' + totalCount + '</div><div style="font-size:0.75rem;color:var(--text3);">전체회원</div></div>'
       +   '</div>'
       // 정상
-      +   '<div style="background:var(--card,#1e293b);border:1px solid #334155;border-radius:12px;padding:18px 22px;display:flex;align-items:center;gap:14px;">'
+      +   '<div style="background:var(--card);border:1px solid var(--input-border);border-radius:12px;padding:18px 22px;display:flex;align-items:center;gap:14px;">'
       +     '<div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#10b981,#059669);display:flex;align-items:center;justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>'
-      +     '<div><div style="font-size:1.5rem;font-weight:800;color:var(--text,#e2e8f0);">' + activeCount + '</div><div style="font-size:0.75rem;color:#64748b;">정상</div></div>'
+      +     '<div><div style="font-size:1.5rem;font-weight:800;color:var(--text1);">' + activeCount + '</div><div style="font-size:0.75rem;color:var(--text3);">정상</div></div>'
       +   '</div>'
       // 총 보유금
-      +   '<div style="background:var(--card,#1e293b);border:1px solid #334155;border-radius:12px;padding:18px 22px;display:flex;align-items:center;gap:14px;">'
+      +   '<div style="background:var(--card);border:1px solid var(--input-border);border-radius:12px;padding:18px 22px;display:flex;align-items:center;gap:14px;">'
       +     '<div style="width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#a855f7,#7c3aed);display:flex;align-items:center;justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>'
-      +     '<div><div style="font-size:1.5rem;font-weight:800;color:var(--text,#e2e8f0);">₩' + totalMoney.toLocaleString() + '</div><div style="font-size:0.75rem;color:#64748b;">총 보유금</div></div>'
+      +     '<div><div style="font-size:1.5rem;font-weight:800;color:var(--text1);">₩' + totalMoney.toLocaleString() + '</div><div style="font-size:0.75rem;color:var(--text3);">총 보유금</div></div>'
       +   '</div>'
       + '</div>'
 
@@ -763,7 +875,7 @@ function renderMemberPage(subPage) {
       // 검색 바 + 날짜 필터
       +   '<div class="date-filter-bar" style="margin-bottom:8px;">'
       +     '<div class="df-search-box" style="flex:0 0 240px;">'
-      +       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+      +       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
       +       '<input type="text" id="mb-search-input" placeholder="아이디, 닉네임, 예금주, 연락처">'
       +     '</div>'
       +     '<button class="df-preset mb-date-preset" data-preset="today" style="background:#6366f1;color:#fff;border:none;">오늘</button>'
@@ -773,7 +885,7 @@ function renderMemberPage(subPage) {
       +     '<button class="df-preset mb-date-preset" data-preset="all">전체</button>'
       +     '<div class="df-date-range">'
       +       '<input type="date" id="mb-date-start" value="' + _todayKST() + '">'
-      +       '<span style="color:#64748b;font-size:0.72rem;">~</span>'
+      +       '<span style="color:var(--text3);font-size:0.72rem;">~</span>'
       +       '<input type="date" id="mb-date-end" value="' + _todayKST() + '">'
       +       '<button class="df-query-btn" id="mb-date-apply">조회</button>'
       +     '</div>'
@@ -784,12 +896,12 @@ function renderMemberPage(subPage) {
       +     '<button id="mb-bulk-take" style="padding:5px 12px;border-radius:6px;font-size:0.73rem;font-weight:700;cursor:pointer;border:none;background:#4ade80;color:#fff;">일괄회수</button>'
       +     '<button id="mb-bulk-casino-on" style="padding:5px 12px;border-radius:6px;font-size:0.73rem;font-weight:700;cursor:pointer;border:none;background:#38bdf8;color:#fff;">전체카지노 ON</button>'
       +     '<button id="mb-bulk-casino-off" style="padding:5px 12px;border-radius:6px;font-size:0.73rem;font-weight:700;cursor:pointer;border:1px solid #38bdf8;background:transparent;color:#38bdf8;">전체카지노 OFF</button>'
-      +     '<button id="mb-bulk-pw" style="padding:5px 12px;border-radius:6px;font-size:0.73rem;font-weight:700;cursor:pointer;border:1px solid var(--border,#334155);background:var(--card,#1e293b);color:var(--text1,#e2e8f0);">하부전체 비번변경</button>'
+      +     '<button id="mb-bulk-pw" style="padding:5px 12px;border-radius:6px;font-size:0.73rem;font-weight:700;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--text1);">하부전체 비번변경</button>'
       +     '<button id="mb-bulk-block" style="padding:5px 12px;border-radius:6px;font-size:0.73rem;font-weight:700;cursor:pointer;border:1px solid #f59e0b;background:transparent;color:#f59e0b;">하부전체 차단</button>'
       +     '<button id="mb-bulk-delete" style="padding:5px 12px;border-radius:6px;font-size:0.73rem;font-weight:700;cursor:pointer;border:none;background:#ef4444;color:#fff;">하부전체 삭제</button>'
       +     '<div style="margin-left:auto;display:flex;align-items:center;gap:8px;">'
-      +       '<span style="font-size:0.78rem;color:#64748b;">총 <b style="color:#60a5fa;">' + totalCount + '</b>명</span>'
-      +       '<select id="mb-sort-select" style="background:#0f172a;border:1px solid #334155;color:var(--text,#e2e8f0);padding:5px 10px;border-radius:6px;font-size:0.78rem;cursor:pointer;">'
+      +       '<span style="font-size:0.78rem;color:var(--text3);">총 <b style="color:#60a5fa;">' + totalCount + '</b>명</span>'
+      +       '<select id="mb-sort-select" style="background:var(--bg);border:1px solid var(--input-border);color:var(--text1);padding:5px 10px;border-radius:6px;font-size:0.78rem;cursor:pointer;">'
       +         '<option value="name">이름순 정렬</option>'
       +         '<option value="recent">최신가입순</option>'
       +         '<option value="money">보유머니순</option>'
@@ -799,7 +911,7 @@ function renderMemberPage(subPage) {
       +   '</div>'
 
       // 테이블
-      +   '<style>.mb-table th,.mb-table td{border-right:1px solid #1e293b;}.mb-table th:last-child,.mb-table td:last-child{border-right:none;}.mb-table{table-layout:fixed;}</style>'
+      +   '<style>.mb-table th,.mb-table td{border-right:1px solid var(--bg3);}.mb-table th:last-child,.mb-table td:last-child{border-right:none;}.mb-table{table-layout:fixed;}</style>'
       +   '<div class="db-section" style="margin-bottom:0;overflow-x:auto;border-radius:12px;">'
       +     '<table class="db-table mb-table" style="font-size:0.8rem;">'
       +       '<colgroup>'
@@ -840,33 +952,33 @@ function renderMemberPage(subPage) {
 }
 
 function buildMemberRows(data) {
-  if(!data.length) return '<tr><td colspan="10" style="color:#888;padding:20px;">회원이 없습니다.</td></tr>';
+  if(!data.length) return '<tr><td colspan="10" style="color:var(--text3);padding:20px;">회원이 없습니다.</td></tr>';
   return data.map(function(m, idx) {
     // API 연동 배지
     var syncBadge = '';
     if (m.api && m.api.length) {
       var badges = [];
-      if (m.api.indexOf('honorlink') !== -1) badges.push('HL');
-      if (m.api.indexOf('csapi') !== -1) badges.push('CS');
+      if (m.api.indexOf('honorlink') !== -1) badges.push('아너링크');
+      if (m.api.indexOf('csapi') !== -1) badges.push('오닉스');
       syncBadge = '<span style="display:inline-block;background:#1e40af;color:#93c5fd;padding:2px 8px;border-radius:4px;font-size:0.68rem;font-weight:600;">' + badges.join('/') + '</span>';
     } else {
-      syncBadge = '<span style="color:#64748b;font-size:0.72rem;">미지정</span>';
+      syncBadge = '<span style="color:var(--text3);font-size:0.72rem;">미지정</span>';
     }
 
     // 파트너 정보
     var belongHtml = m.belongId && m.belongId !== '-'
       ? '<div style="display:flex;align-items:center;gap:6px;cursor:pointer;justify-content:center;" class="mb-belong-cell" data-belong-id="'+m.belongId+'">'
-        + '<span style="width:22px;height:22px;border-radius:50%;background:#374151;display:inline-flex;align-items:center;justify-content:center;font-size:0.6rem;color:#94a3b8;">👤</span>'
-        + '<div><div style="font-size:0.78rem;color:var(--text,#e2e8f0);font-weight:600;">'+m.belongId+'</div><div style="font-size:0.65rem;color:#64748b;">'+m.belongId+'</div></div>'
+        + '<span style="width:22px;height:22px;border-radius:50%;background:var(--input-border);display:inline-flex;align-items:center;justify-content:center;font-size:0.6rem;color:var(--text2);">👤</span>'
+        + '<div><div style="font-size:0.78rem;color:var(--text1);font-weight:600;">'+m.belongId+'</div><div style="font-size:0.65rem;color:var(--text3);">'+m.belongId+'</div></div>'
         + '</div>'
-      : '<span style="color:#64748b;font-size:0.72rem;">-</span>';
+      : '<span style="color:var(--text3);font-size:0.72rem;">-</span>';
 
     return '<tr data-id="'+m.id+'">'
       + '<td><input type="checkbox" class="mb-row-check"></td>'
       // 회원정보
       + '<td class="mb-id-cell" style="cursor:pointer;text-align:center;white-space:nowrap;">'
-      +   '<div style="font-size:0.8rem;font-weight:700;color:var(--text,#e2e8f0);">'+m.id+'</div>'
-      +   '<div style="font-size:0.65rem;color:#64748b;">'+m.nick+'</div>'
+      +   '<div style="font-size:0.8rem;font-weight:700;color:var(--text1);">'+m.id+'</div>'
+      +   '<div style="font-size:0.65rem;color:var(--text3);">'+m.nick+'</div>'
       + '</td>'
       // 동기화
       + '<td>'
@@ -881,7 +993,7 @@ function buildMemberRows(data) {
           var displayLabel = grp || '그룹없음';
           return '<td style="text-align:center;">'
             + '<button class="mb-group-btn" data-id="'+m.id+'" data-username="'+m.id+'" data-group="'+grp+'" '
-            + 'style="position:relative;padding:4px 12px;border-radius:6px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid '+(grp?'#8b5cf6':'#374151')+';background:'+(grp?'rgba(139,92,246,0.15)':'rgba(55,65,81,0.3)')+';color:'+(grp?'#c4b5fd':'#94a3b8')+';white-space:nowrap;">'
+            + 'style="position:relative;padding:4px 12px;border-radius:6px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid '+(grp?'#8b5cf6':'var(--input-border)')+';background:'+(grp?'rgba(139,92,246,0.15)':'rgba(55,65,81,0.3)')+';color:'+(grp?'#c4b5fd':'var(--text2)')+';white-space:nowrap;">'
             + displayLabel
             + '</button></td>';
         })()
@@ -895,7 +1007,7 @@ function buildMemberRows(data) {
       // 포인트 + 롤링%
       + '<td style="text-align:center;">'
       +   '<div style="color:#10b981;font-weight:600;font-size:0.82rem;">' + ((m.point||0)+(m.rollingPoint||0)).toLocaleString() + 'P</div>'
-      +   '<div style="margin-top:3px;font-size:0.65rem;color:#64748b;">카 '+(m.rollCasino||0)+'% / 슬 '+(m.rollSlot||0)+'%</div>'
+      +   '<div style="margin-top:3px;font-size:0.65rem;color:var(--text3);">카 '+(m.rollCasino||0)+'% / 슬 '+(m.rollSlot||0)+'%</div>'
       + '</td>'
       // 머니관리 → 카지노/슬롯 ON/OFF
       + '<td style="text-align:center;">'
@@ -906,18 +1018,38 @@ function buildMemberRows(data) {
       + '</td>'
       // 지급/회수
       + '<td class="mb-stat-give" style="font-size:0.72rem;line-height:1.7;">'
-      +   '<div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:#64748b;">지급</span><span style="color:#10b981;font-weight:600;">₩'+(m.totalGive||0).toLocaleString()+'</span></div>'
-      +   '<div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:#64748b;">회수</span><span style="color:#ef4444;font-weight:600;">₩'+(m.totalTake||0).toLocaleString()+'</span></div>'
-      +   '<div style="display:flex;justify-content:space-between;gap:12px;border-top:1px solid #334155;margin-top:3px;padding-top:3px;"><span style="color:#94a3b8;font-weight:600;">합계</span><span style="color:'+(((m.totalGive||0)-(m.totalTake||0))>=0?'#10b981':'#ef4444')+';font-weight:700;">₩'+((m.totalGive||0)-(m.totalTake||0)).toLocaleString()+'</span></div>'
+      +   '<div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:var(--text3);">지급</span><span style="color:#10b981;font-weight:600;">₩'+(m.totalGive||0).toLocaleString()+'</span></div>'
+      +   '<div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:var(--text3);">회수</span><span style="color:#ef4444;font-weight:600;">₩'+(m.totalTake||0).toLocaleString()+'</span></div>'
+      +   '<div style="display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--input-border);margin-top:3px;padding-top:3px;"><span style="color:var(--text2);font-weight:600;">합계</span><span style="color:'+(((m.totalGive||0)-(m.totalTake||0))>=0?'#10b981':'#ef4444')+';font-weight:700;">₩'+((m.totalGive||0)-(m.totalTake||0)).toLocaleString()+'</span></div>'
       + '</td>'
       // 베팅/당첨
       + '<td class="mb-stat-bet" style="font-size:0.72rem;line-height:1.7;">'
-      +   '<div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:#64748b;">베팅</span><span style="color:#f59e0b;font-weight:600;">₩'+(m.totalBet||0).toLocaleString()+'</span></div>'
-      +   '<div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:#64748b;">당첨</span><span style="color:#3b82f6;font-weight:600;">₩'+(m.totalWin||0).toLocaleString()+'</span></div>'
-      +   '<div style="display:flex;justify-content:space-between;gap:12px;border-top:1px solid #334155;margin-top:3px;padding-top:3px;"><span style="color:#94a3b8;font-weight:600;">합계</span><span style="color:'+(((m.totalWin||0)-(m.totalBet||0))>=0?'#10b981':'#ef4444')+';font-weight:700;">₩'+((m.totalWin||0)-(m.totalBet||0)).toLocaleString()+'</span></div>'
+      +   '<div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:var(--text3);">베팅</span><span style="color:#f59e0b;font-weight:600;">₩'+(m.totalBet||0).toLocaleString()+'</span></div>'
+      +   '<div style="display:flex;justify-content:space-between;gap:12px;"><span style="color:var(--text3);">당첨</span><span style="color:#3b82f6;font-weight:600;">₩'+(m.totalWin||0).toLocaleString()+'</span></div>'
+      +   '<div style="display:flex;justify-content:space-between;gap:12px;border-top:1px solid var(--input-border);margin-top:3px;padding-top:3px;"><span style="color:var(--text2);font-weight:600;">합계</span><span style="color:'+(((m.totalWin||0)-(m.totalBet||0))>=0?'#10b981':'#ef4444')+';font-weight:700;">₩'+((m.totalWin||0)-(m.totalBet||0)).toLocaleString()+'</span></div>'
       + '</td>'
       + '</tr>';
   }).join('');
+}
+
+// ── 머니 셀 실시간 잔액 업데이트 (로컬+게임사 합산) ──
+function updateMoneyCells() {
+  var cells = document.querySelectorAll('.mb-money-cell');
+  cells.forEach(function(cell) {
+    var username = cell.getAttribute('data-username');
+    if (!username) return;
+    fetch('/api/admin/users/balance?username=' + encodeURIComponent(username))
+      .then(function(r) { return r.json(); })
+      .then(function(res) {
+        if (res.success) {
+          var total = res.balance || 0;
+          var div = cell.querySelector('div');
+          if (div) div.textContent = '₩' + total.toLocaleString();
+          cell.setAttribute('data-local', res.localMoney || 0);
+          cell.setAttribute('data-total', total);
+        }
+      }).catch(function(){});
+  });
 }
 
 // 회원 데이터를 파트너 트리에 동기화
@@ -1263,15 +1395,11 @@ function bindMemberEvents() {
   // 회원 생성 버튼
   var addBtn = document.getElementById('mb-add-user-btn');
   if (addBtn) addBtn.addEventListener('click', function() { _showCreateMemberModal('single'); });
-  // 새로고침 버튼 (회전 이펙트 후 새로고침)
+  // 새로고침 버튼 (스피너 표시)
   var refreshBtn = document.getElementById('mb-refresh-btn');
   if (refreshBtn) refreshBtn.addEventListener('click', function() {
-    var svg = refreshBtn.querySelector('svg');
-    if (svg) {
-      svg.style.transition = 'transform 0.6s ease';
-      svg.style.transform = 'rotate(360deg)';
-    }
-    setTimeout(function() { renderMemberPage(); }, 650);
+    if (!showLoading('memberRefresh')) return;
+    setTimeout(function() { renderMemberPage(); hideLoading(); }, 300);
   });
 
   // 날짜 필터 프리셋 버튼
@@ -1305,7 +1433,7 @@ function bindMemberEvents() {
         if (b.getAttribute('data-preset') === preset) {
           b.style.background = '#6366f1'; b.style.color = '#fff'; b.style.border = 'none';
         } else {
-          b.style.background = '#1e293b'; b.style.color = '#94a3b8'; b.style.border = '1px solid #334155';
+          b.style.background = 'var(--bg3)'; b.style.color = 'var(--text2)'; b.style.border = '1px solid var(--input-border)';
         }
       });
 
@@ -1326,7 +1454,7 @@ function bindMemberEvents() {
     _memberDateEnd = document.getElementById('mb-date-end').value || '';
     // 프리셋 버튼 해제
     document.querySelectorAll('.mb-date-preset').forEach(function(b) {
-      b.style.background = '#1e293b'; b.style.color = '#94a3b8'; b.style.border = '1px solid #334155';
+      b.style.background = 'var(--bg3)'; b.style.color = 'var(--text2)'; b.style.border = '1px solid var(--input-border)';
     });
     _refreshStatsOnly();
   });
@@ -1348,11 +1476,11 @@ function bindMemberEvents() {
     var ids = _getCheckedMembers();
     if (!ids.length) { showAlertModal({ icon:'fas fa-exclamation-circle', iconColor:'#f59e0b', iconBg:'rgba(245,158,11,0.15)', title:'알림', message:'선택된 회원이 없습니다.' }); return; }
     var dim = document.createElement('div');
-    dim.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;animation:cfd-in 0.2s ease;';
-    dim.innerHTML = '<div style="background:var(--card,#1e293b);border:1px solid var(--border,#334155);border-radius:16px;padding:32px 28px 24px;max-width:380px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:cfm-pop 0.25s ease;">'
+    dim.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:var(--shadow);z-index:99999;display:flex;align-items:center;justify-content:center;animation:cfd-in 0.2s ease;';
+    dim.innerHTML = '<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px 28px 24px;max-width:380px;width:90%;text-align:center;box-shadow:0 20px 60px var(--shadow);animation:cfm-pop 0.25s ease;">'
       + '<div style="width:56px;height:56px;border-radius:50%;background:rgba(74,222,128,0.15);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><i class="fas fa-coins" style="font-size:1.4rem;color:#4ade80;"></i></div>'
-      + '<div style="font-size:1rem;font-weight:700;color:var(--text,#e2e8f0);margin-bottom:8px;">일괄 지급</div>'
-      + '<div style="font-size:0.85rem;color:var(--text2,#94a3b8);margin-bottom:16px;">선택한 <strong style="color:#60a5fa;">'+ids.length+'명</strong>에게 지급할 금액</div>'
+      + '<div style="font-size:1rem;font-weight:700;color:var(--text1);margin-bottom:8px;">일괄 지급</div>'
+      + '<div style="font-size:0.85rem;color:var(--text2);margin-bottom:16px;">선택한 <strong style="color:#60a5fa;">'+ids.length+'명</strong>에게 지급할 금액</div>'
       + '<div style="display:flex;gap:6px;margin-bottom:12px;justify-content:center;">'
       + '<button class="bulk-amt-btn" data-amt="1000000" style="padding:6px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.1);color:#4ade80;transition:all 0.15s;">100만</button>'
       + '<button class="bulk-amt-btn" data-amt="500000" style="padding:6px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.1);color:#4ade80;transition:all 0.15s;">50만</button>'
@@ -1360,9 +1488,9 @@ function bindMemberEvents() {
       + '<button class="bulk-amt-btn" data-amt="50000" style="padding:6px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.1);color:#4ade80;transition:all 0.15s;">5만</button>'
       + '<button class="bulk-amt-btn" data-amt="10000" style="padding:6px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid rgba(74,222,128,0.3);background:rgba(74,222,128,0.1);color:#4ade80;transition:all 0.15s;">1만</button>'
       + '</div>'
-      + '<input type="number" id="bulk-give-amount" placeholder="금액 입력" style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid var(--border,#334155);background:var(--bg,#0f172a);color:var(--text,#e2e8f0);font-size:0.9rem;margin-bottom:16px;text-align:center;">'
+      + '<input type="number" id="bulk-give-amount" placeholder="금액 입력" style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text1);font-size:0.9rem;margin-bottom:16px;text-align:center;">'
       + '<div style="display:flex;gap:10px;">'
-      + '<button id="bulk-give-cancel" style="flex:1;padding:10px 0;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid var(--border,#334155);background:transparent;color:var(--text2,#94a3b8);">취소</button>'
+      + '<button id="bulk-give-cancel" style="flex:1;padding:10px 0;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text2);">취소</button>'
       + '<button id="bulk-give-ok" style="flex:1;padding:10px 0;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;border:none;background:#4ade80;color:#fff;">지급</button>'
       + '</div></div>';
     document.body.appendChild(dim);
@@ -1390,17 +1518,17 @@ function bindMemberEvents() {
     var ids = _getCheckedMembers();
     if (!ids.length) { showAlertModal({ icon:'fas fa-exclamation-circle', iconColor:'#f59e0b', iconBg:'rgba(245,158,11,0.15)', title:'알림', message:'선택된 회원이 없습니다.' }); return; }
     var dim = document.createElement('div');
-    dim.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;animation:cfd-in 0.2s ease;';
-    dim.innerHTML = '<div style="background:var(--card,#1e293b);border:1px solid var(--border,#334155);border-radius:16px;padding:32px 28px 24px;max-width:380px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:cfm-pop 0.25s ease;">'
+    dim.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:var(--shadow);z-index:99999;display:flex;align-items:center;justify-content:center;animation:cfd-in 0.2s ease;';
+    dim.innerHTML = '<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px 28px 24px;max-width:380px;width:90%;text-align:center;box-shadow:0 20px 60px var(--shadow);animation:cfm-pop 0.25s ease;">'
       + '<div style="width:56px;height:56px;border-radius:50%;background:rgba(248,113,113,0.15);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><i class="fas fa-hand-holding-usd" style="font-size:1.4rem;color:#f87171;"></i></div>'
-      + '<div style="font-size:1rem;font-weight:700;color:var(--text,#e2e8f0);margin-bottom:8px;">일괄 회수</div>'
-      + '<div style="font-size:0.85rem;color:var(--text2,#94a3b8);margin-bottom:16px;">선택한 <strong style="color:#60a5fa;">'+ids.length+'명</strong>에게서 회수할 금액</div>'
+      + '<div style="font-size:1rem;font-weight:700;color:var(--text1);margin-bottom:8px;">일괄 회수</div>'
+      + '<div style="font-size:0.85rem;color:var(--text2);margin-bottom:16px;">선택한 <strong style="color:#60a5fa;">'+ids.length+'명</strong>에게서 회수할 금액</div>'
       + '<div style="display:flex;gap:6px;margin-bottom:12px;justify-content:center;">'
       + '<button id="bulk-take-all" style="padding:8px 24px;border-radius:6px;font-size:0.8rem;font-weight:700;cursor:pointer;border:1px solid rgba(248,113,113,0.3);background:rgba(248,113,113,0.1);color:#f87171;transition:all 0.15s;width:100%;">전체 회수</button>'
       + '</div>'
-      + '<input type="number" id="bulk-take-amount" placeholder="금액 입력 (전체 회수 시 비워두세요)" style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid var(--border,#334155);background:var(--bg,#0f172a);color:var(--text,#e2e8f0);font-size:0.9rem;margin-bottom:16px;text-align:center;">'
+      + '<input type="number" id="bulk-take-amount" placeholder="금액 입력 (전체 회수 시 비워두세요)" style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text1);font-size:0.9rem;margin-bottom:16px;text-align:center;">'
       + '<div style="display:flex;gap:10px;">'
-      + '<button id="bulk-take-cancel" style="flex:1;padding:10px 0;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid var(--border,#334155);background:transparent;color:var(--text2,#94a3b8);">취소</button>'
+      + '<button id="bulk-take-cancel" style="flex:1;padding:10px 0;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text2);">취소</button>'
       + '<button id="bulk-take-ok" style="flex:1;padding:10px 0;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;border:none;background:#f87171;color:#fff;">회수</button>'
       + '</div></div>';
     document.body.appendChild(dim);
@@ -1467,14 +1595,14 @@ function bindMemberEvents() {
     var ids = _getCheckedMembers();
     if (!ids.length) { showAlertModal({ icon:'fas fa-exclamation-circle', iconColor:'#f59e0b', iconBg:'rgba(245,158,11,0.15)', title:'알림', message:'선택된 회원이 없습니다.' }); return; }
     var dim = document.createElement('div');
-    dim.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;animation:cfd-in 0.2s ease;';
-    dim.innerHTML = '<div style="background:var(--card,#1e293b);border:1px solid var(--border,#334155);border-radius:16px;padding:32px 28px 24px;max-width:380px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:cfm-pop 0.25s ease;">'
+    dim.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:var(--shadow);z-index:99999;display:flex;align-items:center;justify-content:center;animation:cfd-in 0.2s ease;';
+    dim.innerHTML = '<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px 28px 24px;max-width:380px;width:90%;text-align:center;box-shadow:0 20px 60px var(--shadow);animation:cfm-pop 0.25s ease;">'
       + '<div style="width:56px;height:56px;border-radius:50%;background:rgba(96,165,250,0.15);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><i class="fas fa-key" style="font-size:1.4rem;color:#60a5fa;"></i></div>'
-      + '<div style="font-size:1rem;font-weight:700;color:var(--text,#e2e8f0);margin-bottom:8px;">하부전체 비밀번호 변경</div>'
-      + '<div style="font-size:0.85rem;color:var(--text2,#94a3b8);margin-bottom:16px;">선택한 <strong style="color:#60a5fa;">'+ids.length+'명</strong>의 비밀번호를 변경합니다</div>'
-      + '<input type="text" id="bulk-pw-val" placeholder="새 비밀번호 입력" style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid var(--border,#334155);background:var(--bg,#0f172a);color:var(--text,#e2e8f0);font-size:0.9rem;margin-bottom:16px;text-align:center;">'
+      + '<div style="font-size:1rem;font-weight:700;color:var(--text1);margin-bottom:8px;">하부전체 비밀번호 변경</div>'
+      + '<div style="font-size:0.85rem;color:var(--text2);margin-bottom:16px;">선택한 <strong style="color:#60a5fa;">'+ids.length+'명</strong>의 비밀번호를 변경합니다</div>'
+      + '<input type="text" id="bulk-pw-val" placeholder="새 비밀번호 입력" style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text1);font-size:0.9rem;margin-bottom:16px;text-align:center;">'
       + '<div style="display:flex;gap:10px;">'
-      + '<button id="bulk-pw-cancel" style="flex:1;padding:10px 0;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid var(--border,#334155);background:transparent;color:var(--text2,#94a3b8);">취소</button>'
+      + '<button id="bulk-pw-cancel" style="flex:1;padding:10px 0;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text2);">취소</button>'
       + '<button id="bulk-pw-ok" style="flex:1;padding:10px 0;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;border:none;background:#60a5fa;color:#fff;">변경</button>'
       + '</div></div>';
     document.body.appendChild(dim);
@@ -1483,7 +1611,7 @@ function bindMemberEvents() {
     dim.querySelector('#bulk-pw-ok').addEventListener('click', function() {
       var pw = dim.querySelector('#bulk-pw-val').value.trim();
       if (!pw) { showAlertModal({ icon:'fas fa-exclamation-circle', iconColor:'#f59e0b', iconBg:'rgba(245,158,11,0.15)', title:'알림', message:'비밀번호를 입력하세요.' }); return; }
-      if (pw.length < 4) { showAlertModal({ icon:'fas fa-exclamation-circle', iconColor:'#f59e0b', iconBg:'rgba(245,158,11,0.15)', title:'알림', message:'비밀번호는 4자 이상이어야 합니다.' }); return; }
+      if (pw.length < 3) { showAlertModal({ icon:'fas fa-exclamation-circle', iconColor:'#f59e0b', iconBg:'rgba(245,158,11,0.15)', title:'알림', message:'비밀번호는 3자 이상이어야 합니다.' }); return; }
       this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 처리 중...';
       this.style.opacity = '0.7'; this.style.pointerEvents = 'none';
       Promise.all(ids.map(function(username) {
@@ -1585,6 +1713,30 @@ function _filterAndRenderMembers() {
   var sortVal = (document.getElementById('mb-sort-select') || {}).value || 'name';
 
   var filtered = memberData.slice();
+
+  // 파트너 필터 (파트너 페이지에서 회원수 클릭 시)
+  if (window._memberFilterPartner) {
+    var pid = window._memberFilterPartner;
+    // 해당 파트너 + 하위 파트너 ID 수집
+    var subIds = {};
+    subIds[pid] = true;
+    if (typeof findNode === 'function' && typeof partnerTree !== 'undefined') {
+      var pNode = findNode(partnerTree, pid);
+      if (pNode) {
+        (function collectIds(n) {
+          subIds[n.id] = true;
+          (n.children || []).forEach(collectIds);
+        })(pNode);
+      }
+    }
+    filtered = filtered.filter(function(m) {
+      return subIds[m.belongId];
+    });
+    // 검색창에 표시
+    var searchEl = document.getElementById('mb-search-input');
+    if (searchEl && !searchEl.value) searchEl.placeholder = '파트너 [' + pid + '] 하부 회원';
+    window._memberFilterPartner = null;
+  }
 
   // 검색 필터
   if (q) {
@@ -1689,7 +1841,7 @@ function bindMemberRowEvents() {
 
       var dd = document.createElement('div');
       dd.id = 'mb-belong-dropdown';
-      dd.style.cssText = 'position:absolute;z-index:999;background:var(--card);border:1px solid var(--border2);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4);min-width:160px;overflow:hidden;';
+      dd.style.cssText = 'position:absolute;z-index:999;background:var(--card);border:1px solid var(--border2);border-radius:8px;box-shadow:0 8px 24px var(--shadow);min-width:160px;overflow:hidden;';
       dd.innerHTML = listHtml;
 
       // 위치 설정
@@ -1722,12 +1874,12 @@ function bindMemberRowEvents() {
   });
   // API 연동 해제
   document.querySelectorAll('.mb-api-disconnect-btn').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
+    btn.addEventListener('click', async function(e) {
       e.stopPropagation();
       var odid = btn.getAttribute('data-odid');
       var provider = btn.getAttribute('data-provider');
       var providerName = provider === 'honorlink' ? 'HonorLink' : 'CSAPI';
-      if (!confirm(providerName + ' 연동을 해제하시겠습니까?')) return;
+      if (!(await customConfirm(providerName + ' 연동을 해제하시겠습니까?'))) return;
       fetch('/api/admin/users/' + odid + '/api-disconnect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1756,21 +1908,8 @@ function bindMemberRowEvents() {
     });
   });
 
-  // 연동된 유저는 API 잔액 표시, 미연동은 로컬 머니 유지
-  document.querySelectorAll('.mb-money-cell').forEach(function(cell) {
-    var username = cell.getAttribute('data-username');
-    var m = getMemberById(username);
-    if (m && m.api && m.api.includes('honorlink')) {
-      fetch('/api/hl/balance?username=' + encodeURIComponent(username))
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-          var hlBal = Number(d.balance) || 0;
-          var moneyDiv = cell.querySelector('div');
-          if (moneyDiv) moneyDiv.textContent = '₩' + hlBal.toLocaleString();
-        })
-        .catch(function() {});
-    }
-  });
+  // 모든 유저 실시간 잔액 업데이트 (로컬 + 게임사 합산)
+  updateMoneyCells();
 
   // 그룹 변경 버튼
   document.querySelectorAll('.mb-group-btn').forEach(function(btn) {
@@ -2018,7 +2157,7 @@ function __removed_openMemberDetailModal(tr) {
                   <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:0.82rem;">
                     <span style="color:var(--text2);">은행</span>
                     <span class="md-view-val" style="color:var(--text1);">${m.bank||'-'}</span>
-                    <input class="md-edit-input" data-key="bank" type="text" value="${m.bank||''}" style="display:none;background:var(--bg3);border:1px solid var(--primary);color:var(--text1);padding:4px 8px;border-radius:4px;font-size:0.82rem;width:55%;text-align:right;">
+                    <select class="md-edit-input" data-key="bank" style="display:none;background:var(--bg3);border:1px solid var(--primary);color:var(--text1);padding:4px 8px;border-radius:4px;font-size:0.82rem;width:55%;text-align:right;cursor:pointer;">${_bankOptions(m.bank||'')}</select>
                   </div>
                   <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:0.82rem;">
                     <span style="color:var(--text2);">계좌번호</span>
@@ -2280,8 +2419,8 @@ function __removed_openMemberDetailModal(tr) {
   });
 
   // 비밀번호 초기화
-  overlay.querySelector('.mbd-pw-reset').addEventListener('click', function() {
-    if(!confirm(nick + ' 비밀번호를 초기화하시겠습니까?\n(기본 비밀번호: 1234로 설정)')) return;
+  overlay.querySelector('.mbd-pw-reset').addEventListener('click', async function() {
+    if(!(await customConfirm(nick + ' 비밀번호를 초기화하시겠습니까?\n(기본 비밀번호: 1234로 설정)'))) return;
     updateMember(id, { password: '1234' });
     alert('비밀번호가 1234로 초기화되었습니다.');
   });
@@ -2295,10 +2434,10 @@ function __removed_openMemberDetailModal(tr) {
   });
 
   // 정지
-  overlay.querySelector('.mbd-block-btn').addEventListener('click', function() {
+  overlay.querySelector('.mbd-block-btn').addEventListener('click', async function() {
     var uid = m.id || id;
     var isBlocked = m.status === 'blocked';
-    if(!confirm(nick + ' 을(를) ' + (isBlocked?'정지 해제':'정지') + '하시겠습니까?')) return;
+    if(!(await customConfirm(nick + ' 을(를) ' + (isBlocked?'정지 해제':'정지') + '하시겠습니까?'))) return;
     if (isBlocked) {
       fetch('/api/admin/users/' + uid + '/unblock', { method: 'POST' }).then(function(){ location.reload(); });
     } else {
@@ -2307,8 +2446,8 @@ function __removed_openMemberDetailModal(tr) {
   });
 
   // 삭제
-  overlay.querySelector('.mbd-delete-btn').addEventListener('click', function() {
-    if(!confirm(nick + ' 을(를) 정말 삭제하시겠습니까?')) return;
+  overlay.querySelector('.mbd-delete-btn').addEventListener('click', async function() {
+    if(!(await customConfirm(nick + ' 을(를) 정말 삭제하시겠습니까?'))) return;
     // 서버에서 삭제
     var uid = m.id || id;
     fetch('/api/admin/users/' + uid + '/delete', { method: 'POST' }).then(function(){ location.reload(); });
@@ -2331,7 +2470,7 @@ function renderOnlinePage() {
   if (_onlineTimer) { clearInterval(_onlineTimer); _onlineTimer = null; }
   _onlineStartTime = Date.now();
   var el = document.getElementById('content');
-  el.innerHTML = '<div class="pt-wrap"><div class="db-section" style="padding:20px;color:#888;text-align:center;">불러오는 중...</div></div>';
+  el.innerHTML = '<div class="pt-wrap"><div class="db-section" style="padding:20px;color:var(--text3);text-align:center;">불러오는 중...</div></div>';
 
   _loadOnlineData(el, true);
   _onlineTimer = setInterval(function() {
@@ -2358,7 +2497,7 @@ function _getOnlineSessionDuration(loginAt) {
 }
 
 function _getDeviceIcon(ua) {
-  if (!ua) return '<span style="color:#888;">-</span>';
+  if (!ua) return '<span style="color:var(--text3);">-</span>';
   var lower = (ua || '').toLowerCase();
   if (lower.indexOf('mobile') >= 0 || lower.indexOf('android') >= 0 || lower.indexOf('iphone') >= 0) {
     return '<span style="color:#60a5fa;" title="모바일">&#128241;</span>';
@@ -2462,9 +2601,9 @@ function _loadOnlineData(el, isFirst) {
         if (ua.indexOf('mobile') >= 0 || ua.indexOf('android') >= 0 || ua.indexOf('iphone') >= 0) mobileCount++;
         else pcCount++;
       });
-      var totalDevices = mobileCount + pcCount || 1;
-      var mobilePct = Math.round(mobileCount / totalDevices * 100);
-      var pcPct = 100 - mobilePct;
+      var totalDevices = mobileCount + pcCount;
+      var mobilePct = totalDevices > 0 ? Math.round(mobileCount / totalDevices * 100) : 0;
+      var pcPct = totalDevices > 0 ? 100 - mobilePct : 0;
 
       // 행 생성
       var rows = filtered.length
@@ -2484,10 +2623,10 @@ function _loadOnlineData(el, isFirst) {
               +   '<div style="display:flex;align-items:center;gap:8px;">'
               +     '<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.75rem;">' + (u.username||'?').charAt(0).toUpperCase() + '</div>'
               +     '<div>'
-              +       '<div style="font-weight:600;color:#e2e8f0;font-size:0.85rem;">' + u.username + '</div>'
+              +       '<div style="font-weight:600;color:var(--text1);font-size:0.85rem;">' + u.username + '</div>'
               +       '<div style="display:flex;align-items:center;gap:4px;margin-top:2px;">'
               +         '<span style="font-size:0.68rem;padding:1px 6px;border-radius:3px;background:' + badge.bg + ';color:' + badge.color + ';border:1px solid ' + badge.border + ';">' + typeLabel + '</span>'
-              +         '<span style="color:#64748b;font-size:0.7rem;">' + (u.nickname || '') + '</span>'
+              +         '<span style="color:var(--text3);font-size:0.7rem;">' + (u.nickname || '') + '</span>'
               +       '</div>'
               +     '</div>'
               +   '</div>'
@@ -2496,7 +2635,7 @@ function _loadOnlineData(el, isFirst) {
               + '<td style="text-align:center;">'
               +   '<div style="display:inline-flex;align-items:center;gap:6px;">'
               +     '<span class="ol-money" style="color:#f59e0b;font-weight:700;font-size:0.85rem;">' + totalMoney.toLocaleString() + '원</span>'
-              +     '<button class="ol-refresh-btn" title="새로고침" style="background:none;border:1px solid #334155;color:#64748b;border-radius:4px;cursor:pointer;font-size:0.65rem;padding:2px 5px;">&#x21bb;</button>'
+              +     '<button class="ol-refresh-btn" title="새로고침" style="background:none;border:1px solid var(--input-border);color:var(--text3);border-radius:4px;cursor:pointer;font-size:0.65rem;padding:2px 5px;">&#x21bb;</button>'
               +   '</div>'
               + '</td>'
               // 머니관리
@@ -2507,60 +2646,60 @@ function _loadOnlineData(el, isFirst) {
               + '<td style="text-align:center;">'
               +   (u.gameMoney > 0
                     ? '<span style="display:inline-block;background:#1e40af;color:#93c5fd;padding:2px 8px;border-radius:4px;font-size:0.68rem;font-weight:600;">HL</span>'
-                    : '<span style="color:#64748b;font-size:0.72rem;">미연동</span>')
+                    : '<span style="color:var(--text3);font-size:0.72rem;">미연동</span>')
               + '</td>'
               // 현재게임
               + '<td style="text-align:center;">'
               +   (u.inGame
                     ? '<div style="display:inline-flex;flex-direction:column;align-items:center;gap:2px;">'
                       + '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;background:#10b98122;color:#10b981;font-size:0.75rem;border:1px solid #10b98144;"><span style="width:6px;height:6px;border-radius:50%;background:#10b981;display:inline-block;"></span>' + (u.currentGame || '게임중') + '</span>'
-                      + (u.gameTitle ? '<span style="color:#94a3b8;font-size:0.68rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + u.gameTitle + '">' + u.gameTitle + '</span>' : '')
+                      + (u.gameTitle ? '<span style="color:var(--text2);font-size:0.68rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + u.gameTitle + '">' + u.gameTitle + '</span>' : '')
                       + '</div>'
-                    : '<span style="color:#475569;font-size:0.78rem;">대기중</span>')
+                    : '<span style="color:var(--text3);font-size:0.78rem;">대기중</span>')
               + '</td>'
               // 오늘베팅
-              + '<td style="text-align:center;font-size:0.8rem;color:#60a5fa;font-weight:600;">' + todayBet.toLocaleString() + '<span style="color:#64748b;font-weight:400;">원</span></td>'
+              + '<td style="text-align:center;font-size:0.8rem;color:#60a5fa;font-weight:600;">' + todayBet.toLocaleString() + '<span style="color:var(--text3);font-weight:400;">원</span></td>'
               // 오늘당첨
-              + '<td style="text-align:center;font-size:0.8rem;color:#a78bfa;font-weight:600;">' + todayWin.toLocaleString() + '<span style="color:#64748b;font-weight:400;">원</span></td>'
+              + '<td style="text-align:center;font-size:0.8rem;color:#a78bfa;font-weight:600;">' + todayWin.toLocaleString() + '<span style="color:var(--text3);font-weight:400;">원</span></td>'
               // 순익
-              + '<td style="text-align:center;font-size:0.8rem;color:' + profitColor + ';font-weight:600;">' + (profit >= 0 ? '+' : '') + profit.toLocaleString() + '<span style="color:#64748b;font-weight:400;">원</span></td>'
+              + '<td style="text-align:center;font-size:0.8rem;color:' + profitColor + ';font-weight:600;">' + (profit >= 0 ? '+' : '') + profit.toLocaleString() + '<span style="color:var(--text3);font-weight:400;">원</span></td>'
               // 접속시간
-              + '<td style="text-align:center;font-size:0.78rem;color:#94a3b8;">' + sessionStr + '</td>'
+              + '<td style="text-align:center;font-size:0.78rem;color:var(--text2);">' + sessionStr + '</td>'
               // 관리
               + '<td style="text-align:center;">'
               +   '<div style="display:inline-flex;gap:4px;">'
-              +     '<button class="ol-detail-btn" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;padding:4px 10px;font-size:0.72rem;cursor:pointer;white-space:nowrap;">상세정보</button>'
-              +     '<button class="ol-kick-btn" style="background:#1e293b;color:#ef4444;border:1px solid #334155;border-radius:6px;padding:4px 10px;font-size:0.72rem;cursor:pointer;white-space:nowrap;">강제종료</button>'
+              +     '<button class="ol-detail-btn" style="background:var(--bg3);color:var(--text2);border:1px solid var(--input-border);border-radius:6px;padding:4px 10px;font-size:0.72rem;cursor:pointer;white-space:nowrap;">상세정보</button>'
+              +     '<button class="ol-kick-btn" style="background:var(--bg3);color:#ef4444;border:1px solid var(--input-border);border-radius:6px;padding:4px 10px;font-size:0.72rem;cursor:pointer;white-space:nowrap;">강제종료</button>'
               +   '</div>'
               + '</td>'
               + '</tr>';
           }).join('')
-        : '<tr><td colspan="10" style="color:#475569;padding:40px;text-align:center;font-size:0.9rem;">접속 중인 회원이 없습니다.</td></tr>';
+        : '<tr><td colspan="10" style="color:var(--text3);padding:40px;text-align:center;font-size:0.9rem;">접속 중인 회원이 없습니다.</td></tr>';
 
       // 게임 분포 HTML (카지노/슬롯)
       var gameDistHtml = '<div style="display:flex;justify-content:space-around;text-align:center;height:100%;align-items:flex-end;padding-bottom:2px;">'
         + '<div>'
         +   '<div style="font-size:1.1rem;font-weight:800;color:#f59e0b;">' + casinoCount + '</div>'
-        +   '<div style="font-size:0.68rem;color:#64748b;">카지노</div>'
+        +   '<div style="font-size:0.68rem;color:var(--text3);">카지노</div>'
         + '</div>'
-        + '<div style="width:1px;background:#1e293b;align-self:stretch;"></div>'
+        + '<div style="width:1px;background:var(--bg3);align-self:stretch;"></div>'
         + '<div>'
         +   '<div style="font-size:1.1rem;font-weight:800;color:#8b5cf6;">' + slotCount + '</div>'
-        +   '<div style="font-size:0.68rem;color:#64748b;">슬롯</div>'
+        +   '<div style="font-size:0.68rem;color:var(--text3);">슬롯</div>'
         + '</div>'
         + '</div>';
 
       el.innerHTML =
         '<div style="padding:0;">'
         // 헤더
-        + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #1e293b;">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--bg3);">'
         +   '<div style="display:flex;align-items:center;gap:12px;">'
         +     '<span style="font-size:1.2rem;">&#128200;</span>'
-        +     '<span style="font-size:1.1rem;font-weight:800;color:#e2e8f0;">실시간 접속</span>'
+        +     '<span style="font-size:1.1rem;font-weight:800;color:var(--text1);">실시간 접속</span>'
         +     '<span class="ol-pulse-dot" style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;"></span>'
         +   '</div>'
         +   '<div style="display:flex;align-items:center;gap:12px;">'
-        +     '<div style="color:#64748b;font-size:0.75rem;line-height:1.4;">'
+        +     '<div style="color:var(--text3);font-size:0.75rem;line-height:1.4;">'
         +       '<div>실시간 모니터링 ·</div>'
         +       '<div>최근 업데이트: ' + timeStr + '</div>'
         +     '</div>'
@@ -2572,30 +2711,30 @@ function _loadOnlineData(el, isFirst) {
 
         // 통계 카드 4개: 접속중, 게임중, 게임분포, 디바이스분포
         + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px 20px;">'
-        +   '<div style="background:linear-gradient(135deg,#0f172a,#1e293b);border:1px solid #1e293b;border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;">'
-        +     '<div style="color:#64748b;font-size:0.75rem;">접속중</div>'
-        +     '<div style="font-size:1.6rem;font-weight:800;color:#3b82f6;text-align:right;margin-top:auto;">' + totalOnline + '<span style="font-size:0.8rem;color:#64748b;margin-left:4px;">명</span></div>'
+        +   '<div style="background:linear-gradient(135deg,var(--bg),var(--bg3));border:1px solid var(--bg3);border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;">'
+        +     '<div style="color:var(--text3);font-size:0.75rem;">접속중</div>'
+        +     '<div style="font-size:1.6rem;font-weight:800;color:#3b82f6;text-align:right;margin-top:auto;">' + totalOnline + '<span style="font-size:0.8rem;color:var(--text3);margin-left:4px;">명</span></div>'
         +   '</div>'
-        +   '<div style="background:linear-gradient(135deg,#0f172a,#1e293b);border:1px solid #1e293b;border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;">'
-        +     '<div style="color:#64748b;font-size:0.75rem;">게임중</div>'
-        +     '<div style="font-size:1.6rem;font-weight:800;color:#10b981;text-align:right;margin-top:auto;">' + inGame + '<span style="font-size:0.8rem;color:#64748b;margin-left:4px;">명</span></div>'
+        +   '<div style="background:linear-gradient(135deg,var(--bg),var(--bg3));border:1px solid var(--bg3);border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;">'
+        +     '<div style="color:var(--text3);font-size:0.75rem;">게임중</div>'
+        +     '<div style="font-size:1.6rem;font-weight:800;color:#10b981;text-align:right;margin-top:auto;">' + inGame + '<span style="font-size:0.8rem;color:var(--text3);margin-left:4px;">명</span></div>'
         +   '</div>'
-        +   '<div style="background:linear-gradient(135deg,#0f172a,#1e293b);border:1px solid #1e293b;border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;">'
-        +     '<div style="color:#64748b;font-size:0.75rem;">게임 분포</div>'
+        +   '<div style="background:linear-gradient(135deg,var(--bg),var(--bg3));border:1px solid var(--bg3);border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;">'
+        +     '<div style="color:var(--text3);font-size:0.75rem;">게임 분포</div>'
         +     '<div style="margin-top:auto;">' + gameDistHtml + '</div>'
         +   '</div>'
-        +   '<div style="background:linear-gradient(135deg,#0f172a,#1e293b);border:1px solid #1e293b;border-radius:12px;padding:16px;">'
-        +     '<div style="color:#64748b;font-size:0.75rem;margin-bottom:8px;">디바이스 분포</div>'
+        +   '<div style="background:linear-gradient(135deg,var(--bg),var(--bg3));border:1px solid var(--bg3);border-radius:12px;padding:16px;">'
+        +     '<div style="color:var(--text3);font-size:0.75rem;margin-bottom:8px;">디바이스 분포</div>'
         +     '<div style="display:flex;justify-content:space-around;text-align:center;margin-top:4px;">'
         +       '<div>'
         +         '<div style="font-size:1.3rem;">&#128187;</div>'
         +         '<div style="font-size:1.1rem;font-weight:800;color:#a78bfa;">' + pcPct + '%</div>'
-        +         '<div style="font-size:0.68rem;color:#64748b;">데스크톱</div>'
+        +         '<div style="font-size:0.68rem;color:var(--text3);">데스크톱</div>'
         +       '</div>'
         +       '<div>'
         +         '<div style="font-size:1.3rem;">&#128241;</div>'
         +         '<div style="font-size:1.1rem;font-weight:800;color:#3b82f6;">' + mobilePct + '%</div>'
-        +         '<div style="font-size:0.68rem;color:#64748b;">모바일</div>'
+        +         '<div style="font-size:0.68rem;color:var(--text3);">모바일</div>'
         +       '</div>'
         +     '</div>'
         +   '</div>'
@@ -2603,14 +2742,14 @@ function _loadOnlineData(el, isFirst) {
 
         // 메인 콘텐츠: 테이블 (전체 너비)
         + '<div style="padding:0 20px 20px;">'
-        +   '<div style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;overflow:hidden;">'
-        +     '<div style="padding:12px 16px;border-bottom:1px solid #1e293b;display:flex;align-items:center;justify-content:space-between;">'
-        +       '<span style="color:#e2e8f0;font-weight:700;font-size:0.9rem;">활성 세션</span>'
-        +       '<span style="color:#475569;font-size:0.75rem;">' + filtered.length + '개 세션</span>'
+        +   '<div style="background:var(--bg);border:1px solid var(--bg3);border-radius:12px;overflow:hidden;">'
+        +     '<div style="padding:12px 16px;border-bottom:1px solid var(--bg3);display:flex;align-items:center;justify-content:space-between;">'
+        +       '<span style="color:var(--text1);font-weight:700;font-size:0.9rem;">활성 세션</span>'
+        +       '<span style="color:var(--text3);font-size:0.75rem;">' + filtered.length + '개 세션</span>'
         +     '</div>'
         +     '<div style="overflow-x:auto;">'
         +       '<table style="width:100%;border-collapse:collapse;font-size:0.8rem;" class="ol-session-table">'
-        +         '<thead><tr style="background:#1e293b44;">'
+        +         '<thead><tr style="background:var(--border);">'
         +           '<th class="ol-th">회원정보</th>'
         +           '<th class="ol-th">보유머니</th>'
         +           '<th class="ol-th">머니관리</th>'
@@ -2636,9 +2775,9 @@ function _loadOnlineData(el, isFirst) {
         styleEl.id = 'ol-dash-style';
         styleEl.textContent = ''
           + 'table tbody tr { transition: background 0.15s; }'
-          + 'table tbody tr:hover { background: #1e293b44 !important; }'
-          + 'table tbody tr td { padding: 10px 12px; border-bottom: 1px solid #1e293b22; }'
-          + '.ol-th { padding:10px 12px;text-align:center;color:#64748b;font-weight:600;font-size:0.72rem; }'
+          + 'table tbody tr:hover { background: var(--border) !important; }'
+          + 'table tbody tr td { padding: 10px 12px; border-bottom: 1px solid var(--border); }'
+          + '.ol-th { padding:10px 12px;text-align:center;color:var(--text3);font-weight:600;font-size:0.72rem; }'
           + '.ol-th:first-child { text-align:left;width:100px; }'
           + '@keyframes ol-pulse { 0%,100% { opacity:1; box-shadow:0 0 8px #10b98166; } 50% { opacity:0.4; box-shadow:0 0 2px #10b98133; } }'
           + '.ol-pulse-dot { animation: ol-pulse 2s ease-in-out infinite; }';
@@ -2660,14 +2799,16 @@ function _bindOnlineEvents() {
   var rtBtn = document.querySelector('.ol-realtime-btn');
   if (rtBtn) {
     rtBtn.addEventListener('click', function() {
+      if (!showLoading('onlineRefresh')) return;
       var el = document.getElementById('content');
       _loadOnlineData(el, false);
+      setTimeout(hideLoading, 500);
     });
   }
 
 
 
-  // 새로고침 버튼
+  // 새로고침 버튼 (로컬+게임사 합산 잔액)
   document.querySelectorAll('.ol-refresh-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var tr = this.closest('tr');
@@ -2675,10 +2816,10 @@ function _bindOnlineEvents() {
       var moneySpan = tr.querySelector('.ol-money');
       btn.disabled = true;
       btn.textContent = '...';
-      fetch('/api/hl/balance?username=' + encodeURIComponent(username))
+      fetch('/api/admin/users/balance?username=' + encodeURIComponent(username))
         .then(function(r){ return r.json(); })
         .then(function(data) {
-          if (data && data.balance !== undefined) {
+          if (data.success && data.balance !== undefined) {
             moneySpan.textContent = Number(data.balance).toLocaleString() + '원';
           }
           btn.innerHTML = '&#x21bb;';
@@ -2709,10 +2850,10 @@ function _bindOnlineEvents() {
 
   // 강제종료 버튼
   document.querySelectorAll('.ol-kick-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', async function() {
       var tr = this.closest('tr');
       var username = tr.dataset.username;
-      if (!confirm(username + ' 유저를 강제종료 하시겠습니까?')) return;
+      if (!(await customConfirm(username + ' 유저를 강제종료 하시겠습니까?'))) return;
       btn.disabled = true;
       btn.style.opacity = '0.5';
       fetch('/api/admin/user-kick', {
@@ -2723,17 +2864,17 @@ function _bindOnlineEvents() {
       .then(function(r){ return r.json(); })
       .then(function(res) {
         if (res.success) {
-          alert(username + ' 강제종료 완료');
+          customAlert(username + ' 강제종료 완료', { icon: 'fa-check-circle' });
           tr.style.opacity = '0.3';
           setTimeout(function() { tr.remove(); }, 500);
         } else {
-          alert('강제종료 실패: ' + (res.error || ''));
+          customAlert('강제종료 실패: ' + (res.error || ''), { type: 'error', icon: 'fa-exclamation-circle' });
           btn.style.opacity = '1';
           btn.disabled = false;
         }
       })
       .catch(function() {
-        alert('강제종료 실패');
+        customAlert('강제종료 실패', { type: 'error', icon: 'fa-exclamation-circle' });
         btn.style.opacity = '1';
         btn.disabled = false;
       });
@@ -2762,7 +2903,7 @@ function _bindOnlineEvents() {
 // ══════════════════════════════════════
 function renderPendingPage() {
   var el = document.getElementById('content');
-  el.innerHTML = '<div class="pt-wrap"><div class="db-section" style="padding:20px;color:#888;text-align:center;">불러오는 중...</div></div>';
+  el.innerHTML = '<div class="pt-wrap"><div class="db-section" style="padding:20px;color:var(--text3);text-align:center;">불러오는 중...</div></div>';
 
   // 전체 유저 + 대기 유저 동시 fetch
   Promise.all([
@@ -2822,7 +2963,7 @@ function renderPendingPage() {
       : '';
 
     var emptyHtml = !hasPending
-      ? '<div style="padding:50px 20px;text-align:center;color:#666;">'
+      ? '<div style="padding:50px 20px;text-align:center;color:var(--text3);">'
         + '<i class="fas fa-user-friends" style="font-size:2.5rem;margin-bottom:12px;display:block;opacity:0.3;"></i>'
         + '가입대기 회원이 없습니다.'
         + '</div>'
@@ -2853,7 +2994,7 @@ function renderPendingPage() {
       // ── 검색 + 날짜 필터 ──
       + '<div class="date-filter-bar" style="margin-bottom:14px;">'
       +   '<div class="df-search-box" style="flex:0 0 240px;">'
-      +     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+      +     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
       +     '<input type="text" id="pend-search" placeholder="아이디, 닉네임 검색...">'
       +   '</div>'
       +   '<button class="df-preset pend-date-btn" data-range="all" style="background:#6366f1;color:#fff;border:none;">전체</button>'
@@ -2863,7 +3004,7 @@ function renderPendingPage() {
       +   '<button class="df-preset pend-date-btn" data-range="month">이번달</button>'
       +   '<div class="df-date-range">'
       +     '<input type="date" id="pend-date-start">'
-      +     '<span style="color:#64748b;font-size:0.72rem;">~</span>'
+      +     '<span style="color:var(--text3);font-size:0.72rem;">~</span>'
       +     '<input type="date" id="pend-date-end">'
       +   '</div>'
       + '</div>'
@@ -2913,13 +3054,13 @@ function renderPendingPage() {
     document.getElementById('pend-search').addEventListener('input', _pendFilter);
     document.getElementById('pend-date-start').addEventListener('change', function() {
       document.querySelectorAll('.pend-date-btn').forEach(function(b) {
-        b.style.background='#1e293b'; b.style.color='#94a3b8'; b.style.border='1px solid #334155';
+        b.style.background='var(--bg3)'; b.style.color='var(--text2)'; b.style.border='1px solid var(--input-border)';
       });
       _pendFilter();
     });
     document.getElementById('pend-date-end').addEventListener('change', function() {
       document.querySelectorAll('.pend-date-btn').forEach(function(b) {
-        b.style.background='#1e293b'; b.style.color='#94a3b8'; b.style.border='1px solid #334155';
+        b.style.background='var(--bg3)'; b.style.color='var(--text2)'; b.style.border='1px solid var(--input-border)';
       });
       _pendFilter();
     });
@@ -2938,8 +3079,8 @@ function renderPendingPage() {
     });
     // 개별 거절
     document.querySelectorAll('.pend-reject').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        if(!confirm('거절하면 해당 가입 신청이 삭제됩니다. 계속하시겠습니까?')) return;
+      btn.addEventListener('click', async function() {
+        if(!(await customConfirm('거절하면 해당 가입 신청이 삭제됩니다. 계속하시겠습니까?'))) return;
         var id = this.dataset.id;
         fetch('/api/admin/users/' + id + '/reject', { method:'POST' })
           .then(function(r){ return r.json(); })
@@ -3015,10 +3156,10 @@ function _showPendingDetailModal(u) {
 
   var overlay = document.createElement('div');
   overlay.id = 'pend-detail-modal';
-  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:99998;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:var(--shadow);z-index:99998;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
 
   overlay.innerHTML =
-    '<div style="background:#0f172a;border:1px solid #334155;border-radius:16px;width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:kickModalIn 0.2s ease-out;">'
+    '<div style="background:var(--bg);border:1px solid var(--input-border);border-radius:16px;width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px var(--shadow);animation:kickModalIn 0.2s ease-out;">'
     // 헤더
     + '<div style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:20px 24px;display:flex;align-items:center;gap:14px;border-radius:16px 16px 0 0;">'
     +   '<div style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;color:#fff;">'
@@ -3036,8 +3177,8 @@ function _showPendingDetailModal(u) {
     + '<div style="padding:24px;">'
     // 계정 정보
     +   '<div style="margin-bottom:20px;">'
-    +     '<div style="font-size:0.82rem;font-weight:700;color:#e2e8f0;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span style="color:#f59e0b;">●</span> 계정 정보</div>'
-    +     '<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;overflow:hidden;">'
+    +     '<div style="font-size:0.82rem;font-weight:700;color:var(--text1);margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span style="color:#f59e0b;">●</span> 계정 정보</div>'
+    +     '<div style="background:var(--bg3);border:1px solid var(--input-border);border-radius:10px;overflow:hidden;">'
     +       _pendRow('아이디', u.username)
     +       _pendRow('닉네임', u.nickname || '-')
     +       _pendRow('비밀번호', u.password || '***')
@@ -3047,8 +3188,8 @@ function _showPendingDetailModal(u) {
     +   '</div>'
     // 금융 정보
     +   '<div style="margin-bottom:20px;">'
-    +     '<div style="font-size:0.82rem;font-weight:700;color:#e2e8f0;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span style="color:#3b82f6;">●</span> 금융 정보</div>'
-    +     '<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;overflow:hidden;">'
+    +     '<div style="font-size:0.82rem;font-weight:700;color:var(--text1);margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span style="color:#3b82f6;">●</span> 금융 정보</div>'
+    +     '<div style="background:var(--bg3);border:1px solid var(--input-border);border-radius:10px;overflow:hidden;">'
     +       _pendRow('은행명', u.bank || '-')
     +       _pendRow('계좌번호', u.account || '-')
     +       _pendRow('예금주', u.holder || '-', true)
@@ -3056,15 +3197,15 @@ function _showPendingDetailModal(u) {
     +   '</div>'
     // 추가 정보
     +   '<div style="margin-bottom:24px;">'
-    +     '<div style="font-size:0.82rem;font-weight:700;color:#e2e8f0;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span style="color:#a78bfa;">●</span> 추가 정보</div>'
-    +     '<div style="background:#1e293b;border:1px solid #334155;border-radius:10px;overflow:hidden;">'
+    +     '<div style="font-size:0.82rem;font-weight:700;color:var(--text1);margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span style="color:#a78bfa;">●</span> 추가 정보</div>'
+    +     '<div style="background:var(--bg3);border:1px solid var(--input-border);border-radius:10px;overflow:hidden;">'
     +       _pendRow('추천코드', u.referralCode || '-')
     +       _pendRow('추천인', u.referredBy || '-', true)
     +     '</div>'
     +   '</div>'
     // 하단 버튼
     +   '<div style="display:flex;gap:10px;">'
-    +     '<button id="pend-modal-reject" style="flex:1;background:#1e293b;border:1px solid #ef4444;color:#ef4444;padding:11px;border-radius:8px;font-size:0.82rem;cursor:pointer;font-weight:600;">거절</button>'
+    +     '<button id="pend-modal-reject" style="flex:1;background:var(--bg3);border:1px solid #ef4444;color:#ef4444;padding:11px;border-radius:8px;font-size:0.82rem;cursor:pointer;font-weight:600;">거절</button>'
     +     '<button id="pend-modal-approve" style="flex:1;background:linear-gradient(135deg,#10b981,#059669);border:none;color:#fff;padding:11px;border-radius:8px;font-size:0.82rem;cursor:pointer;font-weight:600;">승인</button>'
     +   '</div>'
     + '</div>'
@@ -3089,8 +3230,8 @@ function _showPendingDetailModal(u) {
   });
 
   // 거절
-  document.getElementById('pend-modal-reject').addEventListener('click', function() {
-    if (!confirm(u.username + ' 가입을 거절하시겠습니까?')) return;
+  document.getElementById('pend-modal-reject').addEventListener('click', async function() {
+    if (!(await customConfirm(u.username + ' 가입을 거절하시겠습니까?'))) return;
     this.disabled = true; this.textContent = '처리중...';
     fetch('/api/admin/users/' + u.id + '/reject', { method: 'POST' })
       .then(function(r) { return r.json(); })
@@ -3103,9 +3244,9 @@ function _showPendingDetailModal(u) {
 }
 
 function _pendRow(label, value, isLast) {
-  return '<div style="display:flex;justify-content:space-between;padding:10px 14px;' + (isLast ? '' : 'border-bottom:1px solid #334155;') + '">'
-    + '<span style="font-size:0.78rem;color:#94a3b8;">' + label + '</span>'
-    + '<span style="font-size:0.78rem;color:#e2e8f0;font-weight:600;">' + value + '</span>'
+  return '<div style="display:flex;justify-content:space-between;padding:10px 14px;' + (isLast ? '' : 'border-bottom:1px solid var(--input-border);') + '">'
+    + '<span style="font-size:0.78rem;color:var(--text2);">' + label + '</span>'
+    + '<span style="font-size:0.78rem;color:var(--text1);font-weight:600;">' + value + '</span>'
     + '</div>';
 }
 
@@ -3114,7 +3255,7 @@ function _pendRow(label, value, isLast) {
 // ══════════════════════════════════════
 function renderBlacklistPage() {
   var el = document.getElementById('content');
-  el.innerHTML = '<div class="pt-wrap"><div class="db-section" style="padding:20px;color:#888;text-align:center;">불러오는 중...</div></div>';
+  el.innerHTML = '<div class="pt-wrap"><div class="db-section" style="padding:20px;color:var(--text3);text-align:center;">불러오는 중...</div></div>';
 
   fetch('/api/admin/users/blacklist')
     .then(function(r){ return r.json(); })
@@ -3165,7 +3306,7 @@ function renderBlacklistPage() {
         : '';
 
       var emptyHtml = !hasList
-        ? '<div style="padding:50px 20px;text-align:center;color:#666;">'
+        ? '<div style="padding:50px 20px;text-align:center;color:var(--text3);">'
           + '<i class="fas fa-ban" style="font-size:2.5rem;margin-bottom:12px;display:block;opacity:0.3;"></i>'
           + '블랙리스트가 없습니다.'
           + '</div>'
@@ -3197,7 +3338,7 @@ function renderBlacklistPage() {
         // ── 검색 + 날짜 필터 ──
         + '<div class="date-filter-bar" style="margin-bottom:14px;">'
         +   '<div class="df-search-box" style="flex:0 0 240px;">'
-        +     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+        +     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
         +     '<input type="text" id="bl-search" placeholder="아이디, 닉네임 검색...">'
         +   '</div>'
         +   '<button class="df-preset bl-date-btn" data-range="all" style="background:#6366f1;color:#fff;border:none;">전체</button>'
@@ -3207,7 +3348,7 @@ function renderBlacklistPage() {
         +   '<button class="df-preset bl-date-btn" data-range="month">이번달</button>'
         +   '<div class="df-date-range">'
         +     '<input type="date" id="bl-date-from">'
-        +     '<span style="color:#64748b;font-size:0.72rem;">~</span>'
+        +     '<span style="color:var(--text3);font-size:0.72rem;">~</span>'
         +     '<input type="date" id="bl-date-to">'
         +   '</div>'
         + '</div>'
@@ -3247,7 +3388,7 @@ function renderBlacklistPage() {
 
       // 해제
       document.querySelectorAll('.bl-restore-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', async function() {
           var id = this.dataset.id;
           if (typeof showConfirmModal === 'function') {
             showConfirmModal({
@@ -3261,7 +3402,7 @@ function renderBlacklistPage() {
               }
             });
           } else {
-            if (!confirm('해제하시겠습니까?')) return;
+            if (!(await customConfirm('해제하시겠습니까?'))) return;
             fetch('/api/admin/users/' + id + '/unblock', { method:'POST' })
               .then(function(r){ return r.json(); })
               .then(function() { renderBlacklistPage(); });
@@ -3338,11 +3479,11 @@ function renderBlacklistPage() {
 
       // 커스텀 날짜 변경
       document.getElementById('bl-date-from').addEventListener('change', function() {
-        document.querySelectorAll('.bl-date-btn').forEach(function(b){ b.style.background='#1e293b'; b.style.color='#94a3b8'; b.style.border='1px solid #334155'; });
+        document.querySelectorAll('.bl-date-btn').forEach(function(b){ b.style.background='var(--bg3)'; b.style.color='var(--text2)'; b.style.border='1px solid var(--input-border)'; });
         _blFilter();
       });
       document.getElementById('bl-date-to').addEventListener('change', function() {
-        document.querySelectorAll('.bl-date-btn').forEach(function(b){ b.style.background='#1e293b'; b.style.color='#94a3b8'; b.style.border='1px solid #334155'; });
+        document.querySelectorAll('.bl-date-btn').forEach(function(b){ b.style.background='var(--bg3)'; b.style.color='var(--text2)'; b.style.border='1px solid var(--input-border)'; });
         _blFilter();
       });
 
@@ -3359,10 +3500,10 @@ function renderBlacklistPage() {
 // ══════════════════════════════════════
 function renderEmptyBetListPage() {
   var el = document.getElementById('content');
-  el.innerHTML = '<div class="pt-wrap"><div style="padding:40px;text-align:center;color:#64748b;">로딩중...</div></div>';
+  el.innerHTML = '<div class="pt-wrap"><div style="padding:40px;text-align:center;color:var(--text3);">로딩중...</div></div>';
 
   if (typeof partnerTree === 'undefined') {
-    el.innerHTML = '<div class="pt-wrap"><div style="padding:40px;text-align:center;color:#64748b;">파트너 트리 데이터가 없습니다.</div></div>';
+    el.innerHTML = '<div class="pt-wrap"><div style="padding:40px;text-align:center;color:var(--text3);">파트너 트리 데이터가 없습니다.</div></div>';
     return;
   }
 
@@ -3437,7 +3578,7 @@ function renderEmptyBetListPage() {
 function _renderEbList(el, list, stats, currentMode) {
   function badge(val) {
     if (val > 0) return '<span style="background:rgba(248,113,113,0.15);color:#f87171;border:1px solid rgba(248,113,113,0.3);padding:2px 8px;border-radius:4px;font-size:0.68rem;font-weight:600;">' + val + '회마다</span>';
-    return '<span style="color:#475569;font-size:0.68rem;">-</span>';
+    return '<span style="color:var(--text3);font-size:0.68rem;">-</span>';
   }
   function getStat(id, type) {
     var s = stats[id + ':' + type];
@@ -3447,43 +3588,43 @@ function _renderEbList(el, list, stats, currentMode) {
   function statCell(id, type) {
     var s = getStat(id, type);
     if (currentMode !== 'all') {
-      return '<div style="'+sz+'text-align:center;color:#475569;padding:8px 0;">-</div>';
+      return '<div style="'+sz+'text-align:center;color:var(--text3);padding:8px 0;">-</div>';
     }
     var profit = s.win - s.bet;
-    return '<div style="'+sz+'display:flex;justify-content:space-between;margin-bottom:2px;"><span style="color:#94a3b8;">베팅</span><span style="color:#60a5fa;font-weight:600;">₩' + s.bet.toLocaleString() + '</span></div>'
-      + '<div style="'+sz+'display:flex;justify-content:space-between;margin-bottom:2px;"><span style="color:#94a3b8;">당첨</span><span style="color:#4ade80;font-weight:600;">₩' + s.win.toLocaleString() + '</span></div>'
-      + '<div style="'+sz+'display:flex;justify-content:space-between;"><span style="color:#94a3b8;">합계</span><span style="color:' + (profit >= 0 ? '#4ade80' : '#f87171') + ';font-weight:600;">₩' + profit.toLocaleString() + '</span></div>';
+    return '<div style="'+sz+'display:flex;justify-content:space-between;margin-bottom:2px;"><span style="color:var(--text2);">베팅</span><span style="color:#60a5fa;font-weight:600;">₩' + s.bet.toLocaleString() + '</span></div>'
+      + '<div style="'+sz+'display:flex;justify-content:space-between;margin-bottom:2px;"><span style="color:var(--text2);">당첨</span><span style="color:#4ade80;font-weight:600;">₩' + s.win.toLocaleString() + '</span></div>'
+      + '<div style="'+sz+'display:flex;justify-content:space-between;"><span style="color:var(--text2);">합계</span><span style="color:' + (profit >= 0 ? '#4ade80' : '#f87171') + ';font-weight:600;">₩' + profit.toLocaleString() + '</span></div>';
   }
 
   var levelLabel = { admin:'관리자', head:'본사', subhead:'부본사', sub:'부본사', distributor:'총판', chong:'총판', store:'매장', mae:'매장', member:'회원' };
   var levelColor = { admin:'#ef4444', head:'#8b5cf6', subhead:'#3b82f6', sub:'#3b82f6', distributor:'#06b6d4', chong:'#06b6d4', store:'#f59e0b', mae:'#f59e0b', member:'#10b981' };
 
   var rows = list.length === 0
-    ? '<tr><td colspan="8" style="color:#64748b;padding:40px;text-align:center;">공베팅 설정이 적용된 파트너가 없습니다.</td></tr>'
+    ? '<tr><td colspan="8" style="color:var(--text3);padding:40px;text-align:center;">공베팅 설정이 적용된 파트너가 없습니다.</td></tr>'
     : list.map(function(p, idx) {
         var cs = getStat(p.id, 'casino');
         var ss = getStat(p.id, 'slot');
         var totalRolling = cs.rolling + ss.rolling;
         var hasSubs = p.children && p.children.length > 0;
         var row = '<tr>'
-          + '<td class="eb-id-cell" data-id="' + p.id + '" style="cursor:pointer;"><div style="display:flex;align-items:center;justify-content:center;gap:8px;"><span style="font-size:0.65rem;padding:2px 6px;border-radius:4px;font-weight:600;background:' + (levelColor[p.level]||'#888') + ';color:#fff;">' + (levelLabel[p.level]||p.level) + '</span><div><div style="font-weight:600;color:#60a5fa;">' + p.id + '</div><div style="font-size:0.72rem;color:#94a3b8;">' + p.label + '</div></div></div></td>'
+          + '<td class="eb-id-cell" data-id="' + p.id + '" style="cursor:pointer;"><div style="display:flex;align-items:center;justify-content:center;gap:8px;"><span style="font-size:0.65rem;padding:2px 6px;border-radius:4px;font-weight:600;background:' + (levelColor[p.level]||'#888') + ';color:#fff;">' + (levelLabel[p.level]||p.level) + '</span><div><div style="font-weight:600;color:#60a5fa;">' + p.id + '</div><div style="font-size:0.72rem;color:var(--text2);">' + p.label + '</div></div></div></td>'
           + '<td>' + (p.parent || '-') + '</td>'
           + '<td style="text-align:center;"><div style="margin-bottom:8px;">카 ' + badge(p.ec) + '</div><div>슬 ' + badge(p.es) + '</div></td>'
           + '<td style="min-width:130px;">' + statCell(p.id, 'casino') + '</td>'
           + '<td style="min-width:130px;">' + statCell(p.id, 'slot') + '</td>'
-          + '<td><div style="'+sz+'display:flex;justify-content:space-between;margin-bottom:2px;"><span style="color:#94a3b8;">카지노</span><span style="color:#f59e0b;font-weight:600;">' + cs.rolling.toLocaleString() + 'P</span></div><div style="'+sz+'display:flex;justify-content:space-between;margin-bottom:2px;"><span style="color:#94a3b8;">슬롯</span><span style="color:#f59e0b;font-weight:600;">' + ss.rolling.toLocaleString() + 'P</span></div><div style="'+sz+'display:flex;justify-content:space-between;"><span style="color:#94a3b8;">합계</span><span style="color:#f59e0b;font-weight:700;">' + totalRolling.toLocaleString() + 'P</span></div></td>'
+          + '<td><div style="'+sz+'display:flex;justify-content:space-between;margin-bottom:2px;"><span style="color:var(--text2);">카지노</span><span style="color:#f59e0b;font-weight:600;">' + cs.rolling.toLocaleString() + 'P</span></div><div style="'+sz+'display:flex;justify-content:space-between;margin-bottom:2px;"><span style="color:var(--text2);">슬롯</span><span style="color:#f59e0b;font-weight:600;">' + ss.rolling.toLocaleString() + 'P</span></div><div style="'+sz+'display:flex;justify-content:space-between;"><span style="color:var(--text2);">합계</span><span style="color:#f59e0b;font-weight:700;">' + totalRolling.toLocaleString() + 'P</span></div></td>'
           + '<td style="text-align:center;"><span style="background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.3);padding:2px 10px;border-radius:4px;font-size:0.72rem;font-weight:600;">적용중</span></td>'
-          + '<td style="width:40px;text-align:center;padding:0 4px;">' + (hasSubs ? '<button class="eb-toggle" data-idx="' + idx + '" style="cursor:pointer;background:#1e293b;border:1px solid #334155;border-radius:5px;padding:4px 8px;color:#94a3b8;font-size:0.8rem;transition:all 0.2s;"><i class="fas fa-chevron-right" style="transition:transform 0.2s;"></i></button>' : '') + '</td>'
+          + '<td style="width:40px;text-align:center;padding:0 4px;">' + (hasSubs ? '<button class="eb-toggle" data-idx="' + idx + '" style="cursor:pointer;background:var(--bg3);border:1px solid var(--input-border);border-radius:5px;padding:4px 8px;color:var(--text2);font-size:0.8rem;transition:all 0.2s;"><i class="fas fa-chevron-right" style="transition:transform 0.2s;"></i></button>' : '') + '</td>'
           + '</tr>';
         // 하부 행 (숨김)
         if (hasSubs) {
           p.children.forEach(function(c) {
             var lv = levelLabel[c.level] || c.level;
             var lc = levelColor[c.level] || '#888';
-            row += '<tr class="eb-sub eb-sub-' + idx + '" style="display:none;background:rgba(30,41,59,0.5);">'
-              + '<td style="padding-left:16px;"><div style="font-size:0.78rem;color:#94a3b8;">' + c.id + '</div><div style="font-size:0.68rem;color:#64748b;">' + c.label + '</div></td>'
+            row += '<tr class="eb-sub eb-sub-' + idx + '" style="display:none;background:var(--border);">'
+              + '<td style="padding-left:16px;"><div style="font-size:0.78rem;color:var(--text2);">' + c.id + '</div><div style="font-size:0.68rem;color:var(--text3);">' + c.label + '</div></td>'
               + '<td><span style="font-size:0.68rem;padding:1px 6px;border-radius:3px;background:' + lc + '22;color:' + lc + ';border:1px solid ' + lc + '44;">' + lv + '</span></td>'
-              + '<td colspan="6" style="font-size:0.72rem;color:#64748b;">상속 적용</td>'
+              + '<td colspan="6" style="font-size:0.72rem;color:var(--text3);">상속 적용</td>'
               + '</tr>';
           });
         }
@@ -3494,13 +3635,13 @@ function _renderEbList(el, list, stats, currentMode) {
   el.innerHTML = '<div class="pt-wrap"><div class="db-section" style="padding:16px 20px;">'
     + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">'
     +   '<div style="display:flex;align-items:center;gap:12px;">'
-    +     '<span style="font-size:1rem;font-weight:700;color:var(--text,#e2e8f0);">공베팅 적용 파트너</span>'
-    +     '<span style="background:#1e293b;border:1px solid #334155;padding:4px 12px;border-radius:6px;font-size:0.78rem;color:#f59e0b;font-weight:600;">' + list.length + '명</span>'
-    +     '<input id="eb-search" type="text" placeholder="아이디, 닉네임 검색" style="margin-left:12px;padding:5px 12px;border-radius:5px;border:1px solid #334155;background:#1e293b;color:var(--text,#e2e8f0);font-size:0.78rem;width:200px;outline:none;">'
+    +     '<span style="font-size:1rem;font-weight:700;color:var(--text1);">공베팅 적용 파트너</span>'
+    +     '<span style="background:var(--bg3);border:1px solid var(--input-border);padding:4px 12px;border-radius:6px;font-size:0.78rem;color:#f59e0b;font-weight:600;">' + list.length + '명</span>'
+    +     '<input id="eb-search" type="text" placeholder="아이디, 닉네임 검색" style="margin-left:12px;padding:5px 12px;border-radius:5px;border:1px solid var(--input-border);background:var(--bg3);color:var(--text1);font-size:0.78rem;width:200px;outline:none;">'
     +   '</div>'
     +   '<div style="display:flex;gap:6px;">'
-    +     '<button id="eb-mode-rolling" style="padding:6px 14px;border-radius:5px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid ' + (!isAll?'#f59e0b':'#334155') + ';background:' + (!isAll?'#f59e0b33':'transparent') + ';color:' + (!isAll?'#f59e0b':'#64748b') + ';">롤링만 누락</button>'
-    +     '<button id="eb-mode-all" style="padding:6px 14px;border-radius:5px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid ' + (isAll?'#ef4444':'#334155') + ';background:' + (isAll?'#ef444433':'transparent') + ';color:' + (isAll?'#ef4444':'#64748b') + ';">전체 누락</button>'
+    +     '<button id="eb-mode-rolling" style="padding:6px 14px;border-radius:5px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid ' + (!isAll?'#f59e0b':'var(--input-border)') + ';background:' + (!isAll?'#f59e0b33':'transparent') + ';color:' + (!isAll?'#f59e0b':'var(--text3)') + ';">롤링만 누락</button>'
+    +     '<button id="eb-mode-all" style="padding:6px 14px;border-radius:5px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid ' + (isAll?'#ef4444':'var(--input-border)') + ';background:' + (isAll?'#ef444433':'transparent') + ';color:' + (isAll?'#ef4444':'var(--text3)') + ';">전체 누락</button>'
     +   '</div>'
     + '</div>'
     + '<div style="overflow-x:auto;">'
@@ -3544,8 +3685,8 @@ function _renderEbList(el, list, stats, currentMode) {
       var subs = el.querySelectorAll('.eb-sub-' + idx);
       var open = ico.style.transform === 'rotate(90deg)';
       ico.style.transform = open ? '' : 'rotate(90deg)';
-      btn.style.background = open ? '#1e293b' : '#334155';
-      btn.style.color = open ? '#94a3b8' : '#e2e8f0';
+      btn.style.background = open ? 'var(--bg3)' : 'var(--input-border)';
+      btn.style.color = open ? 'var(--text2)' : 'var(--text1)';
       subs.forEach(function(row) { row.style.display = open ? 'none' : ''; });
     });
   });
@@ -3568,7 +3709,7 @@ function _renderEbList(el, list, stats, currentMode) {
       iconColor: '#f59e0b',
       iconBg: 'rgba(245,158,11,0.15)',
       title: '공베팅 모드 변경',
-      message: '<strong style="color:#f59e0b;">롤링만 누락</strong> 모드로 변경하시겠습니까?<br><span style="font-size:0.82rem;color:#94a3b8;">롤링 포인트만 누락되며, 베팅/당첨은 정상 집계됩니다.</span>',
+      message: '<strong style="color:#f59e0b;">롤링만 누락</strong> 모드로 변경하시겠습니까?<br><span style="font-size:0.82rem;color:var(--text2);">롤링 포인트만 누락되며, 베팅/당첨은 정상 집계됩니다.</span>',
       confirmText: '변경',
       confirmColor: '#f59e0b',
       onConfirm: function(close) { setMode('rolling'); close(); }
@@ -3580,7 +3721,7 @@ function _renderEbList(el, list, stats, currentMode) {
       iconColor: '#ef4444',
       iconBg: 'rgba(239,68,68,0.15)',
       title: '공베팅 모드 변경',
-      message: '<strong style="color:#ef4444;">전체 누락</strong> 모드로 변경하시겠습니까?<br><span style="font-size:0.82rem;color:#94a3b8;">베팅/당첨/롤링 모두 파트너 정산에서 제외됩니다.</span>',
+      message: '<strong style="color:#ef4444;">전체 누락</strong> 모드로 변경하시겠습니까?<br><span style="font-size:0.82rem;color:var(--text2);">베팅/당첨/롤링 모두 파트너 정산에서 제외됩니다.</span>',
       confirmText: '변경',
       confirmColor: '#ef4444',
       onConfirm: function(close) { setMode('all'); close(); }

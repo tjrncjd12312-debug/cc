@@ -27,7 +27,7 @@ function renderInquiryOpen() {
   document.getElementById('content').innerHTML =
     '<div class="pt-wrap">' +
     '  <div class="date-filter-bar">' +
-    '    <div class="df-search-box" style="flex:0 0 180px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="iqo-search" placeholder="회원ID 검색"></div>' +
+    '    <div class="df-search-box" style="flex:0 0 180px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="iqo-search" placeholder="회원ID 검색"></div>' +
     '    <button class="df-preset active iqo-preset" data-preset="today">오늘</button>' +
     '    <button class="df-preset iqo-preset" data-preset="yesterday">어제</button>' +
     '    <button class="df-preset iqo-preset" data-preset="week">이번주</button>' +
@@ -35,7 +35,7 @@ function renderInquiryOpen() {
     '    <button class="df-preset iqo-preset" data-preset="all">전체</button>' +
     '    <div class="df-date-range">' +
     '      <input type="date" id="iqo-from" value="' + today + '">' +
-    '      <span style="color:#64748b;font-size:0.72rem;">~</span>' +
+    '      <span style="color:var(--text3);font-size:0.72rem;">~</span>' +
     '      <input type="date" id="iqo-to" value="' + today + '">' +
     '      <button class="df-query-btn" id="iqo-search-btn">조회</button>' +
     '    </div>' +
@@ -44,7 +44,7 @@ function renderInquiryOpen() {
     '    <table class="db-table" style="font-size:0.8rem;">' +
     '      <thead><tr>' +
     '        <th>#</th><th>신청일시</th><th>회원ID</th><th>닉네임</th>' +
-    '        <th>제목</th><th style="text-align:center;">상태</th><th style="text-align:center;">답변</th>' +
+    '        <th>제목</th><th style="text-align:center;">상태</th><th style="text-align:center;">답변</th><th style="text-align:center;">삭제</th>' +
     '      </tr></thead>' +
     '      <tbody id="iqo-tbody"></tbody>' +
     '    </table>' +
@@ -65,7 +65,7 @@ function renderInquiryOpen() {
     });
     document.getElementById('iqo-count').textContent = list.length;
     if(!list.length) {
-      document.getElementById('iqo-tbody').innerHTML = '<tr><td colspan="7" style="color:#888;padding:24px;text-align:center;">접수된 문의가 없습니다.</td></tr>';
+      document.getElementById('iqo-tbody').innerHTML = '<tr><td colspan="8" style="color:#888;padding:24px;text-align:center;">접수된 문의가 없습니다.</td></tr>';
       return;
     }
     document.getElementById('iqo-tbody').innerHTML = list.map(function(r, i) {
@@ -79,6 +79,7 @@ function renderInquiryOpen() {
         + '</td>'
         + '<td style="text-align:center;"><span style="color:#fbbf24;font-weight:700;">대기</span></td>'
         + '<td style="text-align:center;"><button class="pt-action-btn pt-btn-green iqo-reply-btn" data-id="'+r.id+'" style="padding:3px 12px;font-size:0.75rem;">답변하기</button></td>'
+        + '<td style="text-align:center;"><button class="pt-action-btn pt-btn-red iqo-del-btn" data-id="'+r.id+'" style="padding:2px 8px;font-size:0.68rem;">삭제</button></td>'
         + '</tr>';
     }).join('');
 
@@ -99,6 +100,15 @@ function renderInquiryOpen() {
         if(item) openInquiryReplyModal(item, function() { refresh(); });
       });
     });
+
+    // 개별 삭제
+    document.querySelectorAll('.iqo-del-btn').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        if(!confirm('이 문의를 삭제하시겠습니까?')) return;
+        await fetch('/api/admin/inquiries/'+btn.dataset.id, { method:'DELETE' });
+        refresh();
+      });
+    });
   }
 
   document.getElementById('iqo-search-btn').addEventListener('click', refresh);
@@ -115,7 +125,7 @@ function renderInquiryDone() {
   document.getElementById('content').innerHTML =
     '<div class="pt-wrap">' +
     '  <div class="date-filter-bar">' +
-    '    <div class="df-search-box" style="flex:0 0 180px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="iqd-search" placeholder="회원ID 검색"></div>' +
+    '    <div class="df-search-box" style="flex:0 0 180px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="iqd-search" placeholder="회원ID 검색"></div>' +
     '    <button class="df-preset active iqd-preset" data-preset="today">오늘</button>' +
     '    <button class="df-preset iqd-preset" data-preset="yesterday">어제</button>' +
     '    <button class="df-preset iqd-preset" data-preset="week">이번주</button>' +
@@ -123,7 +133,7 @@ function renderInquiryDone() {
     '    <button class="df-preset iqd-preset" data-preset="all">전체</button>' +
     '    <div class="df-date-range">' +
     '      <input type="date" id="iqd-from" value="' + today + '">' +
-    '      <span style="color:#64748b;font-size:0.72rem;">~</span>' +
+    '      <span style="color:var(--text3);font-size:0.72rem;">~</span>' +
     '      <input type="date" id="iqd-to" value="' + today + '">' +
     '      <button class="df-query-btn" id="iqd-search-btn">조회</button>' +
     '    </div>' +
@@ -132,7 +142,7 @@ function renderInquiryDone() {
     '    <table class="db-table" style="font-size:0.8rem;">' +
     '      <thead><tr>' +
     '        <th>#</th><th>신청일시</th><th>회원ID</th><th>닉네임</th>' +
-    '        <th>제목</th><th style="text-align:center;">상태</th><th>답변 미리보기</th><th>답변일시</th>' +
+    '        <th>제목</th><th style="text-align:center;">상태</th><th>답변 미리보기</th><th>답변일시</th><th style="text-align:center;">삭제</th>' +
     '      </tr></thead>' +
     '      <tbody id="iqd-tbody"></tbody>' +
     '    </table>' +
@@ -153,7 +163,7 @@ function renderInquiryDone() {
     });
     document.getElementById('iqd-count').textContent = list.length;
     if(!list.length) {
-      document.getElementById('iqd-tbody').innerHTML = '<tr><td colspan="8" style="color:#888;padding:24px;text-align:center;">완료된 문의가 없습니다.</td></tr>';
+      document.getElementById('iqd-tbody').innerHTML = '<tr><td colspan="9" style="color:#888;padding:24px;text-align:center;">완료된 문의가 없습니다.</td></tr>';
       return;
     }
     document.getElementById('iqd-tbody').innerHTML = list.map(function(r, i) {
@@ -168,6 +178,7 @@ function renderInquiryDone() {
         + '<td style="text-align:center;"><span style="color:#4ade80;font-weight:700;">완료</span></td>'
         + '<td style="color:#aaa;font-size:0.75rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+inqPreview(r.answer, 40)+'</td>'
         + '<td style="font-size:0.75rem;color:var(--text2);white-space:nowrap;">'+(r.answeredAt||'-')+'</td>'
+        + '<td style="text-align:center;"><button class="pt-action-btn pt-btn-red iqd-del-btn" data-id="'+r.id+'" style="padding:2px 8px;font-size:0.68rem;">삭제</button></td>'
         + '</tr>';
     }).join('');
 
@@ -176,6 +187,15 @@ function renderInquiryDone() {
         var all = await apiInquiries();
         var item = all.find(function(r){ return r.id === this.dataset.id; }.bind(this));
         if(item) openInquiryViewModal(item);
+      });
+    });
+
+    // 개별 삭제
+    document.querySelectorAll('.iqd-del-btn').forEach(function(btn) {
+      btn.addEventListener('click', async function() {
+        if(!confirm('이 문의를 삭제하시겠습니까?')) return;
+        await fetch('/api/admin/inquiries/'+btn.dataset.id, { method:'DELETE' });
+        refresh();
       });
     });
   }
@@ -246,7 +266,7 @@ function openInquiryReplyModal(item, onSaved) {
     +   '</div>' +
     '    <div class="pt-modal-field">' +
     '      <label style="display:block;margin-bottom:6px;font-size:0.8rem;color:#aaa;">고정답변 선택</label>' +
-    '      <select id="inqr-quick" style="width:100%;padding:8px 10px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.82rem;margin-bottom:12px;cursor:pointer;">' +
+    '      <select id="inqr-quick" style="width:100%;padding:8px 10px;background:var(--bg3);border:1px solid var(--input-border);border-radius:6px;color:var(--text1);font-size:0.82rem;margin-bottom:12px;cursor:pointer;">' +
     '        <option value="">-- 고정답변을 선택하세요 --</option>' +
     '      </select>' +
     '    </div>' +
@@ -354,7 +374,7 @@ function renderQuickReplyPage() {
       // 삭제 버튼
       document.querySelectorAll('.qr-del-btn').forEach(function(btn) {
         btn.addEventListener('click', async function() {
-          if(!confirm('이 고정답변을 삭제하시겠습니까?')) return;
+          if(!(await customConfirm('이 고정답변을 삭제하시겠습니까?'))) return;
           await fetch('/api/admin/quickreplies/' + btn.dataset.id, { method: 'DELETE' });
           refresh();
         });
@@ -434,6 +454,7 @@ function openQuickReplyModal(item, onSaved) {
 var _msgTree = [];
 var _msgUsers = [];
 var _msgSelected = new Set();
+var _msgExpanded = new Set();
 
 function renderMessagePage() {
   Promise.all([
@@ -441,7 +462,17 @@ function renderMessagePage() {
     fetch('/api/admin/users').then(function(r){ return r.json(); })
   ]).then(function(results) {
     _msgTree = results[0].data || results[0] || [];
-    _msgUsers = (results[1].data || results[1] || []);
+    var allUsers = (results[1].data || results[1] || []);
+    // 파트너 트리에 포함된 ID를 수집하여 회원 목록에서 제외
+    var treeIds = new Set();
+    function collectIds(nodes) {
+      (nodes || []).forEach(function(n) {
+        treeIds.add(n.id);
+        if(n.children) collectIds(n.children);
+      });
+    }
+    collectIds(_msgTree);
+    _msgUsers = allUsers.filter(function(u){ return !treeIds.has(u.username); });
     _msgSelected = new Set();
     _renderMessageInner();
   });
@@ -456,9 +487,12 @@ function _renderMessageInner() {
     '    </div>' +
     '    <div style="padding:8px 10px;border-bottom:1px solid var(--border,#1e293b);display:flex;gap:6px;flex-wrap:wrap;">' +
     '      <button class="pt-action-btn msg-group-btn" data-group="all" style="padding:3px 10px;font-size:0.72rem;background:#6366f1;color:#fff;border:none;border-radius:4px;cursor:pointer;">전체</button>' +
-    '      <button class="pt-action-btn msg-group-btn" data-group="partner" style="padding:3px 10px;font-size:0.72rem;background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:4px;cursor:pointer;">파트너전체</button>' +
-    '      <button class="pt-action-btn msg-group-btn" data-group="member" style="padding:3px 10px;font-size:0.72rem;background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:4px;cursor:pointer;">회원전체</button>' +
-    '      <button class="pt-action-btn msg-group-btn" data-group="clear" style="padding:3px 10px;font-size:0.72rem;background:#1e293b;color:#f87171;border:1px solid #334155;border-radius:4px;cursor:pointer;">초기화</button>' +
+    '      <button class="pt-action-btn msg-group-btn" data-group="partner" style="padding:3px 10px;font-size:0.72rem;background:var(--bg3);color:var(--text2);border:1px solid var(--input-border);border-radius:4px;cursor:pointer;">파트너전체</button>' +
+    '      <button class="pt-action-btn msg-group-btn" data-group="member" style="padding:3px 10px;font-size:0.72rem;background:var(--bg3);color:var(--text2);border:1px solid var(--input-border);border-radius:4px;cursor:pointer;">회원전체</button>' +
+    '      <button class="pt-action-btn msg-group-btn" data-group="clear" style="padding:3px 10px;font-size:0.72rem;background:var(--bg3);color:#f87171;border:1px solid var(--input-border);border-radius:4px;cursor:pointer;">초기화</button>' +
+    '    </div>' +
+    '    <div style="padding:6px 10px;border-bottom:1px solid var(--border,#1e293b);">' +
+    '      <input type="text" id="msg-tree-search" placeholder="이름 검색..." style="width:100%;box-sizing:border-box;padding:6px 10px;background:var(--bg);border:1px solid var(--input-border);border-radius:4px;color:var(--text1);font-size:0.78rem;">' +
     '    </div>' +
     '    <div id="msg-tree" style="flex:1;overflow-y:auto;padding:6px 0;font-size:0.8rem;max-height:400px;"></div>' +
     '    <div style="padding:8px 14px;border-top:1px solid var(--border,#1e293b);font-size:0.75rem;color:#888;">선택됨: <b style="color:#60a5fa;" id="msg-sel-count">0</b>명</div>' +
@@ -468,15 +502,15 @@ function _renderMessageInner() {
     '      <div style="font-size:0.85rem;font-weight:700;color:var(--primary,#818cf8);margin-bottom:16px;"><i class="fas fa-envelope" style="margin-right:6px;"></i>쪽지 작성</div>' +
     '      <div style="margin-bottom:12px;">' +
     '        <label style="display:block;font-size:0.78rem;color:#aaa;margin-bottom:6px;">선택된 수신자</label>' +
-    '        <div id="msg-recipients" style="min-height:36px;padding:8px 12px;background:#0f172a;border:1px solid #334155;border-radius:6px;font-size:0.78rem;color:#94a3b8;line-height:1.8;">수신자를 선택하세요</div>' +
+    '        <div id="msg-recipients" style="min-height:36px;padding:8px 12px;background:var(--bg);border:1px solid var(--input-border);border-radius:6px;font-size:0.78rem;color:var(--text2);line-height:1.8;">수신자를 선택하세요</div>' +
     '      </div>' +
     '      <div style="margin-bottom:12px;">' +
     '        <label style="display:block;font-size:0.78rem;color:#aaa;margin-bottom:6px;">제목</label>' +
-    '        <input type="text" id="msg-title" placeholder="쪽지 제목을 입력하세요" style="width:100%;box-sizing:border-box;padding:10px 14px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;">' +
+    '        <input type="text" id="msg-title" placeholder="쪽지 제목을 입력하세요" style="width:100%;box-sizing:border-box;padding:10px 14px;background:var(--bg);border:1px solid var(--input-border);border-radius:6px;color:var(--text1);font-size:0.85rem;">' +
     '      </div>' +
     '      <div style="margin-bottom:16px;">' +
     '        <label style="display:block;font-size:0.78rem;color:#aaa;margin-bottom:6px;">내용</label>' +
-    '        <textarea id="msg-content" rows="8" placeholder="쪽지 내용을 입력하세요" style="width:100%;box-sizing:border-box;padding:10px 14px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:0.85rem;resize:vertical;font-family:inherit;"></textarea>' +
+    '        <textarea id="msg-content" rows="8" placeholder="쪽지 내용을 입력하세요" style="width:100%;box-sizing:border-box;padding:10px 14px;background:var(--bg);border:1px solid var(--input-border);border-radius:6px;color:var(--text1);font-size:0.85rem;resize:vertical;font-family:inherit;"></textarea>' +
     '      </div>' +
     '      <div style="display:flex;gap:10px;">' +
     '        <button class="pt-action-btn pt-btn-green" id="msg-send-btn" style="padding:8px 32px;font-size:0.85rem;"><i class="fas fa-paper-plane" style="margin-right:6px;"></i>발송</button>' +
@@ -497,20 +531,53 @@ function _renderMessageInner() {
   document.querySelectorAll('.msg-group-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var group = btn.dataset.group;
+      // 활성 버튼 스타일 토글
+      document.querySelectorAll('.msg-group-btn').forEach(function(b){
+        if(b.dataset.group === 'clear') return; // 초기화 버튼은 스타일 유지
+        b.style.background = 'var(--bg3)';
+        b.style.color = 'var(--text2)';
+        b.style.border = '1px solid var(--input-border)';
+      });
       if(group === 'clear') {
         _msgSelected.clear();
-      } else if(group === 'all') {
-        _getAllPartnerIds(_msgTree).forEach(function(id){ if(id !== 'admin') _msgSelected.add(id); });
-        _msgUsers.forEach(function(u){ _msgSelected.add(u.username); });
-      } else if(group === 'partner') {
-        _getAllPartnerIds(_msgTree).forEach(function(id){ if(id !== 'admin') _msgSelected.add(id); });
-      } else if(group === 'member') {
-        _msgUsers.forEach(function(u){ _msgSelected.add(u.username); });
+      } else {
+        _msgSelected.clear();
+        btn.style.background = '#6366f1';
+        btn.style.color = '#fff';
+        btn.style.border = 'none';
+        if(group === 'all') {
+          _getPartnerOnlyIds(_msgTree).forEach(function(id){ if(id !== 'admin') _msgSelected.add(id); });
+          _getMemberIdsFromTree(_msgTree).forEach(function(id){ _msgSelected.add(id); });
+          _msgUsers.forEach(function(u){ _msgSelected.add(u.username); });
+        } else if(group === 'partner') {
+          _getPartnerOnlyIds(_msgTree).forEach(function(id){ if(id !== 'admin') _msgSelected.add(id); });
+        } else if(group === 'member') {
+          _getMemberIdsFromTree(_msgTree).forEach(function(id){ _msgSelected.add(id); });
+          _msgUsers.forEach(function(u){ _msgSelected.add(u.username); });
+        }
       }
       _renderMsgTree();
       _updateMsgRecipients();
     });
   });
+
+  // 검색
+  var searchInput = document.getElementById('msg-tree-search');
+  if(searchInput) {
+    searchInput.addEventListener('input', function() {
+      var keyword = searchInput.value.trim().toLowerCase();
+      document.querySelectorAll('.msg-tree-node').forEach(function(row) {
+        var id = (row.dataset.id || '').toLowerCase();
+        var text = (row.textContent || '').toLowerCase();
+        var match = !keyword || id.indexOf(keyword) >= 0 || text.indexOf(keyword) >= 0;
+        row.style.display = match ? '' : 'none';
+      });
+      // 검색 중에는 모든 children 펼치기
+      if(keyword) {
+        document.querySelectorAll('.msg-children').forEach(function(c){ c.style.display = ''; });
+      }
+    });
+  }
 
   // 발송 버튼
   document.getElementById('msg-send-btn').addEventListener('click', _sendMessage);
@@ -525,9 +592,29 @@ function _getAllPartnerIds(nodes) {
   return ids;
 }
 
+// 파트너만 (member 레벨 제외)
+function _getPartnerOnlyIds(nodes) {
+  var ids = [];
+  (nodes || []).forEach(function(n) {
+    if(n.level !== 'member') ids.push(n.id);
+    if(n.children) ids = ids.concat(_getPartnerOnlyIds(n.children));
+  });
+  return ids;
+}
+
+// 트리 내 member 레벨만
+function _getMemberIdsFromTree(nodes) {
+  var ids = [];
+  (nodes || []).forEach(function(n) {
+    if(n.level === 'member') ids.push(n.id);
+    if(n.children) ids = ids.concat(_getMemberIdsFromTree(n.children));
+  });
+  return ids;
+}
+
 function _renderMsgTree() {
-  var levelLabel = { admin:'관리자', head:'본사', subhead:'부본사', distributor:'총판', store:'매장' };
-  var levelColor = { admin:'#8b5cf6', head:'#3b82f6', subhead:'#06b6d4', distributor:'#f59e0b', store:'#10b981' };
+  var levelLabel = { admin:'관리자', head:'본사', subhead:'부본사', distributor:'총판', store:'매장', member:'회원' };
+  var levelColor = { admin:'#8b5cf6', head:'#3b82f6', subhead:'#06b6d4', distributor:'#f59e0b', store:'#10b981', member:'#6b7280' };
   var memberColor = '#6b7280';
 
   function buildNode(nodes, depth) {
@@ -539,23 +626,29 @@ function _renderMsgTree() {
       var lbl = levelLabel[node.level] || node.level;
       var checked = _msgSelected.has(node.id) ? ' checked' : '';
       var hasChildren = node.children && node.children.length > 0;
+      var expanded = _msgExpanded.has(node.id);
+
+      var toggleBtn = hasChildren
+        ? '<span class="msg-toggle" data-id="'+node.id+'" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;font-size:0.65rem;color:var(--text3);cursor:pointer;flex-shrink:0;margin-right:2px;transition:transform 0.2s;transform:rotate('+(expanded?'90':'0')+'deg);">▶</span>'
+        : '<span style="display:inline-block;width:16px;height:16px;margin-right:2px;flex-shrink:0;"></span>';
 
       var row = '<div style="display:flex;align-items:center;padding:3px 8px 3px '+(depth*16+8)+'px;cursor:pointer;" class="msg-tree-node" data-id="'+node.id+'">' +
+        toggleBtn +
         '<input type="checkbox" class="msg-chk" data-id="'+node.id+'"'+checked+' style="accent-color:'+color+';margin-right:6px;cursor:pointer;">' +
         '<span style="display:inline-block;width:16px;height:16px;border-radius:3px;background:'+color+';color:#fff;font-size:0.6rem;text-align:center;line-height:16px;margin-right:6px;">'+lbl.charAt(0)+'</span>' +
         '<span style="color:var(--text,#e2e8f0);font-size:0.8rem;">'+node.label+'</span>' +
         '</div>';
 
-      var children = hasChildren ? buildNode(node.children, depth + 1) : '';
+      var children = hasChildren ? '<div class="msg-children" data-parent="'+node.id+'" style="'+(expanded?'':'display:none;')+'">' + buildNode(node.children, depth + 1) + '</div>' : '';
       return row + children;
     }).join('');
   }
 
-  var html = '<div style="padding:4px 8px;font-size:0.7rem;color:#64748b;font-weight:600;margin-top:4px;">파트너</div>';
+  var html = '<div style="padding:4px 8px;font-size:0.7rem;color:var(--text3);font-weight:600;margin-top:4px;">파트너</div>';
   html += buildNode(_msgTree, 0);
 
   if(_msgUsers.length) {
-    html += '<div style="padding:4px 8px;font-size:0.7rem;color:#64748b;font-weight:600;margin-top:8px;border-top:1px solid #1e293b;padding-top:8px;">회원</div>';
+    html += '<div style="padding:4px 8px;font-size:0.7rem;color:var(--text3);font-weight:600;margin-top:8px;border-top:1px solid var(--bg3);padding-top:8px;">회원</div>';
     _msgUsers.forEach(function(u) {
       var checked = _msgSelected.has(u.username) ? ' checked' : '';
       html += '<div style="display:flex;align-items:center;padding:3px 8px 3px 24px;cursor:pointer;" class="msg-tree-node" data-id="'+u.username+'">' +
@@ -576,9 +669,24 @@ function _renderMsgTree() {
     });
   });
 
+  document.querySelectorAll('.msg-toggle').forEach(function(tog) {
+    tog.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var id = tog.dataset.id;
+      if(_msgExpanded.has(id)) {
+        _msgExpanded.delete(id);
+      } else {
+        _msgExpanded.add(id);
+      }
+      var children = document.querySelector('.msg-children[data-parent="'+id+'"]');
+      if(children) children.style.display = _msgExpanded.has(id) ? '' : 'none';
+      tog.style.transform = 'rotate(' + (_msgExpanded.has(id) ? '90' : '0') + 'deg)';
+    });
+  });
+
   document.querySelectorAll('.msg-tree-node').forEach(function(row) {
     row.addEventListener('click', function(e) {
-      if(e.target.tagName === 'INPUT') return;
+      if(e.target.tagName === 'INPUT' || e.target.classList.contains('msg-toggle')) return;
       var chk = row.querySelector('.msg-chk');
       chk.checked = !chk.checked;
       if(chk.checked) _msgSelected.add(chk.dataset.id); else _msgSelected.delete(chk.dataset.id);
@@ -598,18 +706,18 @@ function _updateMsgRecipients() {
   if(!recEl) return;
 
   if(count === 0) {
-    recEl.innerHTML = '<span style="color:#64748b;">수신자를 선택하세요</span>';
+    recEl.innerHTML = '<span style="color:var(--text3);">수신자를 선택하세요</span>';
     return;
   }
 
   var arr = Array.from(_msgSelected);
   if(arr.length > 10) {
     recEl.innerHTML = arr.slice(0, 10).map(function(id) {
-      return '<span style="display:inline-block;background:#1e293b;border:1px solid #334155;border-radius:4px;padding:2px 8px;margin:2px;font-size:0.72rem;color:#60a5fa;">'+id+'</span>';
+      return '<span style="display:inline-block;background:var(--bg3);border:1px solid var(--input-border);border-radius:4px;padding:2px 8px;margin:2px;font-size:0.72rem;color:#60a5fa;">'+id+'</span>';
     }).join('') + '<span style="color:#888;font-size:0.72rem;margin-left:4px;">외 '+(arr.length-10)+'명</span>';
   } else {
     recEl.innerHTML = arr.map(function(id) {
-      return '<span style="display:inline-block;background:#1e293b;border:1px solid #334155;border-radius:4px;padding:2px 8px;margin:2px;font-size:0.72rem;color:#60a5fa;">'+id+'</span>';
+      return '<span style="display:inline-block;background:var(--bg3);border:1px solid var(--input-border);border-radius:4px;padding:2px 8px;margin:2px;font-size:0.72rem;color:#60a5fa;">'+id+'</span>';
     }).join('');
   }
 }
@@ -623,7 +731,7 @@ async function _sendMessage() {
   if(!title) { alert('제목을 입력하세요.'); return; }
   if(!content) { alert('내용을 입력하세요.'); return; }
 
-  if(!confirm(_msgSelected.size + '명에게 쪽지를 발송하시겠습니까?')) return;
+  if(!(await customConfirm(_msgSelected.size + '명에게 쪽지를 발송하시겠습니까?'))) return;
 
   var targets = Array.from(_msgSelected);
   var success = 0, fail = 0;
@@ -686,7 +794,7 @@ function _loadMsgHistory() {
 
     document.querySelectorAll('.msg-del-btn').forEach(function(btn) {
       btn.addEventListener('click', async function() {
-        if(!confirm('이 쪽지를 삭제하시겠습니까?')) return;
+        if(!(await customConfirm('이 쪽지를 삭제하시겠습니까?'))) return;
         await fetch('/api/admin/messages/' + btn.dataset.id, { method: 'DELETE' });
         _loadMsgHistory();
       });

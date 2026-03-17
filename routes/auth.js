@@ -3,9 +3,20 @@ const router  = express.Router();
 const fs      = require('fs');
 const path    = require('path');
 const hl      = require('../lib/honorlink');
+const cs      = require('../lib/csapi');
 const txCollector = require('../lib/transactionCollector');
+const telegram = require('../lib/telegram');
 
 const USERS_FILE = path.join(__dirname, '../data/users.json');
+
+function readData(file) {
+  const p = path.join(__dirname, '../data', file);
+  return JSON.parse(fs.readFileSync(p, 'utf8'));
+}
+function writeData(file, data) {
+  const p = path.join(__dirname, '../data', file);
+  fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf8');
+}
 
 // ── HL API 캐시 ──
 const _hlCache = {};
@@ -31,6 +42,12 @@ const gameSessionMap = {};
 
 // 디바이스 추적: { userId: userAgent }
 const deviceMap = {};
+
+// 로그인 실패 추적: { username: { count, lockedUntil } }
+const loginFailMap = {};
+
+// 세션 토큰: { userId: token } — 중복 로그인 차단용
+const sessionTokenMap = {};
 
 // 파트너 트리에서 상위 gameGroup 찾기 (가장 가까운 조상의 그룹 반환)
 function findParentGameGroup(nodes, username) {
@@ -86,25 +103,36 @@ async function _autoSettleOfflineUsers() {
     if (!user) continue;
 
     try {
-      // 게임사 잔액 조회
+      // HonorLink 게임사 잔액 조회 + 회수
       const hlUser = await hl.get('/user', { username: user.username });
       const gameBal = Number(hlUser && hlUser.balance || 0);
 
-      // 게임사 잔액 전액 회수 + 동기화 해제
       if (gameBal > 0) {
         await hl.post('/user/sub-balance-all', { username: user.username });
       }
+
+      // CS API 게임사 잔액 조회 + 전액 회수
+      let csBal = 0;
+      try {
+        const csRes = await cs.post('/csapi/amount', { userid: user.username, amount: 0, type: '0' });
+        csBal = Number(csRes && csRes.balance || 0);
+        if (csBal > 0) {
+          await cs.post('/csapi/amount', { userid: user.username, amount: 0, type: '3' }); // 전액출금
+        }
+      } catch(csErr) { console.error('[AutoSettle] CS API error for ' + user.username + ':', csErr.message); }
+
+      const totalRecovered = gameBal + csBal;
 
       // 로컬 머니에 추가 + api 동기화 해제
       const freshUsers = readUsers();
       const freshUser = freshUsers.find(u => u.id === userId);
       if (freshUser) {
-        if (gameBal > 0) {
-          freshUser.money = (freshUser.money || 0) + gameBal;
+        if (totalRecovered > 0) {
+          freshUser.money = (freshUser.money || 0) + totalRecovered;
         }
         freshUser.api = [];
         writeUsers(freshUsers);
-        console.log('[AutoSettle] ' + user.username + ': game ' + gameBal + ' → local, api cleared');
+        console.log('[AutoSettle] ' + user.username + ': HL=' + gameBal + ' CS=' + csBal + ' → local, api cleared');
       }
     } catch(e) {
       console.error('[AutoSettle] Error for ' + user.username + ':', e.message);
@@ -134,7 +162,7 @@ async function _cleanupStaleApi() {
   let changed = false;
   for (const u of users) {
     if (u.api && u.api.length && !onlineIds.includes(u.id)) {
-      // 게임사 잔액 회수 시도
+      // HonorLink 잔액 회수
       if (u.api.includes('honorlink')) {
         try {
           const hlUser = await hl.get('/user', { username: u.username });
@@ -145,6 +173,15 @@ async function _cleanupStaleApi() {
           }
         } catch(e) {}
       }
+      // CS API 잔액 회수
+      try {
+        const csRes = await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '0' });
+        const csBal = Number(csRes && csRes.balance || 0);
+        if (csBal > 0) {
+          await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '3' });
+          u.money = (u.money || 0) + csBal;
+        }
+      } catch(e) {}
       u.api = [];
       delete gameSessionMap[u.username];
       changed = true;
@@ -215,38 +252,139 @@ router.post('/register', (req, res) => {
 
   users.push(newUser);
   writeUsers(users);
+
+  // 텔레그램 알림
+  telegram.send('signup', '🆕 <b>회원가입 신청</b>\n아이디: ' + username + '\n닉네임: ' + (nickname || username) + '\n시간: ' + newUser.registeredAt);
+
   res.json({ success: true });
 });
 
 // ── 로그인 ──
 router.post('/login', (req, res) => {
+  // 차단 IP 체크
+  const clientIp = req.ip || req.headers['x-forwarded-for'] || '0.0.0.0';
+  try {
+    const settingsPath = path.join(__dirname, '../data/admin_settings.json');
+    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    const blockedIps = settings.blockedIps || [];
+    if (blockedIps.some(b => b.ip === clientIp)) {
+      return res.json({ success: false, error: '차단된 IP입니다.' });
+    }
+  } catch(e) {}
+
   const { username, password } = req.body;
+
+  // 로그인 실패 잠금 체크
+  try {
+    const settingsPath2 = path.join(__dirname, '../data/admin_settings.json');
+    const s2 = JSON.parse(fs.readFileSync(settingsPath2, 'utf8'));
+    const sec2 = s2.security || {};
+    if (sec2.loginLimit !== false && loginFailMap[username]) {
+      const fail = loginFailMap[username];
+      if (fail.lockedUntil && Date.now() < fail.lockedUntil) {
+        const remain = Math.ceil((fail.lockedUntil - Date.now()) / 60000);
+        return res.json({ success: false, error: '로그인 시도 초과로 계정이 잠겼습니다. (' + remain + '분 후 해제)' });
+      }
+    }
+  } catch(e) {}
+
   const users = readUsers();
   const user  = users.find(u => u.username === username && u.password === password);
 
-  if (!user)              return res.json({ success: false, error: '아이디 또는 비밀번호가 틀렸습니다.' });
+  if (!user) {
+    // 로그인 실패 카운트
+    try {
+      const settingsPath3 = path.join(__dirname, '../data/admin_settings.json');
+      const s3 = JSON.parse(fs.readFileSync(settingsPath3, 'utf8'));
+      const sec3 = s3.security || {};
+      if (sec3.loginLimit !== false) {
+        const maxAttempt = sec3.maxAttempt || 10;
+        const lockTime = sec3.lockTime || 30;
+        if (!loginFailMap[username]) loginFailMap[username] = { count: 0, lockedUntil: null, lockedAt: null };
+        loginFailMap[username].count++;
+        if (loginFailMap[username].count >= maxAttempt) {
+          loginFailMap[username].lockedUntil = Date.now() + lockTime * 60000;
+          loginFailMap[username].lockedAt = new Date().toISOString();
+          return res.json({ success: false, error: '로그인 시도 초과로 계정이 잠겼습니다. (' + lockTime + '분 후 해제)' });
+        }
+      }
+    } catch(e) {}
+    return res.json({ success: false, error: '아이디 또는 비밀번호가 틀렸습니다.' });
+  }
+
   if (user.status === 'pending')  return res.json({ success: false, error: '관리자 승인 대기 중입니다.' });
   if (user.status === 'blocked')  return res.json({ success: false, error: '차단된 계정입니다.' });
   if (user.status === 'deleted')  return res.json({ success: false, error: '존재하지 않는 계정입니다.' });
+
+  // 로그인 성공 시 실패 카운트 초기화
+  delete loginFailMap[username];
 
   // 접속 정보 업데이트
   user.lastLoginAt = new Date().toISOString();
   user.lastLoginIp = req.ip || req.headers['x-forwarded-for'] || '0.0.0.0';
   writeUsers(users);
 
+  // 중복 로그인 체크 — 유저는 항상 단일 세션, 관리자/파트너는 설정에 따라
+  const isAdmin = user.role === 'admin' || user.role === 'head' || user.role === 'subhead' || user.role === 'distributor' || user.role === 'store';
+  if (!isAdmin) {
+    // 유저: 항상 이전 세션 강제 종료
+    if (sessionTokenMap[user.id]) {
+      kickedSet.add(user.id + ':' + sessionTokenMap[user.id]);
+    }
+  } else {
+    // 관리자/파트너: dupLogin 설정 확인
+    try {
+      const settingsPath2 = path.join(__dirname, '../data/admin_settings.json');
+      const s2 = JSON.parse(fs.readFileSync(settingsPath2, 'utf8'));
+      const dupLogin = s2.security && s2.security.dupLogin;
+      if (!dupLogin && sessionTokenMap[user.id]) {
+        kickedSet.add(user.id + ':' + sessionTokenMap[user.id]);
+      }
+    } catch(e) {}
+  }
+
+  // 세션 토큰 발급
+  const sessionToken = Date.now().toString(36) + Math.random().toString(36).slice(2);
+  sessionTokenMap[user.id] = sessionToken;
+
   // 온라인 등록
   onlineMap[user.id] = Date.now();
   deviceMap[user.id] = req.headers['user-agent'] || '';
 
-  res.json({ success: true, data: { id: user.id, username: user.username, nickname: user.nickname, money: user.money, balance: user.money, gameGroup: user.gameGroup || '' } });
+  // 로그인 기록 저장
+  try {
+    let logs = [];
+    try { logs = readData('login_logs.json'); } catch(e) {}
+    logs.unshift({
+      username: user.username,
+      nickname: user.nickname || '',
+      ip: user.lastLoginIp,
+      device: (req.headers['user-agent'] || '').substring(0, 120),
+      datetime: user.lastLoginAt
+    });
+    if (logs.length > 500) logs = logs.slice(0, 500);
+    writeData('login_logs.json', logs);
+  } catch(e) {}
+
+  res.json({ success: true, data: { id: user.id, username: user.username, nickname: user.nickname, money: user.money, balance: user.money, gameGroup: user.gameGroup || '', bank: user.bank || '', account: user.account || '', holder: user.holder || '', sessionToken: sessionToken } });
 });
 
 // ── 핑 (접속 유지) ──
 router.post('/ping', (req, res) => {
-  const { userId } = req.body;
+  const { userId, sessionToken } = req.body;
+  // 관리자 강제종료 체크
   if (userId && kickedSet.has(userId)) {
     kickedSet.delete(userId);
     return res.json({ success: false, kicked: true });
+  }
+  // 중복 로그인 체크: 세션 토큰 불일치 시 킥
+  if (userId && sessionToken && sessionTokenMap[userId] && sessionTokenMap[userId] !== sessionToken) {
+    return res.json({ success: false, kicked: true, reason: 'duplicate_login' });
+  }
+  // 토큰 키 기반 킥 체크 (이전 세션용)
+  if (userId && sessionToken && kickedSet.has(userId + ':' + sessionToken)) {
+    kickedSet.delete(userId + ':' + sessionToken);
+    return res.json({ success: false, kicked: true, reason: 'duplicate_login' });
   }
   if (userId) onlineMap[userId] = Date.now();
   res.json({ success: true });
@@ -262,6 +400,16 @@ router.get('/game-group', (req, res) => {
   res.json({ gameGroup: user.gameGroup || '' });
 });
 
+// ── 유저 프로필 조회 (은행/계좌/예금주 등) ──
+router.get('/profile', (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.json({ success: false });
+  const users = readUsers();
+  const user = users.find(u => u.id === userId);
+  if (!user) return res.json({ success: false });
+  res.json({ success: true, bank: user.bank || '', account: user.account || '', holder: user.holder || '' });
+});
+
 // ── 잔액 조회 (유저용): 로컬 + 게임사 합산 ──
 router.get('/balance', async (req, res) => {
   const { userId } = req.query;
@@ -272,12 +420,66 @@ router.get('/balance', async (req, res) => {
 
   const localBal = user.money || 0;
   let gameBal = 0;
-  try {
-    const hlUser = await cachedHlGet('/user', { username: user.username }, 5000);
-    gameBal = Number(hlUser && hlUser.balance || 0);
-  } catch(e) {}
+  const isHl = user.api && user.api.includes('honorlink');
+  const isCs = user.api && user.api.includes('csapi');
+  if (isHl) {
+    try {
+      const hlUser = await hl.get('/user', { username: user.username });
+      gameBal = Number(hlUser && hlUser.balance || 0);
+    } catch(e) {}
+  }
+  if (isCs) {
+    try {
+      const csRes = await cs.post('/csapi/amount', { userid: user.username, amount: 0, type: '0' });
+      gameBal += Number(csRes && csRes.balance || 0);
+    } catch(e) {}
+  }
 
   res.json({ success: true, balance: localBal + gameBal, local: localBal, game: gameBal });
+});
+
+// ── 게임 전환용: 상대 API 잔액 회수 → 로컬로 복원 ──
+router.post('/recover-for-switch', async (req, res) => {
+  const { username, target } = req.body; // target: 'honorlink' 또는 'csapi' (이동할 곳)
+  if (!username || !target) return res.json({ success: false });
+  const users = readUsers();
+  const user = users.find(u => u.username === username);
+  if (!user) return res.json({ success: false });
+
+  let recovered = 0;
+
+  // 오닉스로 이동 → 아너링크 잔액 회수
+  if (target === 'csapi' && user.api && user.api.includes('honorlink')) {
+    try {
+      const hlUser = await hl.get('/user', { username });
+      const hlBal = Number(hlUser && hlUser.balance || 0);
+      if (hlBal > 0) {
+        await hl.post('/user/sub-balance-all', { username });
+        recovered += hlBal;
+      }
+    } catch(e) {}
+    user.api = user.api.filter(a => a !== 'honorlink');
+  }
+
+  // 아너링크로 이동 → 오닉스 잔액 회수
+  if (target === 'honorlink' && user.api && user.api.includes('csapi')) {
+    try {
+      const csRes = await cs.post('/csapi/amount', { userid: username, amount: 0, type: '0' });
+      const csBal = Number(csRes && csRes.balance || 0);
+      if (csBal > 0) {
+        await cs.post('/csapi/amount', { userid: username, amount: 0, type: '3' });
+        recovered += csBal;
+      }
+    } catch(e) {}
+    user.api = user.api.filter(a => a !== 'csapi');
+  }
+
+  if (recovered > 0) {
+    user.money = (user.money || 0) + recovered;
+  }
+  writeUsers(users);
+
+  res.json({ success: true, recovered, localBalance: user.money || 0 });
 });
 
 // ── 온라인 목록 (어드민용) ──
@@ -336,10 +538,20 @@ router.get('/online', async (req, res) => {
   // 각 유저의 게임사 잔액 합산
   const list = await Promise.all(onlineUsers.map(async (u) => {
     let gameBal = 0;
-    try {
-      const hlUser = await cachedHlGet('/user', { username: u.username }, 5000);
-      gameBal = Number(hlUser && hlUser.balance || 0);
-    } catch(e) {}
+    const isHl = u.api && u.api.includes('honorlink');
+    const isCs = u.api && u.api.includes('csapi');
+    if (isHl) {
+      try {
+        const hlUser = await hl.get('/user', { username: u.username });
+        gameBal = Number(hlUser && hlUser.balance || 0);
+      } catch(e) {}
+    }
+    if (isCs) {
+      try {
+        const csRes = await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '0' });
+        gameBal += Number(csRes && csRes.balance || 0);
+      } catch(e) {}
+    }
     const gs = gameSessionMap[u.username] || null;
     const stats = userStats[u.username] || { bet: 0, win: 0 };
     const lg = lastGameMap[u.username] || null;
@@ -364,4 +576,4 @@ router.get('/online', async (req, res) => {
   res.json({ success: true, data: list });
 });
 
-module.exports = { router, readUsers, writeUsers, onlineMap, kickedSet, gameSessionMap };
+module.exports = { router, readUsers, writeUsers, onlineMap, kickedSet, gameSessionMap, loginFailMap };

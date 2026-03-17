@@ -1,0 +1,609 @@
+{
+  "cs": {
+    "result": 1,
+    "msg": "success",
+    "data": [
+      {
+        "gameid": "SxCasino",
+        "code": "casino-dream",
+        "name": "Dream Live",
+        "type": "live"
+      },
+      {
+        "gameid": "SxCasino",
+        "code": "casino-ezugi",
+        "name": "Ezugi",
+        "type": "live"
+      },
+      {
+        "gameid": "SxCasino",
+        "code": "casino-micro",
+        "name": "Micro Gaming",
+        "type": "live"
+      },
+      {
+        "gameid": "SxCasino",
+        "code": "casino-playace",
+        "name": "PlayAce",
+        "type": "live"
+      },
+      {
+        "gameid": "SxCasino",
+        "code": "casino-pragmatic",
+        "name": "Pragmatic Live",
+        "type": "live"
+      },
+      {
+        "gameid": "SxCasino",
+        "code": "casino-sa",
+        "name": "Sa Gaming",
+        "type": "live"
+      },
+      {
+        "gameid": "SxCasino",
+        "code": "evolution",
+        "name": "Evolution",
+        "type": "live"
+      },
+      {
+        "gameid": "SxHotel",
+        "code": "88",
+        "name": "88",
+        "type": "live"
+      },
+      {
+        "gameid": "SxHotel",
+        "code": "ag",
+        "name": "AG Asia",
+        "type": "live"
+      },
+      {
+        "gameid": "SxHotel",
+        "code": "bbin",
+        "name": "BBIN",
+        "type": "live"
+      },
+      {
+        "gameid": "SxHotel",
+        "code": "cagayan",
+        "name": "Cagayan",
+        "type": "live"
+      },
+      {
+        "gameid": "SxHotel",
+        "code": "dg",
+        "name": "Dream",
+        "type": "live"
+      },
+      {
+        "gameid": "SxHotel",
+        "code": "mg",
+        "name": "MicroGaming",
+        "type": "live"
+      },
+      {
+        "gameid": "SxHotel",
+        "code": "oriental",
+        "name": "Oriental",
+        "type": "live"
+      },
+      {
+        "gameid": "SxHotel",
+        "code": "pdtg",
+        "name": "pdtg",
+        "type": "live"
+      },
+      {
+        "gameid": "SxHotel",
+        "code": "pragmatic",
+        "name": "Pragmatic",
+        "type": "live"
+      },
+      {
+        "gameid": "SxHotel",
+        "code": "solaire",
+        "name": "9D SPEED",
+        "type": "live"
+      },
+      {
+        "gameid": "SxHotel",
+        "code": "wm",
+        "name": "WM",
+        "type": "live"
+      },
+      {
+        "gameid": "SxSlot",
+        "code": "bng",
+        "name": "booongo",
+        "type": "slot"
+      },
+      {
+        "gameid": "SxSlot",
+        "code": "cq9",
+        "name": "cq9",
+        "type": "slot"
+      },
+      {
+        "gameid": "SxSlot",
+        "code": "dreamtech",
+        "name": "dreamtech",
+        "type": "slot"
+      },
+      {
+        "gameid": "SxSlot",
+        "code": "Hacksaw",
+        "name": "Hacksaw",
+        "type": "slot"
+      },
+      {
+        "gameid": "SxSlot",
+        "code": "hbn",
+        "name": "habanero",
+        "type": "slot"
+      },
+      {
+        "gameid": "SxSlot",
+        "code": "homeslot",
+        "name": "homeslot",
+        "type": "slot"
+      },
+      {
+        "gameid": "SxSlot",
+        "code": "jili",
+        "name": "jili",
+        "type": "slot"
+      },
+      {
+        "gameid": "SxSlot",
+        "code": "nolimitcity",
+        "name": "nolimitcity",
+        "type": "slot"
+      },
+      {
+        "gameid": "SxSlot",
+        "code": "pg",
+        "name": "pgsoft",
+        "type": "slot"
+      },
+      {
+        "gameid": "SxSlot",
+        "code": "playson",
+        "name": "Playson",
+        "type": "slot"
+      },
+      {
+        "gameid": "SxSlot",
+        "code": "pragmaticplay",
+        "name": "PragmaticPlay",
+        "type": "slot"
+      }
+    ]
+  },
+  "updatedAt": "2026-03-16T20:15:01.249Z",
+  "hl": {
+    "7777": {
+      "name": "7777",
+      "enabled": 1
+    },
+    "1X2 Gaming": {
+      "name": "1X2 Gaming",
+      "enabled": 1
+    },
+    "7-mojos": {
+      "name": "7-mojos",
+      "enabled": 1
+    },
+    "7-mojos-slots": {
+      "name": "7-mojos-slots",
+      "enabled": 1
+    },
+    "absolute": {
+      "name": "absolute",
+      "enabled": 1
+    },
+    "AllBet": {
+      "name": "AllBet",
+      "enabled": 1
+    },
+    "amatic": {
+      "name": "amatic",
+      "enabled": 1
+    },
+    "amigogaming": {
+      "name": "amigogaming",
+      "enabled": 1
+    },
+    "Asia Gaming": {
+      "name": "Asia Gaming",
+      "enabled": 1
+    },
+    "Asia Gaming Slot": {
+      "name": "Asia Gaming Slot",
+      "enabled": 1
+    },
+    "AvatarUX": {
+      "name": "AvatarUX",
+      "enabled": 1
+    },
+    "Betgames.tv": {
+      "name": "Betgames.tv",
+      "enabled": 1
+    },
+    "bfgames": {
+      "name": "bfgames",
+      "enabled": 1
+    },
+    "bgaming": {
+      "name": "bgaming",
+      "enabled": 1
+    },
+    "BigTimeGaming": {
+      "name": "BigTimeGaming",
+      "enabled": 1
+    },
+    "Blueprint Gaming": {
+      "name": "Blueprint Gaming",
+      "enabled": 1
+    },
+    "booming": {
+      "name": "booming",
+      "enabled": 1
+    },
+    "Booongo": {
+      "name": "Booongo",
+      "enabled": 1
+    },
+    "bota": {
+      "name": "bota",
+      "enabled": 1
+    },
+    "bti": {
+      "name": "bti",
+      "enabled": 1
+    },
+    "caletagaming": {
+      "name": "caletagaming",
+      "enabled": 1
+    },
+    "CQ9": {
+      "name": "CQ9",
+      "enabled": 1
+    },
+    "dragoonsoft": {
+      "name": "dragoonsoft",
+      "enabled": 1
+    },
+    "DreamGame": {
+      "name": "DreamGame",
+      "enabled": 1
+    },
+    "dreamtech": {
+      "name": "dreamtech",
+      "enabled": 1
+    },
+    "eagaming": {
+      "name": "eagaming",
+      "enabled": 1
+    },
+    "evolution": {
+      "name": "evolution",
+      "enabled": 1
+    },
+    "evoplay": {
+      "name": "evoplay",
+      "enabled": 1
+    },
+    "expanse": {
+      "name": "expanse",
+      "enabled": 1
+    },
+    "ezugi": {
+      "name": "ezugi",
+      "enabled": 1
+    },
+    "ezugiZ": {
+      "name": "ezugiZ",
+      "enabled": 1
+    },
+    "fachai": {
+      "name": "fachai",
+      "enabled": 1
+    },
+    "Fantasma": {
+      "name": "Fantasma",
+      "enabled": 1
+    },
+    "FatPanda": {
+      "name": "FatPanda",
+      "enabled": 1
+    },
+    "fils": {
+      "name": "fils",
+      "enabled": 1
+    },
+    "galaxsys": {
+      "name": "galaxsys",
+      "enabled": 1
+    },
+    "GameArt": {
+      "name": "GameArt",
+      "enabled": 1
+    },
+    "greentube": {
+      "name": "greentube",
+      "enabled": 1
+    },
+    "Habanero": {
+      "name": "Habanero",
+      "enabled": 1
+    },
+    "Hacksaw": {
+      "name": "Hacksaw",
+      "enabled": 1
+    },
+    "iconix": {
+      "name": "iconix",
+      "enabled": 1
+    },
+    "iconixviator": {
+      "name": "iconixviator",
+      "enabled": 1
+    },
+    "Imoon": {
+      "name": "Imoon",
+      "enabled": 1
+    },
+    "intouch-games": {
+      "name": "intouch-games",
+      "enabled": 1
+    },
+    "JDB": {
+      "name": "JDB",
+      "enabled": 1
+    },
+    "jili": {
+      "name": "jili",
+      "enabled": 1
+    },
+    "kagaming": {
+      "name": "kagaming",
+      "enabled": 1
+    },
+    "Kalamba": {
+      "name": "Kalamba",
+      "enabled": 1
+    },
+    "Kiron": {
+      "name": "Kiron",
+      "enabled": 1
+    },
+    "Live88": {
+      "name": "Live88",
+      "enabled": 1
+    },
+    "liw": {
+      "name": "liw",
+      "enabled": 1
+    },
+    "macaw": {
+      "name": "macaw",
+      "enabled": 1
+    },
+    "mancala": {
+      "name": "mancala",
+      "enabled": 1
+    },
+    "merkur": {
+      "name": "merkur",
+      "enabled": 1
+    },
+    "MicroGaming": {
+      "name": "MicroGaming",
+      "enabled": 1
+    },
+    "MicroGaming Plus": {
+      "name": "MicroGaming Plus",
+      "enabled": 1
+    },
+    "MicroGaming Plus Slo": {
+      "name": "MicroGaming Plus Slo",
+      "enabled": 1
+    },
+    "MicroGamingSlot": {
+      "name": "MicroGamingSlot",
+      "enabled": 1
+    },
+    "mplay": {
+      "name": "mplay",
+      "enabled": 1
+    },
+    "netent": {
+      "name": "netent",
+      "enabled": 1
+    },
+    "netgame": {
+      "name": "netgame",
+      "enabled": 1
+    },
+    "Nolimit City": {
+      "name": "Nolimit City",
+      "enabled": 1
+    },
+    "Novomatic": {
+      "name": "Novomatic",
+      "enabled": 1
+    },
+    "Octoplay": {
+      "name": "Octoplay",
+      "enabled": 1
+    },
+    "onetouch": {
+      "name": "onetouch",
+      "enabled": 1
+    },
+    "oriental": {
+      "name": "oriental",
+      "enabled": 1
+    },
+    "PeterSons": {
+      "name": "PeterSons",
+      "enabled": 1
+    },
+    "PG Soft": {
+      "name": "PG Soft",
+      "enabled": 1
+    },
+    "platingaming": {
+      "name": "platingaming",
+      "enabled": 1
+    },
+    "platipus": {
+      "name": "platipus",
+      "enabled": 1
+    },
+    "playngo": {
+      "name": "playngo",
+      "enabled": 1
+    },
+    "PlayStar": {
+      "name": "PlayStar",
+      "enabled": 1
+    },
+    "PlayTech": {
+      "name": "PlayTech",
+      "enabled": 1
+    },
+    "PlayTechSlot": {
+      "name": "PlayTechSlot",
+      "enabled": 1
+    },
+    "popok": {
+      "name": "popok",
+      "enabled": 1
+    },
+    "PragmaticPlay": {
+      "name": "PragmaticPlay",
+      "enabled": 1
+    },
+    "PragmaticPlay Live": {
+      "name": "PragmaticPlay Live",
+      "enabled": 1
+    },
+    "quickspin": {
+      "name": "quickspin",
+      "enabled": 1
+    },
+    "redrake": {
+      "name": "redrake",
+      "enabled": 1
+    },
+    "redtiger": {
+      "name": "redtiger",
+      "enabled": 1
+    },
+    "Relax Gaming": {
+      "name": "Relax Gaming",
+      "enabled": 1
+    },
+    "retrogames": {
+      "name": "retrogames",
+      "enabled": 1
+    },
+    "revolver": {
+      "name": "revolver",
+      "enabled": 1
+    },
+    "rocketman": {
+      "name": "rocketman",
+      "enabled": 1
+    },
+    "rsg": {
+      "name": "rsg",
+      "enabled": 1
+    },
+    "RubyPlay": {
+      "name": "RubyPlay",
+      "enabled": 1
+    },
+    "saGaming": {
+      "name": "saGaming",
+      "enabled": 1
+    },
+    "sexybcrt": {
+      "name": "sexybcrt",
+      "enabled": 1
+    },
+    "SkycityHoldem": {
+      "name": "SkycityHoldem",
+      "enabled": 1
+    },
+    "Skywind Live": {
+      "name": "Skywind Live",
+      "enabled": 1
+    },
+    "Skywind Slot": {
+      "name": "Skywind Slot",
+      "enabled": 1
+    },
+    "Slotmill": {
+      "name": "Slotmill",
+      "enabled": 1
+    },
+    "Smartsoft": {
+      "name": "Smartsoft",
+      "enabled": 1
+    },
+    "spinomenal": {
+      "name": "spinomenal",
+      "enabled": 1
+    },
+    "spribe": {
+      "name": "spribe",
+      "enabled": 1
+    },
+    "SuperSpade": {
+      "name": "SuperSpade",
+      "enabled": 1
+    },
+    "Thunderkick": {
+      "name": "Thunderkick",
+      "enabled": 1
+    },
+    "tvbet": {
+      "name": "tvbet",
+      "enabled": 1
+    },
+    "vivo": {
+      "name": "vivo",
+      "enabled": 1
+    },
+    "Wazdan": {
+      "name": "Wazdan",
+      "enabled": 1
+    },
+    "WildGames": {
+      "name": "WildGames",
+      "enabled": 1
+    },
+    "WM Live": {
+      "name": "WM Live",
+      "enabled": 1
+    },
+    "xj": {
+      "name": "xj",
+      "enabled": 1
+    },
+    "XProGaming": {
+      "name": "XProGaming",
+      "enabled": 1
+    },
+    "Yggdrasil": {
+      "name": "Yggdrasil",
+      "enabled": 1
+    },
+    "Yolted": {
+      "name": "Yolted",
+      "enabled": 1
+    }
+  }
+}

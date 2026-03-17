@@ -129,8 +129,8 @@ function _renderMoneyAdminInner(logs) {
   document.getElementById('content').innerHTML = `
     <div class="pt-wrap">
       <div class="date-filter-bar">
-        <div class="df-search-box" style="flex:0 0 200px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="ma-search" placeholder="회원ID / 닉네임 검색"></div>
-        <select class="pt-create-select" id="ma-type" style="width:100px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:5px 8px;font-size:0.72rem;">
+        <div class="df-search-box" style="flex:0 0 200px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="ma-search" placeholder="회원ID / 닉네임 검색"></div>
+        <select class="pt-create-select" id="ma-type" style="width:100px;background:var(--bg);border:1px solid var(--input-border);color:var(--text1);border-radius:6px;padding:5px 8px;font-size:0.72rem;">
           <option value="">전체</option>
           <option value="give">지급</option>
           <option value="take">회수</option>
@@ -142,7 +142,7 @@ function _renderMoneyAdminInner(logs) {
         <button class="df-preset ma-preset" data-preset="all">전체</button>
         <div class="df-date-range">
           <input type="date" id="ma-from" value="${today}">
-          <span style="color:#64748b;font-size:0.72rem;">~</span>
+          <span style="color:var(--text3);font-size:0.72rem;">~</span>
           <input type="date" id="ma-to" value="${today}">
           <button class="df-query-btn" id="ma-search-btn">조회</button>
         </div>
@@ -215,8 +215,8 @@ function _renderMoneyPartnerInner(logs) {
   document.getElementById('content').innerHTML = `
     <div class="pt-wrap">
       <div class="date-filter-bar">
-        <div class="df-search-box" style="flex:0 0 200px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="mp-search" placeholder="파트너ID / 대상ID 검색"></div>
-        <select class="pt-create-select" id="mp-type" style="width:100px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:5px 8px;font-size:0.72rem;">
+        <div class="df-search-box" style="flex:0 0 200px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="mp-search" placeholder="파트너ID / 대상ID 검색"></div>
+        <select class="pt-create-select" id="mp-type" style="width:100px;background:var(--bg);border:1px solid var(--input-border);color:var(--text1);border-radius:6px;padding:5px 8px;font-size:0.72rem;">
           <option value="">전체</option>
           <option value="give">지급</option>
           <option value="take">회수</option>
@@ -228,7 +228,7 @@ function _renderMoneyPartnerInner(logs) {
         <button class="df-preset mp-preset" data-preset="all">전체</button>
         <div class="df-date-range">
           <input type="date" id="mp-from" value="${today}">
-          <span style="color:#64748b;font-size:0.72rem;">~</span>
+          <span style="color:var(--text3);font-size:0.72rem;">~</span>
           <input type="date" id="mp-to" value="${today}">
           <button class="df-query-btn" id="mp-search-btn">조회</button>
         </div>
@@ -295,8 +295,8 @@ function _renderMoneyUserInner(logs) {
   document.getElementById('content').innerHTML =
     '<div class="pt-wrap">'
     + '<div class="date-filter-bar">'
-    +   '<div class="df-search-box" style="flex:0 0 200px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="mu-search" placeholder="유저ID / 닉네임 검색"></div>'
-    +   '<select class="pt-create-select" id="mu-type" style="width:100px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;border-radius:6px;padding:5px 8px;font-size:0.72rem;">'
+    +   '<div class="df-search-box" style="flex:0 0 200px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="mu-search" placeholder="유저ID / 닉네임 검색"></div>'
+    +   '<select class="pt-create-select" id="mu-type" style="width:100px;background:var(--bg);border:1px solid var(--input-border);color:var(--text1);border-radius:6px;padding:5px 8px;font-size:0.72rem;">'
     +     '<option value="">전체</option>'
     +     '<option value="give">지급</option>'
     +     '<option value="take">차감</option>'
@@ -308,7 +308,7 @@ function _renderMoneyUserInner(logs) {
     +   '<button class="df-preset mu-preset" data-preset="all">전체</button>'
     +   '<div class="df-date-range">'
     +     '<input type="date" id="mu-from" value="' + today + '">'
-    +     '<span style="color:#64748b;font-size:0.72rem;">~</span>'
+    +     '<span style="color:var(--text3);font-size:0.72rem;">~</span>'
     +     '<input type="date" id="mu-to" value="' + today + '">'
     +     '<button class="df-query-btn" id="mu-search-btn">조회</button>'
     +   '</div>'

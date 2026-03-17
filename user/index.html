@@ -51,13 +51,21 @@
     <div class="nav-links">
       <div class="nav-link active" data-tab="casino" onclick="switchTab('casino',this)"><i class="fas fa-play-circle"></i>카지노게임</div>
       <div class="nav-link" data-tab="slot" onclick="switchTab('slot',this)"><i class="fas fa-coins"></i>슬롯게임</div>
-      <div class="nav-link" onclick="openInfoModal('notice')"><i class="fas fa-bullhorn"></i>공지사항</div>
-      <div class="nav-link" onclick="switchTab('event',this)"><i class="fas fa-gift"></i>이벤트</div>
-      <div class="nav-link" onclick="switchTab('support',this)"><i class="fas fa-headset"></i>고객센터</div>
+      <div class="nav-link" data-tab="sports" onclick="switchTab('sports',this)"><i class="fas fa-futbol"></i>스포츠</div>
+      <div class="nav-link" data-tab="notice" onclick="switchTab('notice',this)"><i class="fas fa-bullhorn"></i>공지사항</div>
+      <div class="nav-link" data-tab="message" onclick="switchTab('message',this)"><i class="fas fa-envelope"></i>쪽지<span id="msg-unread-badge" style="display:none;background:#ef4444;color:#fff;font-size:0.6rem;padding:1px 5px;border-radius:8px;margin-left:4px;font-weight:700;"></span></div>
+      <div class="nav-link" data-tab="support" onclick="switchTab('support',this)"><i class="fas fa-headset"></i>고객센터</div>
     </div>
 
   </div>
 </nav>
+
+<!-- ════ 한줄공지 ════ -->
+<div id="notice-line-bar" style="display:none;background:linear-gradient(90deg,#1a1500,#2a2000,#1a1500);border-bottom:1px solid rgba(200,168,75,0.2);padding:8px 0;overflow:hidden;">
+  <div id="notice-line-text" style="white-space:nowrap;animation:noticeScroll 20s linear infinite;color:#c8a84b;font-size:0.82rem;font-weight:600;padding-left:100%;">
+  </div>
+  <style>@keyframes noticeScroll{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}</style>
+</div>
 
 <!-- ════ GAME SECTION WRAPPER ════ -->
 <div id="game-section-wrapper" style="background:radial-gradient(ellipse at 50% 0%, rgba(200,168,75,0.07) 0%, transparent 60%), linear-gradient(180deg,#060604 0%,#0a0904 50%,#060604 100%);">
@@ -128,6 +136,28 @@
   </div>
 </div>
 
+<!-- ════ HOTEL CASINO SECTION ════ -->
+<div id="hotel-section" style="display:none;position:relative;background:transparent;padding:0;overflow:hidden;">
+  <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(200,168,75,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(200,168,75,0.04) 1px,transparent 1px);background-size:50px 50px;mask-image:radial-gradient(ellipse at center,black 20%,transparent 80%);pointer-events:none;"></div>
+  <div class="main-wrap">
+
+    <!-- Section title -->
+    <div class="sec-title">
+      <div class="sec-title-line"></div>
+      <div class="sec-title-center">
+        <i class="fas fa-hotel sec-title-icon"></i>
+        <span class="sec-title-text">HOTEL CASINO</span>
+        <i class="fas fa-hotel sec-title-icon"></i>
+      </div>
+      <div class="sec-title-line sec-title-line-r"></div>
+    </div>
+
+    <!-- JS에서 동적으로 채워짐 -->
+    <div class="live-grid" id="hotel-grid-row1"></div>
+
+  </div>
+</div>
+
 <!-- ════ EVENT SECTION ════ -->
 <div id="event-section" style="display:none;background:radial-gradient(ellipse at 50% 40%, rgba(200,168,75,0.12) 0%, transparent 65%), linear-gradient(180deg, #060503 0%, #0c0a06 100%);padding:32px 0;">
   <div class="main-wrap">
@@ -135,30 +165,153 @@
   </div>
 </div>
 
-<!-- ════ SUPPORT SECTION ════ -->
-<div id="support-section" style="display:none;background:radial-gradient(ellipse at 50% 40%, rgba(200,168,75,0.12) 0%, transparent 65%), linear-gradient(180deg, #060503 0%, #0c0a06 100%);padding:32px 0;min-height:400px;">
-  <div class="main-wrap">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
-      <!-- 문의 작성 -->
-      <div style="background:rgba(8,7,5,0.7);border:1px solid rgba(200,168,75,0.25);border-radius:10px;padding:24px;">
-        <h3 style="color:var(--gold);font-size:0.95rem;margin-bottom:16px;"><i class="fas fa-pen" style="margin-right:8px;"></i>1:1 문의하기</h3>
-        <div id="support-login-warn" style="display:none;color:#888;font-size:0.85rem;padding:20px;text-align:center;">로그인 후 문의하실 수 있습니다.</div>
-        <div id="support-form">
-          <input type="text" id="inq-title" placeholder="제목을 입력하세요" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.85rem;margin-bottom:10px;">
-          <textarea id="inq-content" placeholder="문의 내용을 입력하세요" rows="6" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.85rem;resize:vertical;font-family:inherit;margin-bottom:10px;"></textarea>
-          <button onclick="submitInquiry()" style="background:linear-gradient(135deg,#c8a84b,#d4af37);color:#000;border:none;border-radius:6px;padding:10px 28px;font-weight:700;cursor:pointer;font-size:0.85rem;">문의 제출</button>
-        </div>
-      </div>
-      <!-- 나의 문의 내역 -->
-      <div style="background:rgba(8,7,5,0.7);border:1px solid rgba(200,168,75,0.25);border-radius:10px;padding:24px;">
-        <h3 style="color:var(--gold);font-size:0.95rem;margin-bottom:16px;"><i class="fas fa-list" style="margin-right:8px;"></i>나의 문의 내역</h3>
-        <div id="my-inquiry-list"><div style="color:#666;font-size:0.82rem;text-align:center;padding:20px;">문의 내역이 없습니다.</div></div>
-      </div>
+</div><!-- /game-section-wrapper -->
+
+<!-- ════ SPORTS SECTION ════ -->
+<div id="sports-section" style="display:none;background:radial-gradient(ellipse at 50% 0%, rgba(200,168,75,0.07) 0%, transparent 60%), linear-gradient(180deg,#060604 0%,#0a0904 50%,#060604 100%);min-height:400px;">
+  <div class="main-wrap" style="padding-top:32px;padding-bottom:32px;">
+    <div id="sports-grid" class="live-grid"></div>
+    <div id="sports-empty" style="text-align:center;padding:80px 20px;display:none;">
+      <i class="fas fa-futbol" style="font-size:3rem;color:var(--gold,#c8a84b);margin-bottom:16px;"></i>
+      <h2 style="color:#e2e8f0;font-size:1.3rem;font-weight:700;margin-bottom:8px;">스포츠</h2>
+      <p style="color:#64748b;font-size:0.9rem;">준비 중입니다.</p>
     </div>
   </div>
 </div>
 
-</div><!-- /game-section-wrapper -->
+<!-- ════ MESSAGE SECTION ════ -->
+<div id="message-section" style="display:none;background:radial-gradient(ellipse at 50% 0%, rgba(200,168,75,0.07) 0%, transparent 60%), linear-gradient(180deg,#060604 0%,#0a0904 50%,#060604 100%);min-height:400px;">
+  <div style="padding:24px 40px 0;">
+    <h2 style="font-size:1.6rem;font-weight:800;color:#e2e8f0;margin:0;letter-spacing:2px;">쪽지함</h2>
+  </div>
+  <div style="max-width:1280px;margin:0 auto;padding:24px 16px;">
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px;">
+      <button onclick="readAllMsg()" style="background:none;border:1px solid #334155;color:#94a3b8;border-radius:6px;padding:8px 16px;font-size:0.8rem;cursor:pointer;">전체읽기</button>
+      <button onclick="deleteAllMsg()" style="background:none;border:1px solid #ef4444;color:#ef4444;border-radius:6px;padding:8px 16px;font-size:0.8rem;cursor:pointer;">전체삭제</button>
+    </div>
+    <div style="border:1px solid #1e293b;border-radius:8px;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+        <thead>
+          <tr style="background:#111827;border-bottom:1px solid #1e293b;">
+            <th style="padding:12px 16px;text-align:center;color:#94a3b8;font-weight:600;width:50px;">번호</th>
+            <th style="padding:12px 16px;text-align:left;color:#94a3b8;font-weight:600;">제목</th>
+            <th style="padding:12px 16px;text-align:center;color:#94a3b8;font-weight:600;width:90px;">읽음</th>
+            <th style="padding:12px 16px;text-align:center;color:#94a3b8;font-weight:600;width:160px;">수신일</th>
+            <th style="padding:12px 16px;text-align:center;color:#94a3b8;font-weight:600;width:60px;">삭제</th>
+          </tr>
+        </thead>
+        <tbody id="msg-tbody">
+          <tr><td colspan="5" style="padding:40px;text-align:center;color:#475569;">쪽지가 없습니다.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="msg-pagination" style="display:flex;justify-content:center;align-items:center;gap:8px;margin-top:16px;"></div>
+  </div>
+</div>
+
+<!-- 쪽지 상세 모달 -->
+<div id="msg-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+  <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;width:500px;max-width:92vw;max-height:80vh;box-shadow:0 20px 60px rgba(0,0,0,0.5);display:flex;flex-direction:column;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #1e293b;flex-shrink:0;">
+      <span id="msg-detail-title" style="font-size:1rem;font-weight:700;color:#e2e8f0;"></span>
+      <button onclick="closeMsgDetail()" style="background:none;border:none;color:#64748b;font-size:1.2rem;cursor:pointer;">✕</button>
+    </div>
+    <div style="padding:4px 20px 0;font-size:0.75rem;color:#64748b;" id="msg-detail-date"></div>
+    <div id="msg-detail-body" style="padding:16px 20px;overflow-y:auto;flex:1;color:#cbd5e1;font-size:0.88rem;line-height:1.7;"></div>
+  </div>
+</div>
+
+<!-- ════ NOTICE SECTION ════ -->
+<div id="notice-section" style="display:none;background:radial-gradient(ellipse at 50% 0%, rgba(200,168,75,0.07) 0%, transparent 60%), linear-gradient(180deg,#060604 0%,#0a0904 50%,#060604 100%);min-height:400px;">
+  <div style="padding:24px 40px 0;">
+    <h2 style="font-size:1.6rem;font-weight:800;color:#e2e8f0;margin:0;letter-spacing:2px;">공지사항</h2>
+  </div>
+  <div style="max-width:1280px;margin:0 auto;padding:24px 16px;">
+    <div style="border:1px solid #1e293b;border-radius:8px;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+        <thead>
+          <tr style="background:#111827;border-bottom:1px solid #1e293b;">
+            <th style="padding:12px 16px;text-align:center;color:#94a3b8;font-weight:600;width:50px;">번호</th>
+            <th style="padding:12px 16px;text-align:left;color:#94a3b8;font-weight:600;">제목</th>
+            <th style="padding:12px 16px;text-align:center;color:#94a3b8;font-weight:600;width:160px;">등록일</th>
+          </tr>
+        </thead>
+        <tbody id="notice-tbody">
+          <tr><td colspan="3" style="padding:40px;text-align:center;color:#475569;">등록된 공지사항이 없습니다.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="notice-pagination" style="display:flex;justify-content:center;align-items:center;gap:8px;margin-top:16px;"></div>
+  </div>
+</div>
+
+<!-- 공지사항 상세 모달 -->
+<div id="notice-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+  <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;max-width:92vw;max-height:80vh;box-shadow:0 20px 60px rgba(0,0,0,0.5);display:flex;flex-direction:column;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #1e293b;flex-shrink:0;">
+      <span id="notice-detail-title" style="font-size:1rem;font-weight:700;color:#e2e8f0;"></span>
+      <button onclick="closeNoticeDetail()" style="background:none;border:none;color:#64748b;font-size:1.2rem;cursor:pointer;">✕</button>
+    </div>
+    <div id="notice-detail-body" style="padding:20px;overflow-y:auto;flex:1;color:#cbd5e1;font-size:0.88rem;line-height:1.7;text-align:center;"></div>
+  </div>
+</div>
+
+<!-- ════ SUPPORT SECTION ════ -->
+<div id="support-section" style="display:none;background:radial-gradient(ellipse at 50% 0%, rgba(200,168,75,0.07) 0%, transparent 60%), linear-gradient(180deg,#060604 0%,#0a0904 50%,#060604 100%);min-height:400px;">
+  <!-- 타이틀 -->
+  <div style="padding:24px 40px 0;">
+    <h2 style="font-size:1.6rem;font-weight:800;color:#e2e8f0;margin:0;letter-spacing:2px;">고객센터</h2>
+  </div>
+  <div style="max-width:1280px;margin:0 auto;padding:24px 16px;">
+    <!-- 안내문구 + 문의하기 버튼 -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="color:#94a3b8;font-size:0.85rem;">※ <a href="javascript:void(0)" onclick="openInquiryModal()" style="color:#60a5fa;text-decoration:underline;cursor:pointer;">문의</a>를 남겨주시면 최대한 빠르게 답변 드리겠습니다.</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="deleteAllInquiry()" style="background:none;border:1px solid #ef4444;color:#ef4444;border-radius:6px;padding:10px 16px;font-size:0.8rem;cursor:pointer;white-space:nowrap;">전체삭제</button>
+        <button onclick="openInquiryModal()" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:10px 24px;font-size:0.85rem;font-weight:700;cursor:pointer;white-space:nowrap;">문의하기</button>
+      </div>
+    </div>
+    <!-- 테이블 -->
+    <div style="border:1px solid #1e293b;border-radius:8px;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+        <thead>
+          <tr style="background:#111827;border-bottom:1px solid #1e293b;">
+            <th style="padding:12px 16px;text-align:left;color:#94a3b8;font-weight:600;width:180px;">문의시간</th>
+            <th style="padding:12px 16px;text-align:left;color:#94a3b8;font-weight:600;">내용</th>
+            <th style="padding:12px 16px;text-align:center;color:#94a3b8;font-weight:600;width:90px;">답변상태</th>
+            <th style="padding:12px 16px;text-align:center;color:#94a3b8;font-weight:600;width:90px;">열람상태</th>
+            <th style="padding:12px 16px;text-align:center;color:#94a3b8;font-weight:600;width:60px;">삭제</th>
+          </tr>
+        </thead>
+        <tbody id="cs-inquiry-tbody">
+          <tr><td colspan="5" style="padding:40px;text-align:center;color:#475569;">현재 등록된 게시물이 없습니다.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- 페이지네이션 -->
+    <div id="cs-pagination" style="display:flex;justify-content:center;align-items:center;gap:8px;margin-top:16px;"></div>
+  </div>
+</div>
+
+<!-- 문의하기 모달 -->
+<div id="inquiry-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:99999;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+  <div style="background:#111827;border:1px solid #1e293b;border-radius:12px;width:500px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #1e293b;">
+      <span style="font-size:1rem;font-weight:700;color:#e2e8f0;">1:1 문의하기</span>
+      <button onclick="closeInquiryModal()" style="background:none;border:none;color:#64748b;font-size:1.2rem;cursor:pointer;">✕</button>
+    </div>
+    <div style="padding:20px;">
+      <div id="support-login-warn" style="display:none;color:#888;font-size:0.85rem;padding:20px;text-align:center;">로그인 후 문의하실 수 있습니다.</div>
+      <div id="support-form">
+        <label style="font-size:0.8rem;color:#94a3b8;margin-bottom:6px;display:block;">제목</label>
+        <input type="text" id="inq-title" placeholder="제목을 입력하세요" style="width:100%;box-sizing:border-box;background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:10px 14px;color:#e2e8f0;font-size:0.85rem;margin-bottom:14px;">
+        <label style="font-size:0.8rem;color:#94a3b8;margin-bottom:6px;display:block;">내용</label>
+        <textarea id="inq-content" placeholder="문의 내용을 입력하세요" rows="6" style="width:100%;box-sizing:border-box;background:#0f172a;border:1px solid #1e293b;border-radius:6px;padding:10px 14px;color:#e2e8f0;font-size:0.85rem;resize:vertical;font-family:inherit;margin-bottom:14px;"></textarea>
+        <button onclick="submitInquiry()" style="width:100%;background:#ef4444;color:#fff;border:none;border-radius:6px;padding:12px;font-weight:700;cursor:pointer;font-size:0.9rem;">문의 제출</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ════ INFO SECTION ════ -->
 <div class="info-section" id="info-section" style="position:relative;">
@@ -469,82 +622,187 @@
   </div>
 </div>
 
-<!-- 충전 모달 -->
+<!-- ════ 입금/출금 통합 모달 ════ -->
 <div class="modal-backdrop" id="deposit-modal" style="display:none;">
-  <div class="modal-box" style="max-width:420px;">
-    <div class="modal-head">
-      <span>충전 신청</span>
-      <button class="modal-close" onclick="closeModal('deposit')">✕</button>
+  <div class="tw-modal-container">
+    <button class="tw-modal-x" onclick="closeModal('deposit')"><i class="fas fa-times"></i></button>
+
+    <!-- 헤더 배너 -->
+    <div class="tw-banner">
+      <div class="tw-banner-overlay"></div>
+      <h2 class="tw-banner-title" id="tw-banner-title">입금신청</h2>
     </div>
-    <div class="modal-body" style="padding:24px;">
-      <div style="margin-bottom:14px;">
-        <label style="font-size:0.8rem;color:var(--text2);display:block;margin-bottom:6px;">충전 금액</label>
-        <input type="number" id="dep-amount" placeholder="금액을 입력하세요" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.9rem;">
-        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
-          <button onclick="addDepAmount(10000)"   style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">+1만</button>
-          <button onclick="addDepAmount(50000)"   style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">+5만</button>
-          <button onclick="addDepAmount(100000)"  style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">+10만</button>
-          <button onclick="addDepAmount(500000)"  style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">+50만</button>
-          <button onclick="document.getElementById('dep-amount').value=''" style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#f87171;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">초기화</button>
+
+    <!-- 탭 -->
+    <div class="tw-tabs">
+      <button class="tw-tab active" id="tw-tab-deposit" onclick="switchTransferTab('deposit')">입금신청</button>
+      <button class="tw-tab" id="tw-tab-withdraw" onclick="switchTransferTab('withdraw')">출금신청</button>
+    </div>
+
+    <div class="tw-content">
+      <!-- ── 왼쪽: 폼 ── -->
+      <div class="tw-left">
+
+        <!-- 내 머니정보 -->
+        <div class="tw-section-label">내 머니정보</div>
+        <div class="tw-money-info">
+          <div class="tw-money-item">
+            <span class="tw-money-dot"></span> 게임머니 <strong id="tw-game-money">0 원</strong>
+          </div>
+        </div>
+
+        <!-- 입금신청금액 (deposit) -->
+        <div id="tw-deposit-form">
+          <div class="tw-section-label">입금신청금액</div>
+          <div class="tw-amount-btns">
+            <button onclick="twAddAmount('dep',10000)">10,000</button>
+            <button onclick="twAddAmount('dep',50000)">50,000</button>
+            <button onclick="twAddAmount('dep',300000)">300,000</button>
+            <button onclick="twAddAmount('dep',1000000)">1,000,000</button>
+            <button onclick="twAddAmount('dep',5000000)">5,000,000</button>
+          </div>
+          <div class="tw-amount-row">
+            <button class="tw-reset-btn" onclick="document.getElementById('dep-amount').value='0'"><i class="fas fa-undo"></i></button>
+            <input type="text" id="dep-amount" class="tw-amount-input" value="0" readonly>
+          </div>
+
+          <div class="tw-section-label">입금보너스 선택</div>
+          <div class="tw-bonus-list">
+            <button class="tw-bonus-btn active" onclick="selectBonus(this)">입금 보너스 (입금 시 무제한 5% 최대 50만) - 카지노 불가</button>
+            <button class="tw-bonus-btn" onclick="selectBonus(this)">신규 파격 지원 이벤트 (가입 첫 입금 20% 최대 50만) - 카지노 불가</button>
+            <button class="tw-bonus-btn" onclick="selectBonus(this)">슬롯 이벤트 (매일 첫 입금 15% 최대 50만) - 슬롯 외 게임 불가</button>
+            <button class="tw-bonus-btn none" onclick="selectBonus(this)">보너스 미지급 (카지노, 스포츠 단폴더 이용)</button>
+          </div>
+
+          <div id="dep-err" style="display:none;color:#f87171;font-size:0.8rem;margin-bottom:10px;"></div>
+          <div class="tw-submit-row">
+            <button class="tw-btn-sub" onclick="requestDepositAccount()">입금계좌요청</button>
+            <button class="tw-btn-main" onclick="submitDeposit()">입금신청</button>
+          </div>
+        </div>
+
+        <!-- 출금신청금액 (withdraw) -->
+        <div id="tw-withdraw-form" style="display:none;">
+          <div class="tw-notice">※ <span class="highlight">회원가입 시</span> 등록된 아래 예금주 명의로 출금신청 금액이 입금됩니다.</div>
+
+          <div class="tw-section-label">내 계좌정보</div>
+          <div class="tw-money-info" style="flex-direction:column;gap:8px;">
+            <div class="tw-money-item"><span class="tw-money-dot"></span> 예금주 <strong id="tw-holder-name">-</strong> <span style="margin-left:20px;">•</span> <span style="margin-left:8px;color:#6080a0;">입금계좌</span> <strong id="tw-account-info" style="margin-left:8px;">-</strong></div>
+            <div class="tw-money-item" style="gap:12px;"><span class="tw-money-dot"></span> 출금 비밀번호 <input type="password" id="wit-password" class="tw-text-input" style="width:220px;margin:0;" placeholder="출금 비밀번호 입력"></div>
+          </div>
+
+          <div class="tw-section-label">출금신청금액</div>
+          <div class="tw-amount-btns">
+            <button onclick="twAddAmount('wit',50000)">50,000</button>
+            <button onclick="twAddAmount('wit',300000)">300,000</button>
+            <button onclick="twAddAmount('wit',1000000)">1,000,000</button>
+            <button onclick="twAddAmount('wit',5000000)">5,000,000</button>
+            <button onclick="twSetMax()">최대</button>
+          </div>
+          <div class="tw-amount-row">
+            <button class="tw-reset-btn" onclick="document.getElementById('wit-amount').value='0';_updateWithdrawAfter()"><i class="fas fa-undo"></i></button>
+            <input type="text" id="wit-amount" class="tw-amount-input" value="0" readonly>
+          </div>
+          <div class="tw-after-amount" id="tw-wit-after">출금 후 금액 <strong>0 원</strong></div>
+
+          <div id="wit-err" style="display:none;color:#f87171;font-size:0.8rem;margin:10px 0;"></div>
+          <div class="tw-submit-row">
+            <button class="tw-btn-main full" onclick="submitWithdraw()">출금신청</button>
+          </div>
+
+          <div class="tw-history-label">출금내역</div>
+          <table class="tw-history-table">
+            <thead><tr><th>번호</th><th>요청일시</th><th>구분</th><th>금액</th><th>상태</th></tr></thead>
+            <tbody id="tw-wit-history"><tr class="empty-row"><td colspan="5">출금 내역이 없습니다.</td></tr></tbody>
+          </table>
         </div>
       </div>
-      <div style="margin-bottom:14px;">
-        <label style="font-size:0.8rem;color:var(--text2);display:block;margin-bottom:6px;">은행명</label>
-        <input type="text" id="dep-bank" placeholder="예) 국민은행" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.85rem;">
+
+      <!-- ── 오른쪽: 규정 ── -->
+      <div class="tw-right">
+        <div class="tw-rule-header" id="tw-rule-header">입금 규정</div>
+
+        <div id="tw-deposit-rules">
+          <div class="tw-rule-section">
+            <div class="tw-rule-title"><i class="fas fa-play"></i> 입금방법</div>
+            <p>[입금계좌요청]을 클릭하면 해당 계좌번호가 표시됩니다.</p>
+            <p>혹 입금계좌가 표시되지 않고 입금신청 등의 알림문구가 표시되면 [문의하기]를 확인합니다.</p>
+            <p>그럼 답변 확인 후 발급된 계좌로 입금 하시면 됩니다.</p>
+            <p class="tw-rule-warn">* [입금계좌요청]은 입금하기 전에 반드시 요청하여 확인합니다.</p>
+          </div>
+          <div class="tw-rule-section">
+            <div class="tw-rule-title"><i class="fas fa-play"></i> 최소 입금금액</div>
+            <p>10,000원부터 가능하시며, 1,000원 단위 혹은 100원 단위로는 입금 처리가 불가능합니다.</p>
+          </div>
+          <div class="tw-rule-section">
+            <div class="tw-rule-title"><i class="fas fa-play"></i> 입금 주의사항</div>
+            <p>1. 수표입금 및 타인명의로 입금시 이용이 제한됩니다.</p>
+            <p>2. 토스, 핀크, 카카오페이 어플 서비스를 지원하지 않습니다.</p>
+          </div>
+          <div class="tw-rule-section">
+            <div class="tw-rule-title"><i class="fas fa-play"></i> 입금 지연 혹은 취소</div>
+            <p>1. 입금자명이 일치 하지 않는 경우</p>
+            <p>2. 1,000원 혹은 100원 단위를 입금 하신 경우</p>
+            <p>3. 충전 금액과 신청 금액이 일치 하지 않는 경우 위 내용처럼 지연 및 취소 될수 있습니다.</p>
+          </div>
+          <div class="tw-rule-section">
+            <div class="tw-rule-title"><i class="fas fa-play"></i> 보너스별 이용 안내</div>
+            <p>기본적으로 입금 시 첫충전 및 매충전 혜택이 지급됩니다.</p>
+            <p class="tw-rule-warn">(입금 보너스 스포츠 단폴더/카지노 사용 불가)</p>
+            <p>스포츠 단폴더/카지노 이용 시 입금 보너스 사용이 불가능합니다.</p>
+            <p>신청 란의 "보너스 미지급" 버튼을 선택 후 입금 신청 진행해주시기 바랍니다.</p>
+          </div>
+        </div>
+
+        <div id="tw-withdraw-rules" style="display:none;">
+          <!-- 롤링현황 -->
+          <div class="tw-rolling-box">
+            <div class="tw-rolling-title">롤링현황</div>
+            <div class="tw-rolling-info">
+              <div><span>• 입금내역</span> <strong>입금전</strong></div>
+              <div><span>• 롤링금액</span> <strong style="color:#f87171;">0 원</strong></div>
+            </div>
+            <div class="tw-rolling-status">
+              <div class="tw-rolling-icon"><i class="fas fa-sync-alt"></i></div>
+              <div class="tw-rolling-text">
+                <div class="status-label">진행중</div>
+                <div class="status-desc">롤링 목표달성이 다가옵니다.</div>
+              </div>
+            </div>
+            <div class="tw-rolling-bar">0% 진행중</div>
+            <div style="font-size:0.75rem;color:#6080a0;margin-bottom:8px;">보너스 롤링완료까지 필요한 배팅금액</div>
+            <div class="tw-rolling-cards">
+              <div class="tw-rolling-card"><i class="fas fa-futbol"></i><div class="rc-label">스포츠-단폴</div><div class="rc-val">0 원</div></div>
+              <div class="tw-rolling-card"><i class="fas fa-futbol"></i><div class="rc-label">스포츠-다폴</div><div class="rc-val">0 원</div></div>
+              <div class="tw-rolling-card"><i class="fas fa-gamepad"></i><div class="rc-label">미니게임/가상스포츠</div><div class="rc-val">0 원</div></div>
+              <div class="tw-rolling-card"><i class="fas fa-dice"></i><div class="rc-label">카지노/슬롯</div><div class="rc-val">0 원</div></div>
+            </div>
+          </div>
+          <p class="tw-rolling-note">※ [카지노/슬롯] 롤링의 경우 배팅 후 반영 시간이 1분 ~ 20분 내외 시간이 소요됩니다.</p>
+
+          <div class="tw-rule-section">
+            <div class="tw-rule-title"><i class="fas fa-play"></i> 최소 출금금액</div>
+            <p>10,000원부터 가능하시며, 1,000원단위 혹은 100원단위로는 출금 처리가 불가능합니다.</p>
+          </div>
+          <div class="tw-rule-section">
+            <div class="tw-rule-title"><i class="fas fa-play"></i> 출금제한</div>
+            <p>1회 최대 환전금액 : 개별상담 / 1일 최대 환전금액 : 개별상담</p>
+          </div>
+          <div class="tw-rule-section">
+            <div class="tw-rule-title"><i class="fas fa-play"></i> 출금 주의사항</div>
+            <p>※ 환전이후 재환전 시간은 ~1시간 이후로 재환전 신청이 가능합니다.</p>
+            <p>※ 가입시 기재해주신 본인명의 계좌로만 출금이 가능하니 참고바랍니다.</p>
+          </div>
+        </div>
       </div>
-      <div style="margin-bottom:14px;">
-        <label style="font-size:0.8rem;color:var(--text2);display:block;margin-bottom:6px;">예금주</label>
-        <input type="text" id="dep-holder" placeholder="예금주명" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.85rem;">
-      </div>
-      <div style="margin-bottom:20px;">
-        <label style="font-size:0.8rem;color:var(--text2);display:block;margin-bottom:6px;">계좌번호</label>
-        <input type="text" id="dep-account" placeholder="계좌번호" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.85rem;">
-      </div>
-      <div id="dep-err" style="display:none;color:#f87171;font-size:0.8rem;margin-bottom:10px;"></div>
-      <button onclick="submitDeposit()" style="width:100%;background:linear-gradient(135deg,#c8a84b,#d4af37);color:#000;border:none;border-radius:6px;padding:12px;font-weight:700;cursor:pointer;font-size:0.9rem;">충전 신청</button>
     </div>
   </div>
 </div>
 
-<!-- 환전 모달 -->
-<div class="modal-backdrop" id="withdraw-modal" style="display:none;">
-  <div class="modal-box" style="max-width:420px;">
-    <div class="modal-head">
-      <span>환전 신청</span>
-      <button class="modal-close" onclick="closeModal('withdraw')">✕</button>
-    </div>
-    <div class="modal-body" style="padding:24px;">
-      <div id="wit-balance-info" style="background:rgba(200,168,75,0.08);border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:0.85rem;color:var(--gold);">보유 잔액: 0원</div>
-      <div style="margin-bottom:14px;">
-        <label style="font-size:0.8rem;color:var(--text2);display:block;margin-bottom:6px;">환전 금액</label>
-        <input type="number" id="wit-amount" placeholder="금액을 입력하세요" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.9rem;">
-        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
-          <button onclick="addWitAmount(10000)"  style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">+1만</button>
-          <button onclick="addWitAmount(50000)"  style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">+5만</button>
-          <button onclick="addWitAmount(100000)" style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">+10만</button>
-          <button onclick="addWitAmount(500000)" style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#aaa;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">+50만</button>
-          <button onclick="document.getElementById('wit-amount').value=''" style="flex:1;min-width:60px;background:#1a1a1a;border:1px solid #333;color:#f87171;border-radius:4px;padding:5px;font-size:0.75rem;cursor:pointer;">초기화</button>
-        </div>
-      </div>
-      <div style="margin-bottom:14px;">
-        <label style="font-size:0.8rem;color:var(--text2);display:block;margin-bottom:6px;">은행명</label>
-        <input type="text" id="wit-bank" placeholder="예) 국민은행" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.85rem;">
-      </div>
-      <div style="margin-bottom:14px;">
-        <label style="font-size:0.8rem;color:var(--text2);display:block;margin-bottom:6px;">예금주</label>
-        <input type="text" id="wit-holder" placeholder="예금주명" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.85rem;">
-      </div>
-      <div style="margin-bottom:20px;">
-        <label style="font-size:0.8rem;color:var(--text2);display:block;margin-bottom:6px;">계좌번호</label>
-        <input type="text" id="wit-account" placeholder="계좌번호" style="width:100%;box-sizing:border-box;background:#0d0c0a;border:1px solid rgba(200,168,75,0.2);border-radius:6px;padding:10px 14px;color:#ddd;font-size:0.85rem;">
-      </div>
-      <div id="wit-err" style="display:none;color:#f87171;font-size:0.8rem;margin-bottom:10px;"></div>
-      <button onclick="submitWithdraw()" style="width:100%;background:linear-gradient(135deg,#c8a84b,#d4af37);color:#000;border:none;border-radius:6px;padding:12px;font-weight:700;cursor:pointer;font-size:0.9rem;">환전 신청</button>
-    </div>
-  </div>
-</div>
+<!-- withdraw-modal은 deposit-modal 내부 탭으로 통합 -->
+<div class="modal-backdrop" id="withdraw-modal" style="display:none;"></div>
 
-<script src="/user/user.js?v=5"></script>
+<script src="/user/user.js?v=19"></script>
 
 </body>
 </html>

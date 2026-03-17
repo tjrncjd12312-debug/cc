@@ -3,8 +3,9 @@
 // ══════════════════════════════════════
 
 var _gdVendors = [];
-var _gdSettings = { hiddenVendors: [], hiddenGames: {}, blockedGames: {}, vendorOrder: { live: [], slot: [] }, groups: [] };
-var _gdLiveNames = ['evolution','PragmaticPlay Live','Asia Gaming','DreamGame','WM Live','ezugi','bota','sexybcrt','SuperSpade','Skywind Live','vivo','AllBet','saGaming','Live88','XProGaming'];
+var _gdSettings = { hiddenVendors: [], hiddenGames: {}, blockedGames: {}, vendorOrder: { live: [], slot: [], hotel: [] }, vendorApi: {}, groups: [] };
+var _gdLiveNames = ['evolution','PragmaticPlay Live','Asia Gaming','DreamGame','WM Live','ezugi','bota','sexybcrt','SuperSpade','Skywind Live','vivo','AllBet','saGaming','Live88','XProGaming','MicroGaming','oriental'];
+var _gdHotelNames = [];
 
 function loadGameSettings() {
   return fetch('/api/admin/games')
@@ -15,7 +16,8 @@ function loadGameSettings() {
         hiddenVendors: d.hiddenVendors || [],
         hiddenGames: d.hiddenGames || {},
         blockedGames: d.blockedGames || {},
-        vendorOrder: d.vendorOrder || { live: [], slot: [] },
+        vendorOrder: d.vendorOrder || { live: [], slot: [], hotel: [] },
+        vendorApi: d.vendorApi || {},
         groups: d.groups || []
       };
     })
@@ -134,7 +136,9 @@ function renderGameDefault() {
       '<div style="margin-bottom:12px;font-size:0.78rem;color:#aaa;line-height:1.8;">' +
         '※ 최초 기본설정은 직속상위 그룹에 따라 세팅됩니다. ※ 적용예시:그룹없음 설정으로 되어있을 시 적용, 로그인 하지 않은 상태의 유저페이지에 노출되는 게임사설정.' +
       '</div>' +
-      '<div style="font-size:0.95rem;font-weight:bold;color:#a78bfa;margin-bottom:16px;">게임사 기본설정(그룹없음)</div>' +
+      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">' +
+        '<span style="font-size:0.95rem;font-weight:bold;color:#a78bfa;">게임사 기본설정(그룹없음)</span>' +
+      '</div>' +
       '<div id="gd-vendor-list">' +
         '<div style="text-align:center;padding:40px;color:#888;"><i class="fas fa-spinner fa-spin"></i> 불러오는 중...</div>' +
       '</div>' +
@@ -143,11 +147,130 @@ function renderGameDefault() {
   loadGameSettings().then(function() { loadVendors(); });
 }
 
+var _csLiveNames = ['evolution','casino-sa','ag','wm','dream-gaming','sexybcrt','ezugi','allbet','bigGaming','skywind-live','pragmaticplay-live'];
+var _hlVendorMap = {}; // HonorLink 게임사 이름 맵
+var _csVendorMap = {}; // CS API 게임사 이름 맵
+
+// 어드민에서도 합쳐서 보여줄 게임사 (메인 ← 서브들)
+// 벤더 표시이름 매핑
+var _hlDisplayNames = {};
+var _csDisplayNames = { 'oriental': 'oriental casino hotel' };
+
+var _gdMergeVendors = { 'MicroGamingSlot': ['MicroGaming Plus Slo'] };
+var _gdMergedSubs = [];
+(function() {
+  Object.keys(_gdMergeVendors).forEach(function(k) {
+    _gdMergeVendors[k].forEach(function(s) { _gdMergedSubs.push(s); });
+  });
+})();
+
 function loadVendors() {
   var container = document.getElementById('gd-vendor-list');
   if (!container) return;
   container.innerHTML = '<div style="text-align:center;padding:40px;color:#888;"><i class="fas fa-spinner fa-spin"></i> 게임사 목록 불러오는 중...</div>';
 
+  // HonorLink + CS API 둘 다 불러오기
+  Promise.all([
+    fetch('/api/hl/vendors').then(function(r) { return r.json(); }).catch(function() { return {}; }),
+    fetch('/api/game/providers', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type:'1', gametype:'' }) }).then(function(r) { return r.json(); }).catch(function() { return { data: [] }; })
+  ]).then(function(results) {
+    var hlVendors = results[0];
+    var csRes = results[1];
+    _gdVendors = [];
+    _hlVendorMap = {};
+    _csVendorMap = {};
+
+    // CS code → HL name 수동 매핑 (이름이 완전히 다른 경우)
+    var _csToHlMap = {
+      'casino-pragmatic': 'PragmaticPlay Live',
+      'casino-sa': 'saGaming',
+      'casino-dream': 'DreamGame',
+      'casino-ezugi': 'ezugi',
+      'casino-micro': 'MicroGaming',
+      'pragmaticplay': 'PragmaticPlay',
+      'cq9': 'CQ9',
+      'hbn': 'Habanero',
+      'bng': 'Booongo',
+      'nolimitcity': 'Nolimit City',
+      'pg': 'PG Soft'
+    };
+    // 정규화: 공백, 하이픈, 언더스코어 제거 후 소문자
+    function _normName(n) { return (n || '').toLowerCase().replace(/[\s\-_]/g, ''); }
+    // 정규화된 이름으로 HL 벤더 찾기
+    var _hlNormMap = {};
+
+    // HonorLink 게임사 추가
+    if (hlVendors && !hlVendors.error && !hlVendors._status) {
+      Object.keys(hlVendors).forEach(function(key) {
+        var v = hlVendors[key];
+        v._type = _gdLiveNames.indexOf(v.name) >= 0 ? 'live' : _gdHotelNames.indexOf(v.name.toLowerCase()) >= 0 ? 'hotel' : 'slot';
+        v._source = 'honorlink';
+        if (_hlDisplayNames[v.name]) v.displayName = _hlDisplayNames[v.name];
+        _hlVendorMap[v.name.toLowerCase()] = v;
+        _hlNormMap[_normName(v.name)] = v;
+        _gdVendors.push(v);
+      });
+    }
+
+    // CS API 게임사 추가 (HonorLink에 없는 것만 — 정규화 비교)
+    var cpList = csRes && (csRes.data || csRes.list || []);
+    if (Array.isArray(cpList)) {
+      cpList.forEach(function(cp) {
+        var csName = cp.code || '';
+        var csNorm = _normName(csName);
+        // 호텔카지노(SxHotel): _hotel 키로만 등록
+        if (cp.gameid === 'SxHotel') {
+          _csVendorMap[(csName + '_hotel').toLowerCase()] = cp;
+          _gdVendors.push({
+            name: csName + '_hotel',
+            displayName: _csDisplayNames[csName.toLowerCase()] || cp.name || csName,
+            enabled: true,
+            _type: 'hotel',
+            _source: 'csapi',
+            _csapi: true,
+            _gameid: cp.gameid || '',
+            _code: cp.code || ''
+          });
+          return;
+        }
+        _csVendorMap[csName.toLowerCase()] = cp;
+        // 수동 매핑 → 정규화 → 소문자 순으로 HL 매칭
+        var hlMappedName = _csToHlMap[csName.toLowerCase()];
+        var matchedHL = (hlMappedName && _hlVendorMap[hlMappedName.toLowerCase()]) || _hlVendorMap[csName.toLowerCase()] || _hlNormMap[csNorm];
+        if (matchedHL) {
+          // HL에 이미 있으면 CS 맵에 HL 이름으로도 등록 (양쪽 버튼 활성화용)
+          _csVendorMap[matchedHL.name.toLowerCase()] = cp;
+        } else {
+          _gdVendors.push({
+            name: csName,
+            displayName: cp.name || csName,
+            enabled: true,
+            _type: cp.gameid === 'SxHotel' ? 'hotel' : (cp.type === 'live' || _csLiveNames.indexOf(csName.toLowerCase()) >= 0) ? 'live' : 'slot',
+            _source: 'csapi',
+            _gameid: cp.gameid || '',
+            _code: cp.code || ''
+          });
+        }
+      });
+    }
+
+    // 합쳐진 서브 게임사 제거 (MicroGaming Plus Slo → MicroGamingSlot에 합침)
+    _gdVendors = _gdVendors.filter(function(v) { return _gdMergedSubs.indexOf(v.name) < 0; });
+
+    var liveList = _gdVendors.filter(function(v) { return v._type === 'live'; });
+    var slotList = _gdVendors.filter(function(v) { return v._type === 'slot'; });
+    var hotelList = _gdVendors.filter(function(v) { return v._type === 'hotel'; });
+    ensureVendorOrder(liveList, 'live');
+    ensureVendorOrder(slotList, 'slot');
+    ensureVendorOrder(hotelList, 'hotel');
+    saveGameSettings();
+    filterVendors();
+  }).catch(function() {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:#f87171;">서버에 연결할 수 없습니다.</div>';
+  });
+}
+
+function _loadHlVendors(container) {
   fetch('/api/hl/vendors')
     .then(function(r) { return r.json(); })
     .then(function(vendors) {
@@ -159,16 +282,44 @@ function loadVendors() {
       Object.keys(vendors).forEach(function(key) {
         var v = vendors[key];
         v._type = _gdLiveNames.indexOf(v.name) >= 0 ? 'live' : 'slot';
+        v._source = 'honorlink';
         _gdVendors.push(v);
       });
 
-      // 라이브/슬롯 각각 순서 초기화
       var liveList = _gdVendors.filter(function(v) { return v._type === 'live'; });
       var slotList = _gdVendors.filter(function(v) { return v._type === 'slot'; });
       ensureVendorOrder(liveList, 'live');
       ensureVendorOrder(slotList, 'slot');
       saveGameSettings();
+      filterVendors();
+    })
+    .catch(function() {
+      container.innerHTML = '<div style="text-align:center;padding:40px;color:#f87171;">서버에 연결할 수 없습니다.</div>';
+    });
+}
 
+function _loadCsVendors(container) {
+  fetch('/api/game/providers', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type:'1', gametype:'' }) })
+    .then(function(r) { return r.json(); })
+    .then(function(csProviders) {
+      console.log('[CS API providers response]', JSON.stringify(csProviders));
+      var cpList = csProviders && (csProviders.data || csProviders.list || csProviders.providers || []);
+      if (!csProviders || (!Array.isArray(cpList) || cpList.length === 0)) {
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:#f87171;">오닉스 게임사 목록을 불러오지 못했습니다. (응답: ' + JSON.stringify(csProviders).substring(0,200) + ')</div>';
+        return;
+      }
+      _gdVendors = [];
+      cpList.forEach(function(cp) {
+        _gdVendors.push({
+          name: cp.code || cp.vendor_code || cp.id || '',
+          displayName: cp.name || cp.vendor_name || cp.code || '',
+          enabled: true,
+          _type: _csLiveNames.indexOf((cp.code || '').toLowerCase()) >= 0 ? 'live' : 'slot',
+          _source: 'csapi',
+          _gameid: cp.gameid || cp.game_id || '',
+          _code: cp.code || cp.vendor_code || ''
+        });
+      });
       filterVendors();
     })
     .catch(function() {
@@ -180,62 +331,86 @@ function filterVendors() {
   var container = document.getElementById('gd-vendor-list');
   if (!container) return;
 
-  var liveAll = _gdVendors.filter(function(v) { return v._type === 'live'; });
-  var slotAll = _gdVendors.filter(function(v) { return v._type === 'slot'; });
+  var filtered = _gdVendors.filter(function(v) { return _gdMergedSubs.indexOf(v.name) < 0; });
+  var liveAll = filtered.filter(function(v) { return v._type === 'live'; });
+  var slotAll = filtered.filter(function(v) { return v._type === 'slot'; });
+  var hotelAll = filtered.filter(function(v) { return v._type === 'hotel'; });
   var liveSorted = getOrderedVendors(liveAll, 'live');
   var slotSorted = getOrderedVendors(slotAll, 'slot');
+  var hotelSorted = getOrderedVendors(hotelAll, 'hotel');
 
   var html = '';
   html += renderVendorSection('카지노', liveSorted, 'live');
   html += renderVendorSection('슬롯', slotSorted, 'slot');
+  html += renderVendorSection('호텔카지노', hotelSorted, 'hotel');
   container.innerHTML = html;
 }
 
 function renderVendorSection(title, vendors, type) {
   var html =
     '<div class="db-section" style="margin-bottom:20px;overflow-x:auto;">' +
-      '<div style="padding:12px 14px;font-size:1rem;font-weight:bold;color:#fff;">' + title + '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;">' +
+        '<span style="font-size:1rem;font-weight:bold;color:#fff;">' + title + '</span>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button onclick="gdHideAll(\'' + type + '\')" style="padding:5px 14px;font-size:0.78rem;background:#ef4444;border:1px solid #ef4444;color:#fff;border-radius:6px;cursor:pointer;font-weight:600;">전체 노출안함</button>' +
+        '</div>' +
+      '</div>' +
       '<table class="db-table" style="font-size:0.82rem;">' +
         '<thead>' +
           '<tr>' +
             '<th style="width:70px;text-align:center;">배열</th>' +
             '<th style="text-align:center;">게임사</th>' +
-            '<th colspan="2" style="text-align:center;">사용</th>' +
+            '<th colspan="3" style="text-align:center;">사용</th>' +
           '</tr>' +
           '<tr>' +
             '<th></th><th></th>' +
-            '<th style="width:180px;text-align:center;">아너링크</th>' +
-            '<th style="width:180px;text-align:center;">노출안함</th>' +
+            '<th style="width:150px;text-align:center;">아너링크</th>' +
+            '<th style="width:150px;text-align:center;">오닉스</th>' +
+            '<th style="width:150px;text-align:center;">노출안함</th>' +
           '</tr>' +
         '</thead>' +
         '<tbody>';
 
   if (vendors.length === 0) {
-    html += '<tr><td colspan="4" style="color:#888;padding:16px;text-align:center;">게임사가 없습니다.</td></tr>';
+    html += '<tr><td colspan="5" style="color:#888;padding:16px;text-align:center;">게임사가 없습니다.</td></tr>';
   } else {
     vendors.forEach(function(v, i) {
       var safeName = v.name.replace(/'/g, "\\'");
-      var hidden = isVendorHidden(v.name);
+      var currentApi = _gdSettings.vendorApi[v.name] || 'honorlink'; // 기본값: honorlink
+      if (isVendorHidden(v.name)) currentApi = 'none';
       var activeStyle = 'padding:6px 16px;font-size:0.78rem;border-radius:6px;cursor:pointer;font-weight:600;border:none;';
-      var hlBtn, noBtn;
-      if (!hidden) {
-        hlBtn = '<button style="' + activeStyle + 'background:#16a34a;color:#fff;" onclick="gdSetVendorApi(\'' + safeName + '\',\'honorlink\')">아너링크</button>';
-        noBtn = '<button style="' + activeStyle + 'background:transparent;border:1px solid #444;color:#888;" onclick="gdSetVendorApi(\'' + safeName + '\',\'none\')">노출안함</button>';
+      var onStyle = activeStyle + 'background:#16a34a;color:#fff;';
+      var offStyle = activeStyle + 'background:transparent;border:1px solid #444;color:#888;';
+
+      // HonorLink에 있는지, CS API에 있는지 체크 (호텔은 자기 소스만)
+      var isHotel = v.name.indexOf('_hotel') >= 0;
+      var hasHL = (isHotel && v._source === 'csapi') ? false : !!_hlVendorMap[v.name.toLowerCase()];
+      var hasCS = (isHotel && v._source === 'honorlink') ? false : !!_csVendorMap[v.name.toLowerCase()];
+
+      var hlBtn, csBtn, noBtn;
+      if (hasHL) {
+        hlBtn = '<button style="' + (currentApi === 'honorlink' ? onStyle : offStyle) + '" onclick="gdSetVendorApi(\'' + safeName + '\',\'honorlink\')">아너링크</button>';
       } else {
-        hlBtn = '<button style="' + activeStyle + 'background:transparent;border:1px solid #444;color:#888;" onclick="gdSetVendorApi(\'' + safeName + '\',\'honorlink\')">아너링크</button>';
-        noBtn = '<button style="' + activeStyle + 'background:#16a34a;color:#fff;" onclick="gdSetVendorApi(\'' + safeName + '\',\'none\')">노출안함</button>';
+        hlBtn = '<span style="color:#555;font-size:0.72rem;">-</span>';
       }
+      if (hasCS) {
+        csBtn = '<button style="' + (currentApi === 'csapi' ? onStyle : offStyle) + '" onclick="gdSetVendorApi(\'' + safeName + '\',\'csapi\')">오닉스</button>';
+      } else {
+        csBtn = '<span style="color:#555;font-size:0.72rem;">-</span>';
+      }
+      noBtn = '<button style="' + (currentApi === 'none' ? onStyle : offStyle) + '" onclick="gdSetVendorApi(\'' + safeName + '\',\'none\')">노출안함</button>';
 
       var orderInput = '<input type="number" value="' + (i + 1) + '" min="1" max="' + vendors.length + '" ' +
-        'style="width:44px;text-align:center;background:#1a2030;border:1px solid #444;color:#fff;border-radius:4px;padding:3px;font-size:0.78rem;" ' +
+        'style="width:44px;text-align:center;background:var(--input-bg,#1a2030);border:1px solid var(--input-border,#444);color:var(--text1,#fff);border-radius:4px;padding:3px;font-size:0.78rem;" ' +
         'onchange="setVendorOrder(\'' + safeName + '\',\'' + type + '\',parseInt(this.value))" ' +
         'onkeydown="if(event.key===\'Enter\'){this.blur();}">';
 
       html +=
-        '<tr style="' + (hidden ? 'opacity:0.5;' : '') + '">' +
+        '<tr style="' + (currentApi === 'none' ? 'opacity:0.5;' : '') + '">' +
           '<td style="text-align:center;">' + orderInput + '</td>' +
-          '<td style="text-align:center;font-weight:500;">' + v.name + '</td>' +
+          '<td style="text-align:center;font-weight:500;">' + (v.displayName || v.name) + '</td>' +
           '<td style="text-align:center;">' + hlBtn + '</td>' +
+          '<td style="text-align:center;">' + csBtn + '</td>' +
           '<td style="text-align:center;">' + noBtn + '</td>' +
         '</tr>';
     });
@@ -247,10 +422,42 @@ function renderVendorSection(title, vendors, type) {
 
 function gdSetVendorApi(name, api) {
   if (api === 'none') {
-    if (!isVendorHidden(name)) toggleVendor(name);
+    // 노출안함
+    if (!isVendorHidden(name)) {
+      _gdSettings.hiddenVendors.push(name);
+    }
+    _gdSettings.vendorApi[name] = 'none';
   } else {
-    if (isVendorHidden(name)) toggleVendor(name);
+    // 아너링크 또는 CS API 선택
+    var idx = _gdSettings.hiddenVendors.indexOf(name);
+    if (idx >= 0) _gdSettings.hiddenVendors.splice(idx, 1);
+    _gdSettings.vendorApi[name] = api;
   }
+  saveGameSettings().then(function() { filterVendors(); });
+}
+
+function gdShowAll(type) {
+  var vendors = _gdVendors.filter(function(v) { return v._type === type; });
+  vendors.forEach(function(v) {
+    var idx = _gdSettings.hiddenVendors.indexOf(v.name);
+    if (idx >= 0) _gdSettings.hiddenVendors.splice(idx, 1);
+    // 노출안함이었으면 기본 API로 복원
+    if (_gdSettings.vendorApi[v.name] === 'none') {
+      delete _gdSettings.vendorApi[v.name];
+    }
+  });
+  saveGameSettings().then(function() { filterVendors(); });
+}
+
+function gdHideAll(type) {
+  var vendors = _gdVendors.filter(function(v) { return v._type === type; });
+  vendors.forEach(function(v) {
+    if (_gdSettings.hiddenVendors.indexOf(v.name) < 0) {
+      _gdSettings.hiddenVendors.push(v.name);
+    }
+    _gdSettings.vendorApi[v.name] = 'none';
+  });
+  saveGameSettings().then(function() { filterVendors(); });
 }
 
 // ── 게임 목록 모달 ──
@@ -421,19 +628,18 @@ function renderGameRestrict() {
   var content = document.getElementById('content');
   content.innerHTML =
     '<div class="pt-wrap">' +
-      '<div style="margin-bottom:16px;">' +
-        '<div style="margin-bottom:8px;">' +
-          '<span style="font-size:0.8rem;color:#aaa;margin-right:8px;">그룹:</span>' +
+      '<div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<span style="font-size:0.8rem;color:#aaa;">그룹:</span>' +
           '<select class="pt-create-select" id="gr-type-filter" style="width:200px;">' +
             '<option value="all">게임사스위치(전체)</option>' +
-            '<option value="live">라이브 카지노</option>' +
-            '<option value="slot">슬롯</option>' +
           '</select>' +
         '</div>' +
-        '<div>' +
-          '<span style="font-size:0.8rem;color:#aaa;margin-right:8px;">벤더:</span>' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<span style="font-size:0.8rem;color:#aaa;">벤더:</span>' +
           '<select class="pt-create-select" id="gr-vendor-filter" style="width:200px;">' +
-            '<option value="honorlink" selected>아너링크</option>' +
+            '<option value="honorlink" selected>아너링크 (HonorLink)</option>' +
+            '<option value="csapi">오닉스 (OnxLink)</option>' +
           '</select>' +
         '</div>' +
       '</div>' +
@@ -443,8 +649,20 @@ function renderGameRestrict() {
     '</div>';
 
   document.getElementById('gr-type-filter').addEventListener('change', function() { filterRestrictVendors(); });
+  document.getElementById('gr-vendor-filter').addEventListener('change', function() { loadRestrictVendors(); });
 
-  loadGameSettings().then(function() { loadRestrictVendors(); });
+  loadGameSettings().then(function() {
+    // 그룹 목록 동적 추가
+    var grFilter = document.getElementById('gr-type-filter');
+    var groups = (_gdSettings && _gdSettings.groups) || [];
+    groups.forEach(function(g) {
+      var opt = document.createElement('option');
+      opt.value = 'group:' + g.name;
+      opt.textContent = g.name;
+      grFilter.appendChild(opt);
+    });
+    loadRestrictVendors();
+  });
 }
 
 function loadRestrictVendors() {
@@ -452,40 +670,92 @@ function loadRestrictVendors() {
   if (!container) return;
   container.innerHTML = '<div style="text-align:center;padding:40px;color:#888;"><i class="fas fa-spinner fa-spin"></i> 게임사 목록 불러오는 중...</div>';
 
-  fetch('/api/hl/vendors')
-    .then(function(r) { return r.json(); })
-    .then(function(vendors) {
-      if (vendors.error || vendors._status) {
-        container.innerHTML = '<div style="text-align:center;padding:40px;color:#f87171;">게임사 목록을 불러오지 못했습니다.</div>';
-        return;
-      }
-      _grVendors = [];
-      Object.keys(vendors).forEach(function(key) {
-        var v = vendors[key];
-        if (!v.enabled) return;
-        v._type = _gdLiveNames.indexOf(v.name) >= 0 ? 'live' : 'slot';
-        _grVendors.push(v);
-      });
-      filterRestrictVendors();
-    })
-    .catch(function() {
-      container.innerHTML = '<div style="text-align:center;padding:40px;color:#f87171;">서버에 연결할 수 없습니다.</div>';
-    });
+  var source = (document.getElementById('gr-vendor-filter') || {}).value || 'honorlink';
+
+  if (source === 'csapi') {
+    fetch('/api/game/providers', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type:'1', gametype:'' }) })
+      .then(function(r) { return r.json(); })
+      .then(function(csProviders) {
+        var cpList = csProviders && (csProviders.data || csProviders.list || csProviders.providers || []);
+        if (!csProviders || !Array.isArray(cpList) || cpList.length === 0) {
+          container.innerHTML = '<div style="text-align:center;padding:40px;color:#f87171;">오닉스 게임사 목록을 불러오지 못했습니다.</div>';
+          return;
+        }
+        _grVendors = [];
+        cpList.forEach(function(cp) {
+          _grVendors.push({
+            name: cp.code || cp.vendor_code || cp.id || '', displayName: cp.name || cp.vendor_name || cp.code || '', enabled: true,
+            _type: _csLiveNames.indexOf((cp.code || '').toLowerCase()) >= 0 ? 'live' : 'slot',
+            _source: 'csapi'
+          });
+        });
+        filterRestrictVendors();
+      })
+      .catch(function() { container.innerHTML = '<div style="text-align:center;padding:40px;color:#f87171;">서버에 연결할 수 없습니다.</div>'; });
+  } else {
+    fetch('/api/hl/vendors')
+      .then(function(r) { return r.json(); })
+      .then(function(vendors) {
+        if (vendors.error || vendors._status) {
+          container.innerHTML = '<div style="text-align:center;padding:40px;color:#f87171;">게임사 목록을 불러오지 못했습니다.</div>';
+          return;
+        }
+        _grVendors = [];
+        Object.keys(vendors).forEach(function(key) {
+          var v = vendors[key];
+          if (!v.enabled) return;
+          v._type = _gdLiveNames.indexOf(v.name) >= 0 ? 'live' : 'slot';
+          v._source = 'honorlink';
+          _grVendors.push(v);
+        });
+        filterRestrictVendors();
+      })
+      .catch(function() { container.innerHTML = '<div style="text-align:center;padding:40px;color:#f87171;">서버에 연결할 수 없습니다.</div>'; });
+  }
+}
+
+function _getActiveGroup() {
+  var type = (document.getElementById('gr-type-filter') || {}).value || 'all';
+  if (type.indexOf('group:') === 0) {
+    var groupName = type.substring(6);
+    var groups = (_gdSettings && _gdSettings.groups) || [];
+    for (var i = 0; i < groups.length; i++) {
+      if (groups[i].name === groupName) return groups[i];
+    }
+  }
+  return null;
+}
+
+function _isVendorHiddenForContext(name) {
+  var group = _getActiveGroup();
+  if (group) {
+    return (group.hiddenVendors || []).indexOf(name) >= 0;
+  }
+  return _gdSettings.hiddenVendors.indexOf(name) >= 0;
 }
 
 function filterRestrictVendors() {
   var type = (document.getElementById('gr-type-filter') || {}).value || 'all';
+  var isGroup = type.indexOf('group:') === 0;
 
   var container = document.getElementById('gr-vendor-list');
   if (!container) return;
 
   var filtered = _grVendors.filter(function(v) {
-    if (type !== 'all' && v._type !== type) return false;
+    if (!isGroup && type !== 'all' && v._type !== type) return false;
     return true;
   });
 
+  var contextLabel = isGroup ? type.substring(6) : '그룹없음';
   var html =
     '<div class="db-section" style="overflow-x:auto;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">' +
+        '<span style="font-weight:600;font-size:0.9rem;color:#e2e8f0;">게임사 기본설정 (' + contextLabel + ')</span>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button onclick="grShowAllVendors()" style="padding:5px 14px;font-size:0.78rem;background:#22c55e;border:1px solid #22c55e;color:#fff;border-radius:6px;cursor:pointer;font-weight:600;">전체노출함</button>' +
+          '<button onclick="grHideAllVendors()" style="padding:5px 14px;font-size:0.78rem;background:#ef4444;border:1px solid #ef4444;color:#fff;border-radius:6px;cursor:pointer;font-weight:600;">전체 노출안함</button>' +
+        '</div>' +
+      '</div>' +
       '<table class="db-table" style="font-size:0.82rem;">' +
         '<thead>' +
           '<tr>' +
@@ -503,7 +773,7 @@ function filterRestrictVendors() {
     filtered.forEach(function(v) {
       var safeName = v.name.replace(/'/g, "\\'");
       var typeLabel = v._type === 'live' ? '라이브' : '슬롯';
-      var hidden = isVendorHidden(v.name);
+      var hidden = _isVendorHiddenForContext(v.name);
       var toggleId = 'gr-toggle-' + v.name.replace(/[^a-zA-Z0-9]/g, '_');
 
       html +=
@@ -529,8 +799,62 @@ function filterRestrictVendors() {
 }
 
 function grToggleVendor(name) {
-  toggleVendor(name);
-  filterRestrictVendors();
+  var group = _getActiveGroup();
+  if (group) {
+    if (!group.hiddenVendors) group.hiddenVendors = [];
+    var idx = group.hiddenVendors.indexOf(name);
+    if (idx >= 0) {
+      group.hiddenVendors.splice(idx, 1);
+    } else {
+      group.hiddenVendors.push(name);
+    }
+    saveGameSettings().then(function() { filterRestrictVendors(); });
+  } else {
+    toggleVendor(name);
+    filterRestrictVendors();
+  }
+}
+
+function grShowAllVendors() {
+  var group = _getActiveGroup();
+  var type = (document.getElementById('gr-type-filter') || {}).value || 'all';
+  var filtered = _grVendors.filter(function(v) {
+    if (type.indexOf('group:') !== 0 && type !== 'all' && v._type !== type) return false;
+    return true;
+  });
+  if (group) {
+    if (!group.hiddenVendors) group.hiddenVendors = [];
+    filtered.forEach(function(v) {
+      var idx = group.hiddenVendors.indexOf(v.name);
+      if (idx >= 0) group.hiddenVendors.splice(idx, 1);
+    });
+  } else {
+    filtered.forEach(function(v) {
+      var idx = _gdSettings.hiddenVendors.indexOf(v.name);
+      if (idx >= 0) _gdSettings.hiddenVendors.splice(idx, 1);
+    });
+  }
+  saveGameSettings().then(function() { filterRestrictVendors(); });
+}
+
+function grHideAllVendors() {
+  var group = _getActiveGroup();
+  var type = (document.getElementById('gr-type-filter') || {}).value || 'all';
+  var filtered = _grVendors.filter(function(v) {
+    if (type.indexOf('group:') !== 0 && type !== 'all' && v._type !== type) return false;
+    return true;
+  });
+  if (group) {
+    if (!group.hiddenVendors) group.hiddenVendors = [];
+    filtered.forEach(function(v) {
+      if (group.hiddenVendors.indexOf(v.name) < 0) group.hiddenVendors.push(v.name);
+    });
+  } else {
+    filtered.forEach(function(v) {
+      if (_gdSettings.hiddenVendors.indexOf(v.name) < 0) _gdSettings.hiddenVendors.push(v.name);
+    });
+  }
+  saveGameSettings().then(function() { filterRestrictVendors(); });
 }
 
 // ── 제한관리 모달 ──
@@ -854,10 +1178,10 @@ function ggEditGroup(idx) {
   saveGameSettings().then(function() { alert('그룹명이 수정되었습니다.'); });
 }
 
-function ggDeleteGroup(idx) {
+async function ggDeleteGroup(idx) {
   var groups = _gdSettings.groups || [];
   if (!groups[idx]) return;
-  if (!confirm('"' + groups[idx].name + '" 그룹을 삭제하시겠습니까?')) return;
+  if (!(await customConfirm('"' + groups[idx].name + '" 그룹을 삭제하시겠습니까?'))) return;
   groups.splice(idx, 1);
   saveGameSettings().then(function() { ggRenderList(); });
 }
@@ -880,7 +1204,7 @@ function ggOpenGameSetting(idx) {
         '<button onclick="document.getElementById(\'gg-modal-overlay\').remove()" style="background:none;border:none;color:#888;font-size:1.4rem;cursor:pointer;">✕</button>' +
       '</div>' +
       '<div style="padding:0 12px 4px;border-bottom:1px solid #2a3040;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:10px;padding-bottom:10px;">' +
-        '<input id="gg-modal-search" type="text" placeholder="게임사 검색..." style="flex:1;min-width:120px;padding:7px 12px;border-radius:6px;border:1px solid #374151;background:#1a1f2e;color:#fff;font-size:0.82rem;outline:none;" />' +
+        '<input id="gg-modal-search" type="text" placeholder="게임사 검색..." style="flex:1;min-width:120px;padding:7px 12px;border-radius:6px;border:1px solid var(--input-border);background:#1a1f2e;color:#fff;font-size:0.82rem;outline:none;" />' +
         '<button onclick="ggBulkVendor(' + idx + ',\'allow\')" style="padding:7px 16px;border-radius:6px;border:none;background:#16a34a;color:#fff;font-size:0.78rem;font-weight:600;cursor:pointer;">전체허용</button>' +
         '<button onclick="ggBulkVendor(' + idx + ',\'hide\')" style="padding:7px 16px;border-radius:6px;border:none;background:#6b7280;color:#fff;font-size:0.78rem;font-weight:600;cursor:pointer;">전체숨김</button>' +
       '</div>' +
@@ -892,19 +1216,37 @@ function ggOpenGameSetting(idx) {
   overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
 
   // 벤더 목록 로드 후 기본설정과 같은 테이블 렌더
-  fetch('/api/hl/vendors')
-    .then(function(r) { return r.json(); })
-    .then(function(vendors) {
+  Promise.all([
+    fetch('/api/hl/vendors').then(function(r) { return r.json(); }).catch(function() { return {}; }),
+    fetch('/api/game/providers', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type:'1', gametype:'' }) }).then(function(r) { return r.json(); }).catch(function() { return { result:0, data:[] }; })
+  ])
+    .then(function(results) {
+      var vendors = results[0];
+      var csProviders = results[1];
       var container = document.getElementById('gg-modal-games');
       if (!container) return;
       var liveList = [], slotList = [];
-      Object.keys(vendors).forEach(function(key) {
-        var v = vendors[key];
-        if (!v.enabled) return;
-        v._type = _gdLiveNames.indexOf(v.name) >= 0 ? 'live' : 'slot';
-        if (v._type === 'live') liveList.push(v);
-        else slotList.push(v);
-      });
+      var hlNames = {};
+      if (!vendors.error && !vendors._status) {
+        Object.keys(vendors).forEach(function(key) {
+          var v = vendors[key];
+          if (!v.enabled) return;
+          v._type = _gdLiveNames.indexOf(v.name) >= 0 ? 'live' : 'slot';
+          v._source = 'honorlink';
+          if (v._type === 'live') liveList.push(v);
+          else slotList.push(v);
+          hlNames[v.name.toLowerCase()] = true;
+        });
+      }
+      if (csProviders && csProviders.result === 1 && Array.isArray(csProviders.data)) {
+        csProviders.data.forEach(function(cp) {
+          if (hlNames[(cp.code||'').toLowerCase()] || hlNames[(cp.name||'').toLowerCase()]) return;
+          var fv = { name: cp.code, displayName: cp.name, enabled: true, _source: 'csapi',
+            _type: _csLiveNames.indexOf(cp.code) >= 0 ? 'live' : 'slot' };
+          if (fv._type === 'live') liveList.push(fv);
+          else slotList.push(fv);
+        });
+      }
 
       // 그룹용 hiddenVendors 초기화
       if (!group.hiddenVendors) group.hiddenVendors = [];

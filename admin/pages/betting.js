@@ -33,23 +33,23 @@ function _buildBettingHTML() {
     + '<div class="db-section" style="padding:16px 20px;">'
     // 필터 바
     + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;">'
-    +   '<div style="display:flex;align-items:center;gap:8px;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:6px 12px;flex:0 0 200px;">'
-    +     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
-    +     '<input type="text" id="bet-user-filter" placeholder="아이디 검색" style="background:none;border:none;color:var(--text,#e2e8f0);font-size:0.8rem;outline:none;width:100%;">'
+    +   '<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--input-border);border-radius:8px;padding:6px 12px;flex:0 0 200px;">'
+    +     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+    +     '<input type="text" id="bet-user-filter" placeholder="아이디 검색" style="background:none;border:none;color:var(--text,var(--text1));font-size:0.8rem;outline:none;width:100%;">'
     +   '</div>'
-    +   '<div style="display:flex;align-items:center;gap:8px;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:6px 12px;flex:0 0 200px;">'
-    +     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
-    +     '<input type="text" id="bet-vendor-filter" placeholder="게임사 검색" style="background:none;border:none;color:var(--text,#e2e8f0);font-size:0.8rem;outline:none;width:100%;">'
+    +   '<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--input-border);border-radius:8px;padding:6px 12px;flex:0 0 200px;">'
+    +     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+    +     '<input type="text" id="bet-vendor-filter" placeholder="게임사 검색" style="background:none;border:none;color:var(--text,var(--text1));font-size:0.8rem;outline:none;width:100%;">'
     +   '</div>'
     +   '<button class="bet-date-preset" data-preset="today" style="background:#6366f1;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">오늘</button>'
-    +   '<button class="bet-date-preset" data-preset="yesterday" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">어제</button>'
-    +   '<button class="bet-date-preset" data-preset="week" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">이번주</button>'
-    +   '<button class="bet-date-preset" data-preset="month" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">이번달</button>'
-    +   '<button class="bet-date-preset" data-preset="lastmonth" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">저번달</button>'
+    +   '<button class="bet-date-preset" data-preset="yesterday" style="background:var(--bg3);color:var(--text2);border:1px solid var(--input-border);border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">어제</button>'
+    +   '<button class="bet-date-preset" data-preset="week" style="background:var(--bg3);color:var(--text2);border:1px solid var(--input-border);border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">이번주</button>'
+    +   '<button class="bet-date-preset" data-preset="month" style="background:var(--bg3);color:var(--text2);border:1px solid var(--input-border);border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">이번달</button>'
+    +   '<button class="bet-date-preset" data-preset="lastmonth" style="background:var(--bg3);color:var(--text2);border:1px solid var(--input-border);border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">저번달</button>'
     +   '<div style="margin-left:auto;display:flex;align-items:center;gap:6px;">'
-    +     '<input type="date" id="bet-date-start" style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:4px 8px;border-radius:6px;font-size:0.72rem;outline:none;">'
-    +     '<span style="color:#64748b;font-size:0.72rem;">~</span>'
-    +     '<input type="date" id="bet-date-end" style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:4px 8px;border-radius:6px;font-size:0.72rem;outline:none;">'
+    +     '<input type="date" id="bet-date-start" style="background:var(--bg);border:1px solid var(--input-border);color:var(--text1);padding:4px 8px;border-radius:6px;font-size:0.72rem;outline:none;">'
+    +     '<span style="color:var(--text3);font-size:0.72rem;">~</span>'
+    +     '<input type="date" id="bet-date-end" style="background:var(--bg);border:1px solid var(--input-border);color:var(--text1);padding:4px 8px;border-radius:6px;font-size:0.72rem;outline:none;">'
     +     '<button id="bet-search-btn" style="background:#6366f1;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:0.72rem;cursor:pointer;font-weight:600;">조회</button>'
     +   '</div>'
     + '</div>'
@@ -139,7 +139,7 @@ function _bindBettingEvents() {
 
       // 활성 버튼 스타일
       document.querySelectorAll('.bet-date-preset').forEach(function(b) {
-        b.style.background = '#1e293b'; b.style.color = '#94a3b8'; b.style.border = '1px solid #334155';
+        b.style.background = 'var(--bg3)'; b.style.color = 'var(--text2)'; b.style.border = '1px solid var(--input-border)';
       });
       btn.style.background = '#6366f1'; btn.style.color = '#fff'; btn.style.border = 'none';
 
@@ -178,12 +178,18 @@ function _fetchBettingData() {
     + '&start=' + encodeURIComponent(start)
     + '&end=' + encodeURIComponent(end);
 
+  // CS API 베팅내역도 함께 조회
+  var csBody = { startDate: start, endDate: end };
+  if (userFilter) csBody.userid = userFilter;
+
   Promise.all([
     fetch(url).then(function(r) { return r.json(); }),
-    fetch('/api/admin/emptybet/log').then(function(r) { return r.json(); }).catch(function() { return { data: [] }; })
+    fetch('/api/admin/emptybet/log').then(function(r) { return r.json(); }).catch(function() { return { data: [] }; }),
+    fetch('/api/game/betting', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(csBody) }).then(function(r) { return r.json(); }).catch(function() { return { data: [] }; })
   ]).then(function(results) {
       var res = results[0];
       var ebLog = results[1].data || [];
+      var csRes = results[2];
       var _ebTxIds = {};
       ebLog.forEach(function(eb) { if (eb.betTxId) _ebTxIds[eb.betTxId] = eb; });
       // roundId 기준으로도 매핑 (win 매칭용)
@@ -193,6 +199,40 @@ function _fetchBettingData() {
       _bettingState.loading = false;
 
       var allData = res.data || [];
+
+      // CS API 베팅 데이터 변환 후 합치기
+      var csLiveNames = ['evolution','pragmatic play live','dream gaming','sa gaming','sexy gaming','wm casino','asia gaming','micro gaming live','all bet','big gaming','skywind live'];
+      var csList = csRes.data || csRes.list || [];
+      if (Array.isArray(csList)) {
+        csList.forEach(function(tx) {
+          var vendor = tx.vendorName || tx.vendor || tx.provider || '';
+          var isLive = csLiveNames.some(function(n) { return vendor.toLowerCase().indexOf(n) >= 0; });
+          var betAmt = Math.abs(Number(tx.betAmount || tx.bet || 0));
+          var winAmt = Number(tx.winAmount || tx.win || 0);
+          // bet 트랜잭션
+          if (betAmt > 0) {
+            allData.push({
+              type: 'bet',
+              amount: -betAmt,
+              processed_at: tx.betTime || tx.datetime || tx.created_at || '',
+              user: { username: tx.username || tx.user_id || '' },
+              details: { game: { vendor: vendor, title: tx.gameName || tx.game || '', round: tx.roundId || tx.round_id || '', type: isLive ? 'live' : 'slot' } },
+              _source: 'csapi'
+            });
+          }
+          // win 트랜잭션
+          if (winAmt > 0) {
+            allData.push({
+              type: 'win',
+              amount: winAmt,
+              processed_at: tx.betTime || tx.datetime || tx.created_at || '',
+              user: { username: tx.username || tx.user_id || '' },
+              details: { game: { vendor: vendor, title: tx.gameName || tx.game || '', round: tx.roundId || tx.round_id || '', type: isLive ? 'live' : 'slot' } },
+              _source: 'csapi'
+            });
+          }
+        });
+      }
 
       // bet/win 타입만 필터 (에이전트 머니 이동 등 제외)
       var filtered = allData.filter(function(t) {
@@ -231,7 +271,7 @@ function _fetchBettingData() {
       filtered.forEach(function(t) {
         var round = (t.details && t.details.game && t.details.game.round) || t.id;
         if (!roundMap[round]) {
-          roundMap[round] = { bet: 0, win: 0, tx: t, bets: [], wins: [] };
+          roundMap[round] = { bet: 0, win: 0, tx: t, bets: [], wins: [], _source: t._source || '' };
           roundOrder.push(round);
         }
         if (t.type === 'bet') {
@@ -389,7 +429,7 @@ function _renderBettingTable(data) {
       + '<td style="color:var(--text,#000);font-size:0.76rem;white-space:nowrap;">' + time + '</td>'
       + '<td style="color:#f59e0b;font-weight:600;">' + (t.user ? t.user.username : '-') + '</td>'
       + '<td>' + gameType + '</td>'
-      + '<td style="font-size:0.78rem;color:var(--text,#000);">아너링크</td>'
+      + '<td style="font-size:0.78rem;color:var(--text,#000);">' + (r._source === 'csapi' ? '오닉스' : '아너링크') + '</td>'
       + '<td style="font-size:0.78rem;color:var(--text,#000);">' + (game.vendor || '-') + '</td>'
       + '<td style="color:var(--text,#000);font-size:0.78rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + (game.title || '') + '">' + (game.title || '-') + '</td>'
       + '<td style="font-size:0.72rem;">' + betPositions + '</td>'
@@ -451,7 +491,7 @@ function _buildDetailHtml(r) {
   if (d.dealer) {
     html += '<div style="display:flex;align-items:center;gap:8px;">'
       + '<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;color:#fff;">' + (d.dealer.name || '?').charAt(0) + '</div>'
-      + '<div><div style="font-size:0.65rem;color:#666;">딜러</div><div style="font-size:0.85rem;font-weight:600;color:var(--text,#e2e8f0);">' + (d.dealer.name || '-') + '</div></div>'
+      + '<div><div style="font-size:0.65rem;color:#666;">딜러</div><div style="font-size:0.85rem;font-weight:600;color:var(--text,var(--text1));">' + (d.dealer.name || '-') + '</div></div>'
       + '</div>';
   }
   html += '</div>';
@@ -510,7 +550,7 @@ function _buildDetailHtml(r) {
       var profitColor = profit > 0 ? '#10b981' : profit < 0 ? '#ef4444' : '#666';
       var betName = _formatBetCode(b.code);
       html += '<tr style="border-top:1px solid #1a1a30;">'
-        + '<td style="padding:7px 12px;color:var(--text,#e2e8f0);font-weight:500;">' + betName + '</td>'
+        + '<td style="padding:7px 12px;color:var(--text,var(--text1));font-weight:500;">' + betName + '</td>'
         + '<td style="padding:7px 12px;text-align:right;color:#ef4444;font-weight:600;">' + (b.stake || 0).toLocaleString() + '</td>'
         + '<td style="padding:7px 12px;text-align:right;color:#10b981;font-weight:600;">' + (b.payout || 0).toLocaleString() + '</td>'
         + '<td style="padding:7px 12px;text-align:right;color:' + profitColor + ';font-weight:700;">' + (profit >= 0 ? '+' : '') + profit.toLocaleString() + '</td>'
@@ -668,28 +708,28 @@ function renderEmptyBettingPage() {
   el.innerHTML = '<div class="pt-wrap"><div class="db-section" style="padding:16px 20px;">'
     // 상단 필터 바 (베팅 내역과 동일)
     + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;">'
-    +   '<div style="display:flex;align-items:center;gap:8px;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:6px 12px;flex:0 0 200px;">'
-    +     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
-    +     '<input type="text" id="eb-user-filter" placeholder="아이디 검색" style="background:none;border:none;color:var(--text,#e2e8f0);font-size:0.8rem;outline:none;width:100%;">'
+    +   '<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--input-border);border-radius:8px;padding:6px 12px;flex:0 0 200px;">'
+    +     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+    +     '<input type="text" id="eb-user-filter" placeholder="아이디 검색" style="background:none;border:none;color:var(--text,var(--text1));font-size:0.8rem;outline:none;width:100%;">'
     +   '</div>'
-    +   '<div style="display:flex;align-items:center;gap:8px;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:6px 12px;flex:0 0 200px;">'
-    +     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
-    +     '<input type="text" id="eb-vendor-filter" placeholder="게임사 검색" style="background:none;border:none;color:var(--text,#e2e8f0);font-size:0.8rem;outline:none;width:100%;">'
+    +   '<div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--input-border);border-radius:8px;padding:6px 12px;flex:0 0 200px;">'
+    +     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
+    +     '<input type="text" id="eb-vendor-filter" placeholder="게임사 검색" style="background:none;border:none;color:var(--text,var(--text1));font-size:0.8rem;outline:none;width:100%;">'
     +   '</div>'
     +   '<button class="eb-date-preset" data-preset="today" style="background:#6366f1;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">오늘</button>'
-    +   '<button class="eb-date-preset" data-preset="yesterday" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">어제</button>'
-    +   '<button class="eb-date-preset" data-preset="week" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">이번주</button>'
-    +   '<button class="eb-date-preset" data-preset="month" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">이번달</button>'
-    +   '<button class="eb-date-preset" data-preset="lastmonth" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">저번달</button>'
+    +   '<button class="eb-date-preset" data-preset="yesterday" style="background:var(--bg3);color:var(--text2);border:1px solid var(--input-border);border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">어제</button>'
+    +   '<button class="eb-date-preset" data-preset="week" style="background:var(--bg3);color:var(--text2);border:1px solid var(--input-border);border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">이번주</button>'
+    +   '<button class="eb-date-preset" data-preset="month" style="background:var(--bg3);color:var(--text2);border:1px solid var(--input-border);border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">이번달</button>'
+    +   '<button class="eb-date-preset" data-preset="lastmonth" style="background:var(--bg3);color:var(--text2);border:1px solid var(--input-border);border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">저번달</button>'
     +   '<div style="display:flex;gap:4px;margin-left:12px;">'
     +     '<button class="eb-game-filter active" data-game="all" style="background:#6366f1;color:#fff;border:none;border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">전체</button>'
-    +     '<button class="eb-game-filter" data-game="casino" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">카지노</button>'
-    +     '<button class="eb-game-filter" data-game="slot" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">슬롯</button>'
+    +     '<button class="eb-game-filter" data-game="casino" style="background:var(--bg3);color:var(--text2);border:1px solid var(--input-border);border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">카지노</button>'
+    +     '<button class="eb-game-filter" data-game="slot" style="background:var(--bg3);color:var(--text2);border:1px solid var(--input-border);border-radius:6px;padding:5px 12px;font-size:0.72rem;cursor:pointer;font-weight:600;">슬롯</button>'
     +   '</div>'
     +   '<div style="margin-left:auto;display:flex;align-items:center;gap:6px;">'
-    +     '<input type="date" id="eb-date-start" style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:4px 8px;border-radius:6px;font-size:0.72rem;outline:none;">'
-    +     '<span style="color:#64748b;font-size:0.72rem;">~</span>'
-    +     '<input type="date" id="eb-date-end" style="background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:4px 8px;border-radius:6px;font-size:0.72rem;outline:none;">'
+    +     '<input type="date" id="eb-date-start" style="background:var(--bg);border:1px solid var(--input-border);color:var(--text1);padding:4px 8px;border-radius:6px;font-size:0.72rem;outline:none;">'
+    +     '<span style="color:var(--text3);font-size:0.72rem;">~</span>'
+    +     '<input type="date" id="eb-date-end" style="background:var(--bg);border:1px solid var(--input-border);color:var(--text1);padding:4px 8px;border-radius:6px;font-size:0.72rem;outline:none;">'
     +     '<button id="eb-search-btn" style="background:#6366f1;color:#fff;border:none;border-radius:6px;padding:5px 10px;font-size:0.72rem;cursor:pointer;font-weight:600;">조회</button>'
     +   '</div>'
     + '</div>'
@@ -747,7 +787,7 @@ function _bindEmptyBetEvents() {
   document.querySelectorAll('.eb-date-preset').forEach(function(btn) {
     btn.addEventListener('click', function() {
       document.querySelectorAll('.eb-date-preset').forEach(function(b) {
-        b.style.background = '#1e293b'; b.style.color = '#94a3b8'; b.style.border = '1px solid #334155';
+        b.style.background = 'var(--bg3)'; b.style.color = 'var(--text2)'; b.style.border = '1px solid var(--input-border)';
       });
       this.style.background = '#6366f1'; this.style.color = '#fff'; this.style.border = 'none';
       var preset = this.dataset.preset;
@@ -769,7 +809,7 @@ function _bindEmptyBetEvents() {
   document.querySelectorAll('.eb-game-filter').forEach(function(btn) {
     btn.addEventListener('click', function() {
       document.querySelectorAll('.eb-game-filter').forEach(function(b) {
-        b.style.background = '#1e293b'; b.style.color = '#94a3b8'; b.style.border = '1px solid #334155';
+        b.style.background = 'var(--bg3)'; b.style.color = 'var(--text2)'; b.style.border = '1px solid var(--input-border)';
         b.classList.remove('active');
       });
       this.style.background = '#6366f1'; this.style.color = '#fff'; this.style.border = 'none';
@@ -933,7 +973,7 @@ function _renderEmptyBetLogTable(logList) {
       + '<td style="color:#60a5fa;font-weight:600;">' + username + '</td>'
       + '<td>' + gameType + '</td>'
       + '<td>' + vendor + '</td>'
-      + '<td style="font-size:0.72rem;color:#64748b;">' + roundId + '</td>'
+      + '<td style="font-size:0.72rem;color:var(--text3);">' + roundId + '</td>'
       + '<td style="color:#f59e0b;font-weight:600;">' + betAmt.toLocaleString() + '</td>'
       + '<td style="color:#10b981;">' + winAmt.toLocaleString() + '</td>'
       + '<td style="font-weight:600;color:' + profitColor + ';">' + profitSign + profit.toLocaleString() + '</td>'
@@ -947,7 +987,7 @@ function _renderEmptyBetLogTable(logList) {
   if (totalPages > 1) {
     var pagHtml = '';
     for (var p = 1; p <= totalPages; p++) {
-      pagHtml += '<button class="eb-page-btn" data-page="' + p + '" style="padding:4px 10px;border-radius:4px;border:1px solid #334155;background:' + (p === _ebState.page ? '#6366f1' : '#1e293b') + ';color:' + (p === _ebState.page ? '#fff' : '#94a3b8') + ';font-size:0.72rem;cursor:pointer;">' + p + '</button>';
+      pagHtml += '<button class="eb-page-btn" data-page="' + p + '" style="padding:4px 10px;border-radius:4px;border:1px solid var(--input-border);background:' + (p === _ebState.page ? '#6366f1' : 'var(--bg3)') + ';color:' + (p === _ebState.page ? '#fff' : 'var(--text2)') + ';font-size:0.72rem;cursor:pointer;">' + p + '</button>';
     }
     document.getElementById('eb-pagination').innerHTML = pagHtml;
     document.querySelectorAll('.eb-page-btn').forEach(function(btn) {

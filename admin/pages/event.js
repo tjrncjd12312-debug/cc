@@ -127,7 +127,7 @@ function bindEventRowEvents(list) {
   // 삭제 버튼
   document.querySelectorAll('.ev-del-btn').forEach(function(btn) {
     btn.addEventListener('click', async function() {
-      if(!confirm('이벤트를 삭제하시겠습니까?')) return;
+      if(!(await customConfirm('이벤트를 삭제하시겠습니까?'))) return;
       var id = this.dataset.id;
       await fetch('/api/admin/events/' + id, { method: 'DELETE' });
       renderEventPage();

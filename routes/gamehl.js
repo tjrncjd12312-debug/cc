@@ -39,10 +39,43 @@ router.get('/my-info', async (req, res) => {
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── 벤더(게임사) 목록
+// ── 벤더(게임사) 목록 (파일 캐시)
+const vendorsCachePath = path.join(__dirname, '..', 'data', 'vendors_cache.json');
+
+function readVendorsCache() {
+  try { return JSON.parse(fs.readFileSync(vendorsCachePath, 'utf8')); } catch(e) { return null; }
+}
+function writeVendorsCache(data) {
+  fs.writeFileSync(vendorsCachePath, JSON.stringify(data, null, 2), 'utf8');
+}
+
+// 게임사 목록 반환 (파일 있으면 파일, 없으면 API 호출 후 저장)
 router.get('/vendors', async (req, res) => {
-  try { res.json(await hl.get('/vendor-list')); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  try {
+    const cached = readVendorsCache();
+    if (cached && cached.hl) {
+      return res.json(cached.hl);
+    }
+    const data = await hl.get('/vendor-list');
+    // 파일에 저장
+    const existing = cached || {};
+    existing.hl = data;
+    existing.updatedAt = new Date().toISOString();
+    writeVendorsCache(existing);
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 게임사 목록 강제 갱신
+router.get('/vendors/refresh', async (req, res) => {
+  try {
+    const data = await hl.get('/vendor-list');
+    const existing = readVendorsCache() || {};
+    existing.hl = data;
+    existing.updatedAt = new Date().toISOString();
+    writeVendorsCache(existing);
+    res.json({ success: true, count: Object.keys(data).length });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── 게임 목록

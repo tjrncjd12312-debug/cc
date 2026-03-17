@@ -10,19 +10,19 @@
 <body>
 
   <!-- 로그인 화면 -->
-  <div id="login-screen" style="position:fixed;inset:0;z-index:99999;background:#0f1117;display:flex;align-items:center;justify-content:center;">
-    <div style="width:360px;padding:40px;background:#161822;border:1px solid rgba(255,255,255,0.08);border-radius:16px;text-align:center;">
+  <div id="login-screen" style="position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;align-items:center;justify-content:center;">
+    <div style="width:360px;padding:40px;background:var(--bg2);border:1px solid var(--border);border-radius:16px;text-align:center;">
       <div style="margin-bottom:24px;">
         <i class="fas fa-crown" style="font-size:2.5rem;color:#7c3aed;"></i>
-        <h2 style="color:#e4e4e7;font-size:1.2rem;margin-top:12px;font-weight:600;">관리자 로그인</h2>
+        <h2 style="color:var(--text1);font-size:1.2rem;margin-top:12px;font-weight:600;">관리자 로그인</h2>
       </div>
       <div style="margin-bottom:14px;">
         <input type="text" id="login-id" placeholder="아이디" autocomplete="username"
-          style="width:100%;padding:12px 14px;background:#0f1117;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#e4e4e7;font-size:0.9rem;outline:none;">
+          style="width:100%;padding:12px 14px;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:0.9rem;outline:none;">
       </div>
       <div style="margin-bottom:20px;">
         <input type="password" id="login-pw" placeholder="비밀번호" autocomplete="current-password"
-          style="width:100%;padding:12px 14px;background:#0f1117;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#e4e4e7;font-size:0.9rem;outline:none;">
+          style="width:100%;padding:12px 14px;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:0.9rem;outline:none;">
       </div>
       <div id="login-error" style="color:#ef4444;font-size:0.8rem;margin-bottom:12px;display:none;"></div>
       <button id="login-btn"
@@ -39,12 +39,60 @@
     </div>
 
     <div id="agent-balance-box" style="margin:0 14px 10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;">
-      <div style="font-size:0.7rem;color:var(--primary);margin-bottom:4px;font-weight:600;">에이전트 보유머니</div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <span id="agent-balance-val" style="font-size:1.05rem;color:var(--blue);font-weight:700;">로딩중...</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:0.7rem;color:var(--primary);font-weight:600;">에이전트 머니</span>
         <button id="agent-balance-refresh" style="background:none;border:1px solid var(--border2);color:var(--text3);border-radius:4px;cursor:pointer;font-size:0.7rem;padding:1px 6px;" title="새로고침">&#x21bb;</button>
       </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.65rem;color:#a78bfa;font-weight:600;">아너링크</span>
+          <span id="agent-balance-hl" style="font-size:0.9rem;color:var(--blue);font-weight:700;">로딩중...</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.65rem;color:#34d399;font-weight:600;">오닉스</span>
+          <span id="agent-balance-cs" style="font-size:0.9rem;color:var(--blue);font-weight:700;">로딩중...</span>
+        </div>
+      </div>
     </div>
+
+    <div style="margin:0 14px 10px;padding:0;background:var(--bg3);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+      <button id="sidebar-stats-toggle" style="width:100%;padding:8px 12px;background:none;border:none;color:var(--text2);font-size:0.7rem;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+        <span>총 보유머니</span>
+        <i class="fas fa-chevron-down" id="sidebar-stats-icon" style="font-size:0.6rem;transition:transform 0.2s;"></i>
+      </button>
+      <div id="sidebar-stats-body" style="display:none;padding:0 12px 10px;display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.65rem;color:#a78bfa;font-weight:600;">파트너 보유머니</span>
+          <span id="sidebar-partner-money" style="font-size:0.8rem;color:var(--text1);font-weight:700;">0 원</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.65rem;color:#a78bfa;font-weight:600;">파트너 보유롤링</span>
+          <span id="sidebar-partner-rolling" style="font-size:0.8rem;color:#f59e0b;font-weight:700;">0 P</span>
+        </div>
+        <div style="border-top:1px solid var(--border);margin:2px 0;"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.65rem;color:#60a5fa;font-weight:600;">회원 보유머니</span>
+          <span id="sidebar-member-money" style="font-size:0.8rem;color:var(--text1);font-weight:700;">0 원</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.65rem;color:#60a5fa;font-weight:600;">회원 보유롤링</span>
+          <span id="sidebar-member-rolling" style="font-size:0.8rem;color:#f59e0b;font-weight:700;">0 P</span>
+        </div>
+      </div>
+    </div>
+    <script>
+    document.getElementById('sidebar-stats-toggle').addEventListener('click', function(){
+      var body = document.getElementById('sidebar-stats-body');
+      var icon = document.getElementById('sidebar-stats-icon');
+      if(body.style.display === 'none') {
+        body.style.display = 'flex';
+        icon.style.transform = 'rotate(180deg)';
+      } else {
+        body.style.display = 'none';
+        icon.style.transform = '';
+      }
+    });
+    </script>
 
     <nav class="sidebar-nav">
       <ul>
@@ -52,6 +100,15 @@
         <li class="nav-single active" data-page="dashboard">
           <i class="fas fa-chart-line"></i>
           <span>대시보드</span>
+        </li>
+
+        <li class="nav-group">
+          <div class="nav-item" data-group="favorites" id="fav-toggle">
+            <i class="fas fa-star" style="color:#fbbf24;"></i>
+            <span>즐겨찾기</span>
+            <i class="fas fa-chevron-down arrow"></i>
+          </div>
+          <ul class="sub-menu" id="fav-menu"></ul>
         </li>
 
         <li class="nav-group">
@@ -176,11 +233,9 @@
           <ul class="sub-menu">
             <li class="sub-item" data-page="settings-maxwin">최대당첨금 알람 설정</li>
             <li class="sub-item" data-page="settings-partner-perm">파트너 권한 설정</li>
-            <li class="sub-item" data-page="settings-settlement">통합 정산 설정</li>
+
             <li class="sub-item" data-page="settings-security">보안설정</li>
             <li class="sub-item" data-page="settings-transfer-limit">충환전 제한설정</li>
-            <li class="sub-item" data-page="settings-notice-line">한줄공지글 설정</li>
-            <li class="sub-item" data-page="settings-account">계좌변경건 조회</li>
             <li class="sub-item" data-page="settings-domain">도메인목록 조회</li>
             <li class="sub-item" data-page="settings-blocked-ip">차단된 IP 조회</li>
             <li class="sub-item" data-page="settings-login-log">로그인기록 조회</li>
@@ -205,6 +260,11 @@
         <span class="page-title" id="page-title">관리자 페이지</span>
       </div>
       <div class="topbar-right">
+        <button class="topbar-action-btn" id="topbar-pending-btn" style="padding:6px 16px;border-radius:6px;font-size:0.78rem;font-weight:600;border:1px solid #ef4444;background:rgba(239,68,68,0.1);color:#ef4444;cursor:pointer;white-space:nowrap;transition:all 0.2s;"><i class="fas fa-clock" style="margin-right:4px;"></i>승인대기 <span id="topbar-pending-count" style="background:#ef4444;color:#fff;border-radius:10px;padding:1px 6px;font-size:0.68rem;margin-left:4px;">0</span></button>
+        <button class="topbar-action-btn" id="topbar-deposit-btn" style="padding:6px 16px;border-radius:6px;font-size:0.78rem;font-weight:600;border:1px solid #3b82f6;background:rgba(59,130,246,0.1);color:#60a5fa;cursor:pointer;white-space:nowrap;transition:all 0.2s;"><i class="fas fa-plus-circle" style="margin-right:4px;"></i>충전신청 <span id="topbar-deposit-count" style="background:#3b82f6;color:#fff;border-radius:10px;padding:1px 6px;font-size:0.68rem;margin-left:4px;">0</span></button>
+        <button class="topbar-action-btn" id="topbar-withdraw-btn" style="padding:6px 16px;border-radius:6px;font-size:0.78rem;font-weight:600;border:1px solid #f59e0b;background:rgba(245,158,11,0.1);color:#f59e0b;cursor:pointer;white-space:nowrap;transition:all 0.2s;"><i class="fas fa-minus-circle" style="margin-right:4px;"></i>환전신청 <span id="topbar-withdraw-count" style="background:#f59e0b;color:#fff;border-radius:10px;padding:1px 6px;font-size:0.68rem;margin-left:4px;">0</span></button>
+        <button class="topbar-action-btn" id="topbar-cs-btn" style="padding:6px 16px;border-radius:6px;font-size:0.78rem;font-weight:600;border:1px solid #10b981;background:rgba(16,185,129,0.1);color:#10b981;cursor:pointer;white-space:nowrap;transition:all 0.2s;"><i class="fas fa-headset" style="margin-right:4px;"></i>고객센터 <span id="topbar-cs-count" style="background:#10b981;color:#fff;border-radius:10px;padding:1px 6px;font-size:0.68rem;margin-left:4px;">0</span></button>
+        <button class="topbar-action-btn" id="topbar-alarm-btn" style="padding:6px 12px;border-radius:6px;font-size:0.85rem;font-weight:600;border:1px solid #a78bfa;background:rgba(167,139,250,0.1);color:#a78bfa;cursor:pointer;white-space:nowrap;transition:all 0.2s;position:relative;" title="알람 설정"><i class="fas fa-bell"></i></button>
         <button class="theme-toggle" id="theme-toggle" title="테마 전환">
           <i class="fas fa-moon" id="theme-icon"></i>
           <span id="theme-label">다크</span>
@@ -248,7 +308,7 @@
         if (fromEl) fromEl.value = _dfLocalDate(s);
         if (toEl) toEl.value = _dfLocalDate(e);
         document.querySelectorAll('.' + presetClass).forEach(function(b) {
-          b.style.background='#1e293b'; b.style.color='#94a3b8'; b.style.border='1px solid #334155';
+          b.style.background=''; b.style.color=''; b.style.border='';
         });
         btn.style.background='#6366f1'; btn.style.color='#fff'; btn.style.border='none';
         if (onApply) onApply();
@@ -258,7 +318,7 @@
   </script>
   <script src="/admin/pages/money.js?v=5"></script>
   <script src="/admin/pages/notice.js"></script>
-  <script src="/admin/pages/partner.js?v=47"></script>
+  <script src="/admin/pages/partner.js?v=49"></script>
   <script src="/admin/pages/member.js?v=59"></script>
   <script src="/admin/pages/transfer.js"></script>
   <script src="/admin/pages/inquiry.js"></script>
@@ -267,6 +327,7 @@
   <script src="/admin/pages/game.js"></script>
   <script src="/admin/pages/settlement.js?v=11"></script>
   <script src="/admin/pages/point.js?v=1"></script>
-  <script src="/admin/admin.js?v=4"></script>
+  <script src="/admin/pages/settings.js?v=1"></script>
+  <script src="/admin/admin.js?v=6"></script>
 </body>
 </html>

@@ -244,7 +244,7 @@ function _prFetch() {
         + '<td style="' + tdS + 'white-space:nowrap;font-size:0.76rem;">' + r.time + '</td>'
         + '<td style="' + tdS + 'text-align:center;">' + badge + '</td>'
         + '<td style="' + tdS + 'font-weight:600;color:' + lvlColor + ';">' + r.partnerId + '</td>'
-        + '<td style="' + tdS + 'color:#64748b;">' + r.memberName + '</td>'
+        + '<td style="' + tdS + 'color:var(--text3);">' + r.memberName + '</td>'
         + '<td style="' + tdS + 'text-align:center;">' + r.gameLabel + '</td>'
         + '<td style="' + tdS + 'font-size:0.76rem;">' + r.vendor + '</td>'
         + '<td style="' + tdR + 'color:#ef4444;font-weight:600;">' + r.betAmt.toLocaleString() + '</td>'
@@ -337,15 +337,45 @@ function _pcFetch() {
   var tbody = document.getElementById('pc-tbody');
   tbody.innerHTML = '<tr><td colspan="8" style="color:var(--text3);text-align:center;padding:16px;"><i class="fas fa-circle-notch fa-spin"></i> 조회중...</td></tr>';
 
-  var logs = [];
-  try {
-    var partnerLog = JSON.parse(localStorage.getItem('partnerMoneyLog') || '[]');
-    logs = logs.concat(partnerLog.filter(function(l) { return l.type === 'rolling-convert' || l.type === '롤링전환'; }));
-  } catch(e) {}
-  try {
-    var adminLog = JSON.parse(localStorage.getItem('adminMoneyLog') || '[]');
-    logs = logs.concat(adminLog.filter(function(l) { return l.type === 'rolling-convert' || l.type === '롤링전환'; }));
-  } catch(e) {}
+  // 서버에서 조회 + localStorage 폴백 병합
+  fetch('/api/admin/money-logs/rolling-convert')
+    .then(function(r){ return r.json(); })
+    .then(function(serverLogs) {
+      if(!Array.isArray(serverLogs)) serverLogs = [];
+      // localStorage 기존 데이터도 병합 (마이그레이션 호환)
+      var localLogs = [];
+      try {
+        var partnerLog = JSON.parse(localStorage.getItem('partnerMoneyLog') || '[]');
+        localLogs = localLogs.concat(partnerLog.filter(function(l) { return l.type === 'rolling-convert' || l.type === '롤링전환'; }));
+      } catch(e) {}
+      try {
+        var adminLog = JSON.parse(localStorage.getItem('adminMoneyLog') || '[]');
+        localLogs = localLogs.concat(adminLog.filter(function(l) { return l.type === 'rolling-convert' || l.type === '롤링전환'; }));
+      } catch(e) {}
+      // 서버 로그 우선, 중복 제거 (datetime+target 기준)
+      var seen = {};
+      serverLogs.forEach(function(l){ seen[(l.datetime||'')+'_'+(l.target||l.username||'')] = true; });
+      localLogs.forEach(function(l){ var key = (l.datetime||'')+'_'+(l.target||l.username||''); if(!seen[key]) serverLogs.push(l); });
+      _pcRender(serverLogs, startDate, endDate, userFilter);
+    })
+    .catch(function() {
+      // 서버 실패 시 localStorage 폴백
+      var logs = [];
+      try {
+        var partnerLog = JSON.parse(localStorage.getItem('partnerMoneyLog') || '[]');
+        logs = logs.concat(partnerLog.filter(function(l) { return l.type === 'rolling-convert' || l.type === '롤링전환'; }));
+      } catch(e) {}
+      try {
+        var adminLog = JSON.parse(localStorage.getItem('adminMoneyLog') || '[]');
+        logs = logs.concat(adminLog.filter(function(l) { return l.type === 'rolling-convert' || l.type === '롤링전환'; }));
+      } catch(e) {}
+      _pcRender(logs, startDate, endDate, userFilter);
+    });
+}
+
+function _pcRender(logs, startDate, endDate, userFilter) {
+  var tbody = document.getElementById('pc-tbody');
+  if(!tbody) return;
 
   var filtered = logs.filter(function(l) {
     var date = (l.datetime || '').slice(0, 10);

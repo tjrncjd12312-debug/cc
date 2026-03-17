@@ -2,6 +2,12 @@
 //  회원 관리 페이지
 // ══════════════════════════════════════
 
+// ── 은행 목록 ──
+var _ptBankList = ['KB국민은행','신한은행','우리은행','하나은행','NH농협은행','IBK기업은행','SC제일은행','씨티은행','경남은행','광주은행','대구은행','부산은행','전북은행','제주은행','산업은행','수협은행','새마을금고','신협','우체국','케이뱅크','카카오뱅크','토스뱅크'];
+function _ptBankOptions(selected) {
+  return '<option value="">은행 선택</option>' + _ptBankList.map(function(b){ return '<option value="'+b+'"'+(b===selected?' selected':'')+'>'+b+'</option>'; }).join('');
+}
+
 // ── 그룹 선택 모달 (파트너/회원 공용) ──
 function _openGroupSelectModal(label, currentGroup, onSelect) {
   var old = document.getElementById('group-select-modal');
@@ -12,7 +18,7 @@ function _openGroupSelectModal(label, currentGroup, onSelect) {
 
     var overlay = document.createElement('div');
     overlay.id = 'group-select-modal';
-    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:99999;animation:cfd-in 0.2s ease;';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:var(--shadow);display:flex;align-items:center;justify-content:center;z-index:99999;animation:cfd-in 0.2s ease;';
 
     var items = '';
     var isNone = !currentGroup;
@@ -37,17 +43,17 @@ function _openGroupSelectModal(label, currentGroup, onSelect) {
     });
 
     if (groups.length === 0) {
-      items += '<div style="padding:20px;text-align:center;color:#64748b;font-size:0.82rem;">등록된 그룹이 없습니다.<br><span style="font-size:0.75rem;">게임사 그룹설정에서 그룹을 추가해주세요.</span></div>';
+      items += '<div style="padding:20px;text-align:center;color:var(--text3);font-size:0.82rem;">등록된 그룹이 없습니다.<br><span style="font-size:0.75rem;">게임사 그룹설정에서 그룹을 추가해주세요.</span></div>';
     }
 
     overlay.innerHTML =
-      '<div style="width:380px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;background:var(--card,#1e293b);border:1px solid var(--border2,#2a3040);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.5);overflow:hidden;animation:cfm-pop 0.25s ease;">'
+      '<div style="width:380px;max-width:92vw;max-height:80vh;display:flex;flex-direction:column;background:var(--card,#1e293b);border:1px solid var(--border2,#2a3040);border-radius:16px;box-shadow:0 20px 60px var(--shadow);overflow:hidden;animation:cfm-pop 0.25s ease;">'
       + '<div style="padding:18px 20px;border-bottom:1px solid var(--border,#334155);display:flex;align-items:center;justify-content:space-between;">'
       +   '<div>'
       +     '<div style="font-size:1rem;font-weight:700;color:var(--text,#e2e8f0);">게임 그룹 변경</div>'
       +     '<div style="font-size:0.78rem;color:var(--text2,#94a3b8);margin-top:2px;">' + label + '</div>'
       +   '</div>'
-      +   '<button id="gsm-close" style="background:none;border:none;color:#64748b;font-size:1.3rem;cursor:pointer;padding:4px;">✕</button>'
+      +   '<button id="gsm-close" style="background:none;border:none;color:var(--text3);font-size:1.3rem;cursor:pointer;padding:4px;">✕</button>'
       + '</div>'
       + '<div style="overflow-y:auto;flex:1;">' + items + '</div>'
       + '</div>';
@@ -86,47 +92,54 @@ function _showToast(msg, type) {
   }, 2500);
 }
 
-// 샘플 트리 데이터 (실제 연동 시 API로 교체)
+// ── 파트너 권한 체크 ──
+var _partnerPermCache = null;
+var _partnerPermCacheTime = 0;
+async function _checkPartnerPerm(level, permKey) {
+  // 캐시 5초
+  if (!_partnerPermCache || Date.now() - _partnerPermCacheTime > 5000) {
+    try {
+      var r = await fetch('/api/admin/settings');
+      var d = await r.json();
+      _partnerPermCache = (d.success && d.data && d.data.partnerPerm) || {};
+      _partnerPermCacheTime = Date.now();
+    } catch(e) { _partnerPermCache = {}; }
+  }
+  var key = level + '_' + permKey;
+  return _partnerPermCache[key] !== false; // 기본값 true
+}
+
+// 기본 트리 (관리자 루트만)
 var _defaultPartnerTree = [
   {
     id: 'admin', label: '관리자', level: 'admin', expanded: true,
-    children: [
-      {
-        id: 'test1', label: 'test1', level: 'head', expanded: true,
-        money: 0, point: 0, rollCasino: '0', rollSlot: '0', rollMini: '0', losingSlot: '0',
-        totalDeposit: 0, totalWithdraw: 0, phone: '', password: 'test1234', bank: '', account: '', holder: '', memo: '', status: '정상',
-        registeredAt: '2025-01-01T00:00:00',
-        children: [
-          {
-            id: 'test2', label: 'test2', level: 'subhead', expanded: true,
-            money: 0, point: 0, rollCasino: '0', rollSlot: '0', rollMini: '0', losingSlot: '0',
-            totalDeposit: 0, totalWithdraw: 0, phone: '', password: 'test1234', bank: '', account: '', holder: '', memo: '', status: '정상',
-            registeredAt: '2025-01-01T00:00:00',
-            children: [
-              {
-                id: 'test3', label: 'test3', level: 'distributor', expanded: true,
-                money: 0, point: 0, rollCasino: '0', rollSlot: '0', rollMini: '0', losingSlot: '0',
-                totalDeposit: 0, totalWithdraw: 0, phone: '', password: 'test1234', bank: '', account: '', holder: '', memo: '', status: '정상',
-                registeredAt: '2025-01-01T00:00:00',
-                children: [
-                  {
-                    id: 'test4', label: 'test4', level: 'store', expanded: true,
-                    money: 0, point: 0, rollCasino: '0', rollSlot: '0', rollMini: '0', losingSlot: '0',
-                    totalDeposit: 0, totalWithdraw: 0, phone: '', password: 'test1234', bank: '', account: '', holder: '', memo: '', status: '정상',
-                    registeredAt: '2025-01-01T00:00:00',
-                    children: []
-                  }
-                ]
-              }
-            ]
-          }
-        ]
-      }
-    ]
+    children: []
   }
 ];
 
 var partnerTree = (function() {
+  // localStorage에서 expanded 상태 맵 추출
+  var expandedMap = {};
+  try {
+    var local = JSON.parse(localStorage.getItem('partnerTree') || '[]');
+    (function buildMap(nodes) {
+      (nodes || []).forEach(function(n) {
+        if (typeof n.expanded !== 'undefined') expandedMap[n.id] = n.expanded;
+        if (n.children) buildMap(n.children);
+      });
+    })(local);
+  } catch(e) {}
+
+  // expanded 상태 복원
+  function restoreExpanded(nodes) {
+    (nodes || []).forEach(function(n) {
+      if (typeof expandedMap[n.id] !== 'undefined') {
+        n.expanded = expandedMap[n.id];
+      }
+      if (n.children) restoreExpanded(n.children);
+    });
+  }
+
   // 항상 서버에서 최신 트리 로드
   try {
     var xhr = new XMLHttpRequest();
@@ -135,6 +148,7 @@ var partnerTree = (function() {
     if (xhr.status === 200) {
       var res = JSON.parse(xhr.responseText);
       if (res.data && res.data.length) {
+        restoreExpanded(res.data);
         try { localStorage.setItem('partnerTree', JSON.stringify(res.data)); } catch(e) {}
         return res.data;
       }
@@ -285,13 +299,9 @@ function _ptSubPoint(node) {
 
 function _ptFlattenTree(nodes, depth, result) {
   (nodes || []).forEach(function(n) {
-    if (n.level === 'admin') {
-      if (n.children) _ptFlattenTree(n.children, depth, result);
-      return;
-    }
     if (n.level === 'member') return;
     result.push({ node: n, depth: depth });
-    if (n.expanded && n.children) {
+    if ((n.level === 'admin' || n.expanded) && n.children) {
       _ptFlattenTree(n.children, depth + 1, result);
     }
   });
@@ -363,7 +373,7 @@ function _ptRenderListPage() {
     +   '<div style="overflow-x:auto;">'
     +     '<table class="db-table" style="font-size:0.78rem;border-collapse:collapse;width:100%;">'
     +       '<thead><tr style="background:var(--input-bg);font-size:0.73rem;color:var(--text2);">'
-    +         '<th style="' + thS + 'text-align:left;min-width:200px;padding-left:12px;">파트너</th>'
+    +         '<th style="' + thS + 'text-align:center;min-width:200px;">파트너</th>'
     +         '<th style="' + thS + 'text-align:center;min-width:60px;">메모</th>'
     +         '<th style="' + thS + 'text-align:center;min-width:60px;">그룹</th>'
     +         '<th style="' + thS + 'text-align:center;min-width:55px;">회원수</th>'
@@ -372,7 +382,7 @@ function _ptRenderListPage() {
     +         '<th style="' + thS + 'text-align:right;min-width:70px;">포인트</th>'
     +         '<th style="' + thS + 'text-align:right;min-width:85px;">포인트(하부)</th>'
     +         '<th style="' + thS + 'text-align:center;min-width:75px;">지급/회수</th>'
-    +         '<th style="' + thS + 'text-align:center;min-width:60px;">하위영성</th>'
+    +         '<th style="' + thS + 'text-align:center;min-width:60px;">하위생성</th>'
     +         '<th style="' + thS + 'text-align:center;min-width:60px;">상위변경</th>'
     +         '<th style="' + thS + 'text-align:right;min-width:55px;">카지노</th>'
     +         '<th style="' + thS + 'text-align:right;min-width:55px;">슬롯</th>'
@@ -423,8 +433,8 @@ function _ptRenderTableBody() {
     var indent = d * 24;
 
     var toggle = hasChildren
-      ? '<span class="ptl-toggle" data-id="' + n.id + '" style="cursor:pointer;margin-right:6px;font-size:0.75rem;color:var(--text3);display:inline-flex;align-items:center;justify-content:center;width:16px;transition:transform 0.15s;">' + (n.expanded ? '▾' : '▸') + '</span>'
-      : '<span style="display:inline-block;width:22px;"></span>';
+      ? '<span class="ptl-toggle" data-id="' + n.id + '" style="cursor:pointer;margin-right:8px;font-size:1.1rem;color:#60a5fa;display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:4px;background:rgba(96,165,250,0.1);transition:transform 0.15s;">' + (n.expanded ? '▾' : '▸') + '</span>'
+      : '<span style="display:inline-block;width:32px;"></span>';
     var badge = '<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.68rem;font-weight:600;color:#fff;background:' + color + ';margin-right:8px;white-space:nowrap;">' + lbl + '</span>';
 
     html += '<tr class="ptl-row" data-id="' + n.id + '" style="border-bottom:1px solid var(--border);transition:background 0.1s;" onmouseover="this.style.background=\'var(--bg2)\'" onmouseout="this.style.background=\'\'">'
@@ -440,7 +450,7 @@ function _ptRenderTableBody() {
             + '</button></td>';
         })()
 
-      + '<td style="padding:10px 8px;text-align:center;font-weight:600;color:var(--text);">' + memberCount + '</td>'
+      + '<td style="padding:10px 8px;text-align:center;font-weight:600;"><span class="ptl-member-count" data-id="' + n.id + '" style="color:#60a5fa;cursor:pointer;text-decoration:underline;text-underline-offset:2px;" title="하부 회원 목록 보기">' + memberCount + '</span></td>'
       + '<td style="padding:10px 8px;text-align:right;color:#60a5fa;font-weight:600;">' + (n.money || 0).toLocaleString() + '</td>'
       + '<td style="padding:10px 8px;text-align:right;color:#3b82f6;">' + subMoney.toLocaleString() + '</td>'
       + '<td style="padding:10px 8px;text-align:right;color:#f59e0b;font-weight:600;">' + ((n.point||0)+(n.rollingPoint||0)).toLocaleString() + '</td>'
@@ -463,6 +473,7 @@ function _ptBindTableRowEvents() {
     el.addEventListener('click', function(e) {
       e.stopPropagation();
       toggleNode(partnerTree, this.dataset.id);
+      savePartnerTree();
       _ptRenderTableBody();
     });
   });
@@ -483,6 +494,18 @@ function _ptBindTableRowEvents() {
     });
   });
 
+  document.querySelectorAll('.ptl-member-count').forEach(function(el) {
+    el.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var partnerId = this.dataset.id;
+      // 회원관리 페이지로 이동하면서 파트너 필터 적용
+      if (typeof navigateToPage === 'function') {
+        window._memberFilterPartner = partnerId;
+        navigateToPage('member-list');
+      }
+    });
+  });
+
   document.querySelectorAll('.ptl-create-sub').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
@@ -495,6 +518,7 @@ function _ptBindTableRowEvents() {
     btn.addEventListener('click', function(e) {
       e.stopPropagation();
       var node = findNode(partnerTree, this.dataset.id);
+      if(node && node.level === 'admin') { _showToast('관리자는 상위변경이 불가능합니다.', 'error'); return; }
       if(node) openMoveParentModal(node);
     });
   });
@@ -579,13 +603,14 @@ function _ptBindListEvents() {
 
   var refreshBtn = document.getElementById('ptl-refresh');
   if (refreshBtn) refreshBtn.addEventListener('click', function() {
-    navigateToPage('partner-list');
+    if (!showLoading('partnerRefresh')) return;
+    setTimeout(function() { navigateToPage('partner-list'); hideLoading(); }, 300);
   });
 
   // 데이터 초기화 버튼 (localStorage 머니내역 + 베팅캐시 삭제)
   var resetBtn = document.getElementById('ptl-reset');
-  if (resetBtn) resetBtn.addEventListener('click', function() {
-    if (!confirm('머니내역, 베팅내역 캐시를 모두 초기화하시겠습니까?')) return;
+  if (resetBtn) resetBtn.addEventListener('click', async function() {
+    if (!(await customConfirm('머니내역, 베팅내역 캐시를 모두 초기화하시겠습니까?'))) return;
     localStorage.removeItem('adminMoneyLog');
     localStorage.removeItem('partnerMoneyLog');
     localStorage.removeItem('userMoneyLog');
@@ -901,6 +926,7 @@ function bindTreeEvents() {
       e.stopPropagation();
       var id = this.dataset.id;
       toggleNode(partnerTree, id);
+      savePartnerTree();
       renderTree();
     });
   });
@@ -918,7 +944,16 @@ function bindTreeEvents() {
 
 function toggleNode(nodes, id) {
   nodes.forEach(function(node) {
-    if(node.id === id) { node.expanded = !node.expanded; return; }
+    if(node.id === id) {
+      node.expanded = !node.expanded;
+      if(!node.expanded && node.children) {
+        // 닫을 때 하위 전부 닫기
+        (function closeAll(children) {
+          (children || []).forEach(function(c) { c.expanded = false; if(c.children) closeAll(c.children); });
+        })(node.children);
+      }
+      return;
+    }
     if(node.children) toggleNode(node.children, id);
   });
 }
@@ -1295,8 +1330,8 @@ function loadModalMessageData(node, overlay) {
 
       // 삭제 버튼
       listEl2.querySelectorAll('.pd-msg-del').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          if(!confirm('이 쪽지를 삭제하시겠습니까?')) return;
+        btn.addEventListener('click', async function() {
+          if(!(await customConfirm('이 쪽지를 삭제하시겠습니까?'))) return;
           var msgId = this.dataset.id;
           fetch('/api/admin/messages/' + msgId, { method: 'DELETE' })
             .then(function(r){ return r.json(); })
@@ -1349,8 +1384,8 @@ function loadModalReferralData(node, overlay) {
 
       // 삭제 버튼
       listEl2.querySelectorAll('.pd-ref-del').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          if(!confirm('이 추천코드를 삭제하시겠습니까?')) return;
+        btn.addEventListener('click', async function() {
+          if(!(await customConfirm('이 추천코드를 삭제하시겠습니까?'))) return;
           var refId = this.dataset.id;
           fetch('/api/admin/referrals/' + refId, { method: 'DELETE' })
             .then(function(r){ return r.json(); })
@@ -1627,9 +1662,9 @@ function loadModalTransferData(node, overlay) {
 
       // 승인/취소 버튼 이벤트
       listEl2.querySelectorAll('.tf-approve-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', async function() {
           var tid = this.dataset.id;
-          if(!confirm('입출금을 승인하시겠습니까?')) return;
+          if(!(await customConfirm('입출금을 승인하시겠습니까?'))) return;
           fetch('/api/admin/transfers/' + tid + '/approve', { method: 'PATCH' })
             .then(function(r){ return r.json(); })
             .then(function(res) {
@@ -1643,9 +1678,9 @@ function loadModalTransferData(node, overlay) {
         });
       });
       listEl2.querySelectorAll('.tf-reject-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', async function() {
           var tid = this.dataset.id;
-          if(!confirm('입출금을 취소하시겠습니까?')) return;
+          if(!(await customConfirm('입출금을 취소하시겠습니까?'))) return;
           fetch('/api/admin/transfers/' + tid + '/reject', { method: 'PATCH' })
             .then(function(r){ return r.json(); })
             .then(function(res) {
@@ -2252,10 +2287,18 @@ function openInfoPopup(title, mode, field, node) {
   });
 
   // 확인
-  document.getElementById('info-popup-confirm').addEventListener('click', function() {
+  document.getElementById('info-popup-confirm').addEventListener('click', async function() {
     var val = parseInt(amountInput.value, 10);
     if(!val || val <= 0) { alert('금액을 입력하세요.'); return; }
     if(!isGive && val > cur) { alert('보유금액보다 클 수 없습니다.'); return; }
+
+    // 파트너 권한 체크 (머니 이동)
+    if(field === 'money' && node.level && node.level !== 'admin' && node.level !== 'member') {
+      var permKey = isGive ? 'partnerMoneyGive' : 'partnerMoneyTake';
+      var canDo = await _checkPartnerPerm(node.level, permKey);
+      if(!canDo) { alert('해당 등급은 ' + (isGive ? '머니 지급' : '머니 회수') + ' 권한이 없습니다.'); return; }
+    }
+    // member 머니이동은 admin 직접 조작이므로 권한 체크 생략
 
     var confirmBtn = this;
     confirmBtn.disabled = true;
@@ -2353,9 +2396,9 @@ function createBtnHtml(level) {
 function showConfirmModal(opts) {
   // opts: { icon, iconColor, iconBg, title, message, confirmText, confirmColor, cancelText, onConfirm }
   var dim = document.createElement('div');
-  dim.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;animation:cfd-in 0.2s ease;';
+  dim.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:var(--shadow);z-index:99999;display:flex;align-items:center;justify-content:center;animation:cfd-in 0.2s ease;';
   dim.innerHTML = ''
-    + '<div style="background:var(--card,#1e293b);border:1px solid var(--border,#334155);border-radius:16px;padding:32px 28px 24px;max-width:380px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:cfm-pop 0.25s ease;">'
+    + '<div style="background:var(--card,#1e293b);border:1px solid var(--border,#334155);border-radius:16px;padding:32px 28px 24px;max-width:380px;width:90%;text-align:center;box-shadow:0 20px 60px var(--shadow);animation:cfm-pop 0.25s ease;">'
     +   '<div style="width:56px;height:56px;border-radius:50%;background:'+(opts.iconBg||'rgba(248,113,113,0.15)')+';display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">'
     +     '<i class="'+(opts.icon||'fas fa-exclamation-triangle')+'" style="font-size:1.4rem;color:'+(opts.iconColor||'#f87171')+';"></i>'
     +   '</div>'
@@ -2391,9 +2434,9 @@ function showConfirmModal(opts) {
 function showAlertModal(opts) {
   // opts: { icon, iconColor, iconBg, title, message, buttonText, buttonColor }
   var dim = document.createElement('div');
-  dim.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;animation:cfd-in 0.2s ease;';
+  dim.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:var(--shadow);z-index:99999;display:flex;align-items:center;justify-content:center;animation:cfd-in 0.2s ease;';
   dim.innerHTML = ''
-    + '<div style="background:var(--card,#1e293b);border:1px solid var(--border,#334155);border-radius:16px;padding:32px 28px 24px;max-width:360px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:cfm-pop 0.25s ease;">'
+    + '<div style="background:var(--card,#1e293b);border:1px solid var(--border,#334155);border-radius:16px;padding:32px 28px 24px;max-width:360px;width:90%;text-align:center;box-shadow:0 20px 60px var(--shadow);animation:cfm-pop 0.25s ease;">'
     +   '<div style="width:56px;height:56px;border-radius:50%;background:'+(opts.iconBg||'rgba(96,165,250,0.15)')+';display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">'
     +     '<i class="'+(opts.icon||'fas fa-info-circle')+'" style="font-size:1.4rem;color:'+(opts.iconColor||'#60a5fa')+';"></i>'
     +   '</div>'
@@ -2412,9 +2455,9 @@ function _showPasswordSetModal(node) {
   if (old) old.remove();
   var dim = document.createElement('div');
   dim.id = 'pw-set-modal';
-  dim.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:100001;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+  dim.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:var(--shadow);z-index:100001;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
   dim.innerHTML =
-    '<div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border:1px solid #334155;border-radius:16px;width:400px;max-width:90vw;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:cfmIn 0.2s ease;">'
+    '<div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border:1px solid var(--input-border);border-radius:16px;width:400px;max-width:90vw;overflow:hidden;box-shadow:0 20px 60px var(--shadow);animation:cfmIn 0.2s ease;">'
     + '<div style="background:linear-gradient(135deg,#6366f1,#4f46e5);padding:20px 24px;display:flex;align-items:center;gap:14px;">'
     +   '<div style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;">'
     +     '<i class="fas fa-key" style="color:#fff;font-size:1.1rem;"></i>'
@@ -2426,11 +2469,11 @@ function _showPasswordSetModal(node) {
     + '</div>'
     + '<div style="padding:24px;">'
     +   '<div style="margin-bottom:16px;">'
-    +     '<label style="display:block;font-size:0.78rem;color:#94a3b8;margin-bottom:6px;font-weight:600;">새 비밀번호</label>'
-    +     '<input type="text" id="pw-set-input" placeholder="새 비밀번호를 입력하세요" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:0.85rem;outline:none;box-sizing:border-box;" autocomplete="off">'
+    +     '<label style="display:block;font-size:0.78rem;color:var(--text2);margin-bottom:6px;font-weight:600;">새 비밀번호</label>'
+    +     '<input type="text" id="pw-set-input" placeholder="새 비밀번호를 입력하세요" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--input-border);background:var(--bg);color:var(--text1);font-size:0.85rem;outline:none;box-sizing:border-box;" autocomplete="off">'
     +   '</div>'
     +   '<div style="display:flex;gap:10px;justify-content:flex-end;">'
-    +     '<button id="pw-set-cancel" style="padding:9px 20px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#94a3b8;font-size:0.82rem;cursor:pointer;font-weight:600;">취소</button>'
+    +     '<button id="pw-set-cancel" style="padding:9px 20px;border-radius:8px;border:1px solid var(--input-border);background:var(--bg3);color:var(--text2);font-size:0.82rem;cursor:pointer;font-weight:600;">취소</button>'
     +     '<button id="pw-set-confirm" style="padding:9px 20px;border-radius:8px;border:none;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;font-size:0.82rem;cursor:pointer;font-weight:700;">변경</button>'
     +   '</div>'
     + '</div>'
@@ -2444,7 +2487,7 @@ function _showPasswordSetModal(node) {
   document.getElementById('pw-set-confirm').addEventListener('click', function() {
     var pw = input.value.trim();
     if (!pw) { input.style.borderColor = '#f87171'; input.focus(); return; }
-    if (pw.length < 4) { alert('비밀번호는 4자 이상이어야 합니다.'); input.focus(); return; }
+    if (pw.length < 3) { alert('비밀번호는 3자 이상이어야 합니다.'); input.focus(); return; }
     node.password = pw;
     savePartnerTree();
     fetch('/api/admin/users/' + node.id + '/update', {
@@ -2735,7 +2778,7 @@ function _renderPartnerModal(node) {
                   <div class="pd-edit-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:0.82rem;">
                     <span style="color:var(--text2);">은행</span>
                     <span class="pd-view-val" style="color:var(--text);">${node.bank||'-'}</span>
-                    <input class="pd-edit-input pt-modal-input" data-key="bank" value="${node.bank||''}" style="display:none;width:55%;padding:4px 8px;font-size:0.8rem;">
+                    <select class="pd-edit-input pt-modal-input" data-key="bank" style="display:none;width:55%;padding:4px 8px;font-size:0.8rem;cursor:pointer;background:var(--bg3);border:1px solid var(--primary);color:var(--text1);border-radius:4px;">${_ptBankOptions(node.bank||'')}</select>
                   </div>
                   <div class="pd-edit-row" style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:0.82rem;">
                     <span style="color:var(--text2);">계좌번호</span>
@@ -3522,7 +3565,7 @@ function _renderPartnerModal(node) {
     });
     savePartnerTree();
 
-    // 베팅 권한을 users.json에도 반영
+    // 수정된 정보를 users.json에도 반영
     var permUpdate = {};
     var casinoVal = node['perm카지노'] !== false ? 'ON' : 'OFF';
     var slotVal = node['perm슬롯'] !== false ? 'ON' : 'OFF';
@@ -3530,6 +3573,13 @@ function _renderPartnerModal(node) {
     permUpdate.slot = slotVal;
     if (node.label) permUpdate.nickname = node.label;
     permUpdate.gameGroup = node.gameGroup || '';
+    // 은행/계좌/예금주/연락처/메모/비밀번호도 반영
+    if (node.bank !== undefined) permUpdate.bank = node.bank;
+    if (node.account !== undefined) permUpdate.account = node.account;
+    if (node.holder !== undefined) permUpdate.holder = node.holder;
+    if (node.phone !== undefined) permUpdate.phone = node.phone;
+    if (node.memo !== undefined) permUpdate.memo = node.memo;
+    if (node.password !== undefined) permUpdate.password = node.password;
     // 본인 저장
     fetch('/api/admin/users/' + node.id + '/update', {
       method: 'POST',
@@ -3604,7 +3654,7 @@ function _renderPartnerModal(node) {
             location.reload();
           } else {
             close();
-            showConfirmModal({ icon:'fas fa-times-circle', iconColor:'#f87171', title:'처리 실패', message: res.error || '알 수 없는 오류', confirmText:'확인', confirmColor:'#64748b', onConfirm:function(c){c();} });
+            showConfirmModal({ icon:'fas fa-times-circle', iconColor:'#f87171', title:'처리 실패', message: res.error || '알 수 없는 오류', confirmText:'확인', confirmColor:'var(--text3)', onConfirm:function(c){c();} });
           }
         });
       }
@@ -3633,7 +3683,7 @@ function _renderPartnerModal(node) {
             location.reload();
           } else {
             close();
-            showConfirmModal({ icon:'fas fa-times-circle', iconColor:'#f87171', title:'삭제 실패', message: res.error || '알 수 없는 오류', confirmText:'확인', confirmColor:'#64748b', onConfirm:function(c){c();} });
+            showConfirmModal({ icon:'fas fa-times-circle', iconColor:'#f87171', title:'삭제 실패', message: res.error || '알 수 없는 오류', confirmText:'확인', confirmColor:'var(--text3)', onConfirm:function(c){c();} });
           }
         });
       }
@@ -3684,7 +3734,7 @@ function openMoveParentModal(node) {
 
   var overlay = document.createElement('div');
   overlay.id = 'pt-move-overlay';
-  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:var(--shadow);z-index:10000;display:flex;align-items:center;justify-content:center;';
 
   overlay.innerHTML = '<div style="background:var(--bg,#1a1a2e);border-radius:12px;width:380px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.4);border:1px solid var(--border,#2a2a4a);">'
     // 헤더
@@ -3841,7 +3891,7 @@ function openCreateModalFree() {
 
   var overlay = document.createElement('div');
   overlay.id = 'pt-modal-overlay';
-  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:var(--shadow);z-index:10000;display:flex;align-items:center;justify-content:center;';
 
   function buildHTML(selectedLevel, parentOpts, mx) {
     return '<div style="background:var(--bg,#fff);border-radius:12px;width:780px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">'
@@ -3856,8 +3906,8 @@ function openCreateModalFree() {
     + '<div style="display:flex;gap:0;padding:24px;">'
     +   '<div style="flex:1;padding-right:24px;border-right:1px solid var(--border,#eee);">'
     +     '<div style="font-size:0.8rem;font-weight:700;color:var(--text,#222);margin-bottom:16px;padding-left:8px;border-left:3px solid #8b5cf6;">계정 정보</div>'
-    +     '<div style="margin-bottom:12px;"><label style="font-size:0.75rem;color:var(--text2,#666);margin-bottom:4px;display:block;">아이디'+req+'</label><input id="pc-id" type="text" placeholder="4~20자" style="width:100%;padding:8px 12px;border:1px solid var(--border,#ddd);border-radius:6px;font-size:0.82rem;background:var(--bg2,#f8f8f8);color:var(--text,#222);box-sizing:border-box;"></div>'
-    +     '<div style="margin-bottom:12px;"><label style="font-size:0.75rem;color:var(--text2,#666);margin-bottom:4px;display:block;">비밀번호'+req+'</label><input id="pc-pw" type="password" placeholder="4자 이상" style="width:100%;padding:8px 12px;border:1px solid var(--border,#ddd);border-radius:6px;font-size:0.82rem;background:var(--bg2,#f8f8f8);color:var(--text,#222);box-sizing:border-box;"></div>'
+    +     '<div style="margin-bottom:12px;"><label style="font-size:0.75rem;color:var(--text2,#666);margin-bottom:4px;display:block;">아이디'+req+'</label><div style="position:relative;"><input id="pc-id" type="text" placeholder="4~20자" style="width:100%;padding:8px 12px;border:1px solid var(--border,#ddd);border-radius:6px;font-size:0.82rem;background:var(--bg2,#f8f8f8);color:var(--text,#222);box-sizing:border-box;"><span id="pc-id-status" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:0.7rem;"></span></div><div id="pc-id-msg" style="font-size:0.68rem;margin-top:3px;min-height:14px;"></div></div>'
+    +     '<div style="margin-bottom:12px;"><label style="font-size:0.75rem;color:var(--text2,#666);margin-bottom:4px;display:block;">비밀번호'+req+'</label><input id="pc-pw" type="password" placeholder="3자 이상" style="width:100%;padding:8px 12px;border:1px solid var(--border,#ddd);border-radius:6px;font-size:0.82rem;background:var(--bg2,#f8f8f8);color:var(--text,#222);box-sizing:border-box;"></div>'
     +     '<div style="margin-bottom:12px;"><label style="font-size:0.75rem;color:var(--text2,#666);margin-bottom:4px;display:block;">닉네임'+req+'</label><input id="pc-nick" type="text" placeholder="2~20자" style="width:100%;padding:8px 12px;border:1px solid var(--border,#ddd);border-radius:6px;font-size:0.82rem;background:var(--bg2,#f8f8f8);color:var(--text,#222);box-sizing:border-box;"></div>'
     +     '<div style="display:flex;gap:10px;margin-bottom:12px;">'
     +       '<div style="flex:1;"><label style="font-size:0.75rem;color:var(--text2,#666);margin-bottom:4px;display:block;">연락처</label><input id="pc-phone" type="text" placeholder="010-0000-0000" style="width:100%;padding:8px 12px;border:1px solid var(--border,#ddd);border-radius:6px;font-size:0.82rem;background:var(--bg2,#f8f8f8);color:var(--text,#222);box-sizing:border-box;"></div>'
@@ -3923,6 +3973,38 @@ function openCreateModalFree() {
     document.getElementById('pc-cancel-btn').addEventListener('click', function(){ overlay.remove(); });
     overlay.addEventListener('click', function(e){ if(e.target === overlay) overlay.remove(); });
 
+    // 실시간 아이디 중복 체크
+    var _pcDupTimer = null;
+    document.getElementById('pc-id').addEventListener('input', function() {
+      var val = this.value.trim();
+      var statusEl = document.getElementById('pc-id-status');
+      var msgEl = document.getElementById('pc-id-msg');
+      if (_pcDupTimer) clearTimeout(_pcDupTimer);
+      if (!val) { statusEl.innerHTML = ''; msgEl.innerHTML = ''; return; }
+      if (val.length < 4) { statusEl.innerHTML = ''; msgEl.innerHTML = '<span style="color:#f59e0b;">4자 이상 입력하세요</span>'; return; }
+      statusEl.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:var(--text2);"></i>';
+      msgEl.innerHTML = '';
+      _pcDupTimer = setTimeout(function() {
+        var exists = !!findNode(partnerTree, val);
+        if (!exists) {
+          fetch('/api/admin/users').then(function(r){ return r.json(); }).then(function(res) {
+            var users = res.data || res || [];
+            exists = users.some(function(u){ return u.username === val; });
+            if (exists) {
+              statusEl.innerHTML = '<i class="fas fa-times-circle" style="color:#ef4444;"></i>';
+              msgEl.innerHTML = '<span style="color:#ef4444;">이미 사용중인 아이디입니다</span>';
+            } else {
+              statusEl.innerHTML = '<i class="fas fa-check-circle" style="color:#10b981;"></i>';
+              msgEl.innerHTML = '<span style="color:#10b981;">사용 가능한 아이디입니다</span>';
+            }
+          }).catch(function(){ statusEl.innerHTML = ''; msgEl.innerHTML = ''; });
+        } else {
+          statusEl.innerHTML = '<i class="fas fa-times-circle" style="color:#ef4444;"></i>';
+          msgEl.innerHTML = '<span style="color:#ef4444;">이미 사용중인 아이디입니다</span>';
+        }
+      }, 300);
+    });
+
     // 등급 변경 → 상위 파트너 목록 + max값 갱신
     document.getElementById('pc-level').addEventListener('change', function() {
       var lv = this.value;
@@ -3954,28 +4036,36 @@ function openCreateModalFree() {
     });
 
     // 확인
-    document.getElementById('pc-confirm-btn').addEventListener('click', function() {
+    document.getElementById('pc-confirm-btn').addEventListener('click', async function() {
       var id = document.getElementById('pc-id').value.trim();
       var nick = document.getElementById('pc-nick').value.trim();
       var pw = document.getElementById('pc-pw').value.trim();
       var selectedLevel = document.getElementById('pc-level').value;
       var parentId = document.getElementById('pc-parent').value;
-      if(!id){ alert('아이디를 입력하세요.'); return; }
-      if(id.length < 4){ alert('아이디는 4자 이상이어야 합니다.'); return; }
-      if(!pw){ alert('비밀번호를 입력하세요.'); return; }
-      if(pw.length < 4){ alert('비밀번호는 4자 이상이어야 합니다.'); return; }
-      if(!nick){ alert('닉네임을 입력하세요.'); return; }
-      if(!parentId){ alert('상위 파트너를 선택하세요.'); return; }
-      if(findNode(partnerTree, id)){ alert('이미 존재하는 아이디입니다.'); return; }
+      if(!id){ _showToast('아이디를 입력하세요.', 'error'); return; }
+      if(id.length < 4){ _showToast('아이디는 4자 이상이어야 합니다.', 'error'); return; }
+      if(!pw){ _showToast('비밀번호를 입력하세요.', 'error'); return; }
+      if(pw.length < 3){ _showToast('비밀번호는 3자 이상이어야 합니다.', 'error'); return; }
+      if(!nick){ _showToast('닉네임을 입력하세요.', 'error'); return; }
+      if(!parentId){ _showToast('상위 파트너를 선택하세요.', 'error'); return; }
+      if(findNode(partnerTree, id)){ _showToast('이미 존재하는 아이디입니다.', 'error'); return; }
 
       var parentNode = findNode(partnerTree, parentId);
       if(!parentNode){ alert('상위 파트너를 찾을 수 없습니다.'); return; }
+
+      // 파트너 권한 체크
+      var parentLevel = parentNode.level || 'admin';
+      if(parentLevel !== 'admin') {
+        var canCreate = await _checkPartnerPerm(parentLevel, 'createPartner');
+        if(!canCreate) { alert('해당 등급은 파트너 생성 권한이 없습니다.'); return; }
+      }
 
       var rollCasino = document.getElementById('pc-roll-casino').value || '0';
       var rollSlot = document.getElementById('pc-roll-slot').value || '0';
       var rollMini = document.getElementById('pc-roll-mini').value || '0';
       var losing = document.getElementById('pc-losing').value || '0';
 
+      showLoading('partnerCreate');
       fetch('/api/admin/partner/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -3983,7 +4073,8 @@ function openCreateModalFree() {
       })
       .then(function(r){ return r.json(); })
       .then(function(res) {
-        if (!res.success) { alert(res.error || '생성 실패'); return; }
+        hideLoading();
+        if (!res.success) { _showToast(res.error || '생성 실패', 'error'); return; }
         var newNode = {
           id: id, label: nick, level: selectedLevel, expanded: false, children: [],
           money: 0, point: 0,
@@ -4004,12 +4095,13 @@ function openCreateModalFree() {
         };
         if(!parentNode.children) parentNode.children = [];
         parentNode.children.push(newNode);
+        parentNode.expanded = true;
         savePartnerTree();
         overlay.remove();
         if(typeof _ptRenderListPage === 'function') _ptRenderListPage();
         _showToast('✅ ' + nick + ' 파트너 생성 완료', 'success');
       })
-      .catch(function(){ alert('서버 오류'); });
+      .catch(function(){ hideLoading(); alert('서버 오류'); });
     });
   }
 
@@ -4075,7 +4167,7 @@ function openCreateModal(parentNode) {
 
   var overlay = document.createElement('div');
   overlay.id = 'pt-modal-overlay';
-  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:var(--shadow);z-index:10000;display:flex;align-items:center;justify-content:center;';
 
   overlay.innerHTML = '<div style="background:var(--bg,#fff);border-radius:12px;width:780px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">'
     // ── 헤더 ──
@@ -4094,11 +4186,13 @@ function openCreateModal(parentNode) {
     +     '<div style="font-size:0.8rem;font-weight:700;color:var(--text,#222);margin-bottom:16px;padding-left:8px;border-left:3px solid #8b5cf6;">계정 정보</div>'
     +     '<div style="margin-bottom:12px;">'
     +       '<label style="font-size:0.75rem;color:var(--text2,#666);margin-bottom:4px;display:block;">아이디'+req+'</label>'
-    +       '<input id="pc-id" type="text" placeholder="4~20자" style="width:100%;padding:8px 12px;border:1px solid var(--border,#ddd);border-radius:6px;font-size:0.82rem;background:var(--bg2,#f8f8f8);color:var(--text,#222);box-sizing:border-box;">'
+    +       '<div style="position:relative;"><input id="pc-id" type="text" placeholder="4~20자" style="width:100%;padding:8px 12px;border:1px solid var(--border,#ddd);border-radius:6px;font-size:0.82rem;background:var(--bg2,#f8f8f8);color:var(--text,#222);box-sizing:border-box;">'
+    +       '<span id="pc-id-status" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:0.7rem;"></span></div>'
+    +       '<div id="pc-id-msg" style="font-size:0.68rem;margin-top:3px;min-height:14px;"></div>'
     +     '</div>'
     +     '<div style="margin-bottom:12px;">'
     +       '<label style="font-size:0.75rem;color:var(--text2,#666);margin-bottom:4px;display:block;">비밀번호'+req+'</label>'
-    +       '<input id="pc-pw" type="password" placeholder="4자 이상" style="width:100%;padding:8px 12px;border:1px solid var(--border,#ddd);border-radius:6px;font-size:0.82rem;background:var(--bg2,#f8f8f8);color:var(--text,#222);box-sizing:border-box;">'
+    +       '<input id="pc-pw" type="password" placeholder="3자 이상" style="width:100%;padding:8px 12px;border:1px solid var(--border,#ddd);border-radius:6px;font-size:0.82rem;background:var(--bg2,#f8f8f8);color:var(--text,#222);box-sizing:border-box;">'
     +     '</div>'
     +     '<div style="margin-bottom:12px;">'
     +       '<label style="font-size:0.75rem;color:var(--text2,#666);margin-bottom:4px;display:block;">닉네임'+req+'</label>'
@@ -4203,6 +4297,38 @@ function openCreateModal(parentNode) {
   document.getElementById('pc-cancel-btn').addEventListener('click', function(){ overlay.remove(); });
   overlay.addEventListener('click', function(e){ if(e.target === overlay) overlay.remove(); });
 
+  // 실시간 아이디 중복 체크
+  var _pcDupTimer2 = null;
+  document.getElementById('pc-id').addEventListener('input', function() {
+    var val = this.value.trim();
+    var statusEl = document.getElementById('pc-id-status');
+    var msgEl = document.getElementById('pc-id-msg');
+    if (_pcDupTimer2) clearTimeout(_pcDupTimer2);
+    if (!val) { statusEl.innerHTML = ''; msgEl.innerHTML = ''; return; }
+    if (val.length < 4) { statusEl.innerHTML = ''; msgEl.innerHTML = '<span style="color:#f59e0b;">4자 이상 입력하세요</span>'; return; }
+    statusEl.innerHTML = '<i class="fas fa-spinner fa-spin" style="color:var(--text2);"></i>';
+    msgEl.innerHTML = '';
+    _pcDupTimer2 = setTimeout(function() {
+      var exists = !!findNode(partnerTree, val);
+      if (!exists) {
+        fetch('/api/admin/users').then(function(r){ return r.json(); }).then(function(res) {
+          var users = res.data || res || [];
+          exists = users.some(function(u){ return u.username === val; });
+          if (exists) {
+            statusEl.innerHTML = '<i class="fas fa-times-circle" style="color:#ef4444;"></i>';
+            msgEl.innerHTML = '<span style="color:#ef4444;">이미 사용중인 아이디입니다</span>';
+          } else {
+            statusEl.innerHTML = '<i class="fas fa-check-circle" style="color:#10b981;"></i>';
+            msgEl.innerHTML = '<span style="color:#10b981;">사용 가능한 아이디입니다</span>';
+          }
+        }).catch(function(){ statusEl.innerHTML = ''; msgEl.innerHTML = ''; });
+      } else {
+        statusEl.innerHTML = '<i class="fas fa-times-circle" style="color:#ef4444;"></i>';
+        msgEl.innerHTML = '<span style="color:#ef4444;">이미 사용중인 아이디입니다</span>';
+      }
+    }, 300);
+  });
+
   // 전체 적용 버튼
   document.getElementById('pc-roll-apply').addEventListener('click', function() {
     var allVal = document.getElementById('pc-roll-all').value;
@@ -4216,17 +4342,24 @@ function openCreateModal(parentNode) {
   });
 
   // 확인
-  document.getElementById('pc-confirm-btn').addEventListener('click', function() {
+  document.getElementById('pc-confirm-btn').addEventListener('click', async function() {
     var id = document.getElementById('pc-id').value.trim();
     var nick = document.getElementById('pc-nick').value.trim();
     var pw = document.getElementById('pc-pw').value.trim();
     var selectedLevel = document.getElementById('pc-level').value;
-    if(!id){ alert('아이디를 입력하세요.'); return; }
-    if(id.length < 4){ alert('아이디는 4자 이상이어야 합니다.'); return; }
-    if(!pw){ alert('비밀번호를 입력하세요.'); return; }
-    if(pw.length < 4){ alert('비밀번호는 4자 이상이어야 합니다.'); return; }
-    if(!nick){ alert('닉네임을 입력하세요.'); return; }
-    if(findNode(partnerTree, id)){ alert('이미 존재하는 아이디입니다.'); return; }
+    if(!id){ _showToast('아이디를 입력하세요.', 'error'); return; }
+    if(id.length < 4){ _showToast('아이디는 4자 이상이어야 합니다.', 'error'); return; }
+    if(!pw){ _showToast('비밀번호를 입력하세요.', 'error'); return; }
+    if(pw.length < 3){ _showToast('비밀번호는 3자 이상이어야 합니다.', 'error'); return; }
+    if(!nick){ _showToast('닉네임을 입력하세요.', 'error'); return; }
+    if(findNode(partnerTree, id)){ _showToast('이미 존재하는 아이디입니다.', 'error'); return; }
+
+    // 파트너 권한 체크
+    var pLevel = parentNode.level || 'admin';
+    if(pLevel !== 'admin') {
+      var canCreate = await _checkPartnerPerm(pLevel, 'createPartner');
+      if(!canCreate) { alert('해당 등급은 파트너 생성 권한이 없습니다.'); return; }
+    }
 
     var rollCasino = document.getElementById('pc-roll-casino').value || '0';
     var rollSlot = document.getElementById('pc-roll-slot').value || '0';
@@ -4240,7 +4373,7 @@ function openCreateModal(parentNode) {
     })
     .then(function(r){ return r.json(); })
     .then(function(res) {
-      if (!res.success) { alert(res.error || '생성 실패'); return; }
+      if (!res.success) { _showToast(res.error || '생성 실패', 'error'); return; }
       var newNode = {
         id: id, label: nick, level: selectedLevel, expanded: false, children: [],
         money: 0, point: 0,
@@ -4330,11 +4463,11 @@ function openSimpleCreateModal(parentNode, newLevel, btnLabel) {
           </div>
           <div class="pt-create-field">
             <div class="pt-create-label">환전비밀번호${req}</div>
-            <input id="pc-wpw" type="password" class="pt-create-input" placeholder="비밀번호(4자 이상)">
+            <input id="pc-wpw" type="password" class="pt-create-input" placeholder="비밀번호(3자 이상)">
           </div>
           <div class="pt-create-field">
             <div class="pt-create-label">환전비밀번호확인${req}</div>
-            <input id="pc-wpw2" type="password" class="pt-create-input" placeholder="비밀번호(4자 이상)">
+            <input id="pc-wpw2" type="password" class="pt-create-input" placeholder="비밀번호(3자 이상)">
           </div>
         </div>
 
@@ -4404,12 +4537,13 @@ function openSimpleCreateModal(parentNode, newLevel, btnLabel) {
     var id = document.getElementById('pc-id').value.trim();
     var nick = document.getElementById('pc-nick').value.trim();
     var pw = document.getElementById('pc-pw') ? document.getElementById('pc-pw').value.trim() : '';
-    if(!id){ alert('접속ID를 입력하세요.'); return; }
-    if(!nick){ alert('닉네임을 입력하세요.'); return; }
-    if(!pw){ alert('비밀번호를 입력하세요.'); return; }
-    if(pw.length < 4){ alert('비밀번호는 4자 이상이어야 합니다.'); return; }
-    if(findNode(partnerTree, id)){ alert('이미 존재하는 아이디입니다.'); return; }
+    if(!id){ _showToast('접속ID를 입력하세요.', 'error'); return; }
+    if(!nick){ _showToast('닉네임을 입력하세요.', 'error'); return; }
+    if(!pw){ _showToast('비밀번호를 입력하세요.', 'error'); return; }
+    if(pw.length < 3){ _showToast('비밀번호는 3자 이상이어야 합니다.', 'error'); return; }
+    if(findNode(partnerTree, id)){ _showToast('이미 존재하는 아이디입니다.', 'error'); return; }
 
+    showLoading('partnerCreate');
     fetch('/api/admin/partner/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -4417,10 +4551,12 @@ function openSimpleCreateModal(parentNode, newLevel, btnLabel) {
     })
     .then(function(r){ return r.json(); })
     .then(function(res) {
-      if (!res.success) { alert(res.error || '생성 실패'); return; }
+      hideLoading();
+      if (!res.success) { _showToast(res.error || '생성 실패', 'error'); return; }
       var newNode = { id: id, label: nick, level: newLevel, expanded: false, children: [] };
       if(!parentNode.children) parentNode.children = [];
       parentNode.children.push(newNode);
+      parentNode.expanded = true;
       savePartnerTree();
       overlay.remove();
       renderTree();
@@ -4428,7 +4564,7 @@ function openSimpleCreateModal(parentNode, newLevel, btnLabel) {
       renderPartnerInfo(id);
       _showToast('✅ ' + nick + ' 생성 완료 (회원+게임사 등록됨)', 'success');
     })
-    .catch(function(){ alert('서버 오류'); });
+    .catch(function(){ hideLoading(); alert('서버 오류'); });
   });
 }
 
@@ -4659,10 +4795,9 @@ function bindPartnerEvents() {
   var searchBtn = document.querySelector('.pt-right-top .pt-btn-purple');
   if(searchBtn) {
     searchBtn.addEventListener('click', function() {
-      var from = document.getElementById('pt-date-from');
-      var to   = document.getElementById('pt-date-to');
-      if(!from || !to) return;
-      alert('검색 기간: ' + from.value + ' ~ ' + to.value + '\n(API 연동 시 해당 기간의 데이터를 불러옵니다.)');
+      if(!selectedPartnerId) { alert('파트너를 먼저 선택하세요.'); return; }
+      var node = findNode(partnerTree, selectedPartnerId);
+      if(node) loadPartnerBettingData(node);
     });
   }
 
@@ -4679,16 +4814,22 @@ function bindPartnerEvents() {
       var val   = input.value.trim();
       if(val === '') { alert('값을 입력해주세요.'); return; }
 
-      // 파트너 트리에서 현재 선택된 노드에 값 저장 (API 연동 전까지 메모리)
       if(selectedPartnerId) {
         var node = findNode(partnerTree, selectedPartnerId);
         if(node) {
-          if(label.includes('롤링') && label.includes('슬롯'))   node.rollSlot    = val;
-          if(label.includes('롤링') && label.includes('카지노')) node.rollCasino  = val;
-          if(label.includes('루징') && label.includes('슬롯'))   node.losingSlot  = val;
-          if(label.includes('루징') && label.includes('카지노')) node.losingCasino = val;
-          if(label.includes('전화'))                              node.phone       = val;
+          var updateData = {};
+          if(label.includes('롤링') && label.includes('슬롯'))   { node.rollSlot    = val; updateData.rollSlot    = val; }
+          if(label.includes('롤링') && label.includes('카지노')) { node.rollCasino  = val; updateData.rollCasino  = val; }
+          if(label.includes('루징') && label.includes('슬롯'))   { node.losingSlot  = val; updateData.losingSlot  = val; }
+          if(label.includes('루징') && label.includes('카지노')) { node.losingCasino = val; updateData.losingCasino = val; }
+          if(label.includes('전화'))                              { node.phone       = val; updateData.phone       = val; }
           savePartnerTree();
+
+          // 서버 users.json에도 반영
+          fetch('/api/admin/users/' + encodeURIComponent(selectedPartnerId) + '/update', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify(updateData)
+          }).catch(function(){});
         }
       }
       alert('"' + label + '" 값이 ' + val + ' 로 변경되었습니다.');

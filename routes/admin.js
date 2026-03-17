@@ -5,8 +5,9 @@ const fs      = require('fs');
 const path    = require('path');
 const cs      = require('../lib/csapi');
 const hl      = require('../lib/honorlink');
-const { onlineMap, kickedSet, gameSessionMap } = require('./auth');
+const { onlineMap, kickedSet, gameSessionMap, loginFailMap } = require('./auth');
 const txCollector = require('../lib/transactionCollector');
+const telegram = require('../lib/telegram');
 
 function readData(file) {
   const p = path.join(__dirname, '../data', file);
@@ -31,9 +32,24 @@ router.post('/login', (req, res) => {
   if (username === account.username && password === account.password) {
     const token = crypto.randomBytes(32).toString('hex');
     adminSessions.set(token, { createdAt: Date.now() });
+    const clientIp = req.ip || req.headers['x-forwarded-for'] || '0.0.0.0';
+    telegram.send('adminLogin', '🔐 <b>관리자 로그인</b>\nIP: ' + clientIp + '\n시간: ' + new Date().toLocaleString('ko-KR'));
     return res.json({ success: true, token });
   }
   res.json({ success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다.' });
+});
+
+router.post('/change-password', (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  let account;
+  try { account = readData('admin_account.json'); } catch(e) {
+    return res.json({ success: false, error: '계정 설정 오류' });
+  }
+  if (currentPassword !== account.password) return res.json({ success: false, error: '현재 비밀번호가 일치하지 않습니다.' });
+  if (!newPassword || newPassword.length < 4) return res.json({ success: false, error: '새 비밀번호는 4자 이상이어야 합니다.' });
+  account.password = newPassword;
+  writeData('admin_account.json', account);
+  res.json({ success: true });
 });
 
 router.post('/logout', (req, res) => {
@@ -80,10 +96,11 @@ router.get('/rolling-log', (_req, res) => {
 });
 
 // 입출금
-router.get('/deposits',          (_req, res) => res.json({ success: true, data: readData('deposits.json') }));
-router.post('/deposits',         (req,  res) => { writeData('deposits.json', req.body); res.json({ success: true }); });
+router.get('/deposits',          (_req, res) => { let d = []; try { d = readData('transfers.json'); } catch(e){} res.json({ success: true, data: d }); });
+router.post('/deposits',         (req,  res) => { writeData('transfers.json', req.body); res.json({ success: true }); });
 router.get('/deposits/pending',  (_req, res) => {
-  const all = readData('deposits.json');
+  let all = [];
+  try { all = readData('transfers.json'); } catch(e) {}
   res.json({
     success: true,
     deposit:  all.filter(d => d.type === 'deposit'  && d.status === 'pending').length,
@@ -101,10 +118,7 @@ router.post('/partner/create', async (req, res) => {
 
   let newUser;
   if (existing) {
-    existing.password = password;
-    if (nickname) existing.nickname = nickname;
-    writeUsers(users);
-    newUser = existing;
+    return res.json({ success: false, error: '이미 존재하는 아이디입니다.' });
   } else {
     newUser = {
       id: String(Date.now()),
@@ -178,8 +192,24 @@ router.post('/user-kick', async (req, res) => {
 
   // 게임사 킥 + 잔액 전액 회수
   if (u && u.api && u.api.includes('honorlink')) {
-    try { await hl.post('/user/kick', { username }); } catch(e) {}
-    try { await hl.post('/user/sub-balance-all', { username }); } catch(e) {}
+    try {
+      await hl.post('/user/kick', { username });
+      const hlUser = await hl.get('/user', { username });
+      const hlBal = Number(hlUser && hlUser.balance || 0);
+      await hl.post('/user/sub-balance-all', { username });
+      if (hlBal > 0) u.money = (u.money || 0) + hlBal;
+    } catch(e) {}
+  }
+  if (u && u.api && u.api.includes('csapi')) {
+    try {
+      await cs.post('/csapi/kick', { userid: username });
+      const csRes = await cs.post('/csapi/amount', { userid: username, amount: 0, type: '0' });
+      const csBal = Number(csRes && csRes.balance || 0);
+      if (csBal > 0) {
+        await cs.post('/csapi/amount', { userid: username, amount: 0, type: '3' });
+        u.money = (u.money || 0) + csBal;
+      }
+    } catch(e) {}
   }
 
   // 연동 해제 + 접속자 목록 제거 + 게임세션 제거 + 유저 로그아웃
@@ -249,6 +279,15 @@ router.post('/users/:id/api-disconnect', async (req, res) => {
   }
   if (provider === 'csapi') {
     try { await cs.post('/csapi/kick', { userid: u.username }); } catch(e) {}
+    // CS API 잔액 전액 회수 → 로컬로 복원
+    try {
+      const csRes = await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '0' });
+      const csBal = Number(csRes && csRes.balance || 0);
+      if (csBal > 0) {
+        await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '3' });
+        u.money = (u.money || 0) + csBal;
+      }
+    } catch(e) {}
   }
 
   if (u.api) u.api = u.api.filter(a => a !== provider);
@@ -269,9 +308,25 @@ router.post('/users/:id/block', async (req, res) => {
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
   u.status = 'blocked';
+  // CS API 잔액 회수
+  try {
+    await cs.post('/csapi/kick', { userid: u.username });
+    const csRes = await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '0' });
+    const csBal = Number(csRes && csRes.balance || 0);
+    if (csBal > 0) {
+      await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '3' });
+      u.money = (u.money || 0) + csBal;
+    }
+  } catch(e) {}
+  // HonorLink 잔액 회수
+  try {
+    const hlUser = await hl.get('/user', { username: u.username });
+    const hlBal = Number(hlUser && hlUser.balance || 0);
+    await hl.post('/user/sub-balance-all', { username: u.username });
+    if (hlBal > 0) u.money = (u.money || 0) + hlBal;
+  } catch(e) {}
+  u.api = [];
   writeUsers(users);
-  try { await cs.post('/csapi/kick', { userid: u.username }); } catch(e) {}
-  try { await hl.post('/user/sub-balance-all', { username: u.username }); } catch(e) {}
   res.json({ success: true });
 });
 
@@ -281,9 +336,25 @@ router.post('/users/:id/delete', async (req, res) => {
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
   u.status = 'deleted';
+  // CS API 잔액 회수
+  try {
+    await cs.post('/csapi/kick', { userid: u.username });
+    const csRes = await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '0' });
+    const csBal = Number(csRes && csRes.balance || 0);
+    if (csBal > 0) {
+      await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '3' });
+      u.money = (u.money || 0) + csBal;
+    }
+  } catch(e) {}
+  // HonorLink 잔액 회수
+  try {
+    const hlUser = await hl.get('/user', { username: u.username });
+    const hlBal = Number(hlUser && hlUser.balance || 0);
+    await hl.post('/user/sub-balance-all', { username: u.username });
+    if (hlBal > 0) u.money = (u.money || 0) + hlBal;
+  } catch(e) {}
+  u.api = [];
   writeUsers(users);
-  try { await cs.post('/csapi/kick', { userid: u.username }); } catch(e) {}
-  try { await hl.post('/user/sub-balance-all', { username: u.username }); } catch(e) {}
   res.json({ success: true });
 });
 
@@ -302,7 +373,7 @@ router.post('/users/:id/update', (req, res) => {
   const users = readUsers();
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
-  const allowed = ['nickname','phone','bank','account','holder','casino','slot','status','memo','grade','password','point','gameGroup'];
+  const allowed = ['nickname','phone','bank','account','holder','casino','slot','status','memo','grade','password','point','gameGroup','rollCasino','rollSlot','losingCasino','losingSlot'];
   allowed.forEach(k => { if (req.body[k] !== undefined) u[k] = req.body[k]; });
   writeUsers(users);
   res.json({ success: true });
@@ -311,7 +382,7 @@ router.patch('/users/:id/update', (req, res) => {
   const users = readUsers();
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
-  const allowed = ['nickname','phone','bank','account','holder','casino','slot','status','memo','grade','password','point','gameGroup'];
+  const allowed = ['nickname','phone','bank','account','holder','casino','slot','status','memo','grade','password','point','gameGroup','rollCasino','rollSlot','losingCasino','losingSlot'];
   allowed.forEach(k => { if (req.body[k] !== undefined) u[k] = req.body[k]; });
   writeUsers(users);
   res.json({ success: true });
@@ -372,16 +443,28 @@ router.post('/users/money', async (req, res) => {
   let before = 0, after = 0;
   let hlResult = null;
   const isHl = u && u.api && u.api.includes('honorlink');
+  const isCs = u && u.api && u.api.includes('csapi');
 
   if (isHl) {
-    // 연동된 유저: 게임사에만 지급/회수 (로컬 money는 건드리지 않음)
+    // HonorLink 연동 유저: 게임사에만 지급/회수
     before = u.money || 0;
-    after = before; // 로컬은 변경 없음
+    after = before;
     try {
       if (amount > 0) {
         hlResult = await hl.post('/user/add-balance', { username, amount: amount });
       } else {
         hlResult = await hl.post('/user/sub-balance-all', { username });
+      }
+    } catch(e) { hlResult = { error: e.message }; }
+  } else if (isCs) {
+    // 오닉스 연동 유저: CS API에 지급/회수
+    before = u.money || 0;
+    after = before;
+    try {
+      if (amount > 0) {
+        hlResult = await cs.post('/csapi/amount', { userid: username, amount: amount, type: '1' });
+      } else {
+        hlResult = await cs.post('/csapi/amount', { userid: username, amount: 0, type: '3' });
       }
     } catch(e) { hlResult = { error: e.message }; }
   } else if (u) {
@@ -400,23 +483,38 @@ router.post('/users/withdraw-game', async (req, res) => {
   if (!username) return res.json({ success: false, error: '유저명 필요' });
 
   try {
-    // 1) 게임사 유저 잔액 조회
-    const userInfo = await hl.get('/user', { username });
-    const hlBalance = Number(userInfo && userInfo.balance || 0);
-    if (hlBalance <= 0) return res.json({ success: true, recovered: 0 });
+    let totalRecovered = 0;
 
-    // 2) 게임사에서 전액 회수
-    await hl.post('/user/sub-balance-all', { username });
+    // 1) HonorLink 잔액 회수
+    try {
+      const userInfo = await hl.get('/user', { username });
+      const hlBalance = Number(userInfo && userInfo.balance || 0);
+      if (hlBalance > 0) {
+        await hl.post('/user/sub-balance-all', { username });
+        totalRecovered += hlBalance;
+      }
+    } catch(e) {}
 
-    // 3) 로컬 DB에 복원
+    // 2) CS API(오닉스) 잔액 회수
+    try {
+      const csRes = await cs.post('/csapi/amount', { userid: username, amount: 0, type: '0' });
+      const csBal = Number(csRes && csRes.balance || 0);
+      if (csBal > 0) {
+        await cs.post('/csapi/amount', { userid: username, amount: 0, type: '3' });
+        totalRecovered += csBal;
+      }
+    } catch(e) {}
+
+    // 3) 로컬 DB에 복원 + api 필드 초기화
     const users = readUsers();
     const u = users.find(u => u.username === username);
     if (u) {
-      u.money = (u.money || 0) + hlBalance;
+      if (totalRecovered > 0) u.money = (u.money || 0) + totalRecovered;
+      u.api = [];
       writeUsers(users);
     }
 
-    res.json({ success: true, recovered: hlBalance, localBalance: u ? u.money : 0 });
+    res.json({ success: true, recovered: totalRecovered, localBalance: u ? u.money : 0 });
   } catch(e) {
     res.json({ success: false, error: e.message });
   }
@@ -432,11 +530,18 @@ router.get('/users/balance', async (req, res) => {
   let localMoney = u.money || 0;
   let gameMoney = 0;
   const isHl = u.api && u.api.includes('honorlink');
+  const isCs = u.api && u.api.includes('csapi');
   if (isHl) {
     try {
       const userInfo = await hl.get('/user', { username });
-      gameMoney = Number(userInfo && userInfo.balance || 0);
-    } catch(e) { /* 게임사 조회 실패 시 0 */ }
+      gameMoney += Number(userInfo && userInfo.balance || 0);
+    } catch(e) {}
+  }
+  if (isCs) {
+    try {
+      const csRes = await cs.post('/csapi/amount', { userid: username, amount: 0, type: '0' });
+      gameMoney += Number(csRes && csRes.balance || 0);
+    } catch(e) {}
   }
   res.json({ success: true, balance: localMoney + gameMoney, localMoney, gameMoney });
 });
@@ -458,7 +563,7 @@ router.post('/users/money-local', (req, res) => {
 // ══════════════════════════════════════
 //  머니/포인트 로그 API (서버 파일 저장)
 // ══════════════════════════════════════
-const MONEY_LOG_TYPES = ['admin', 'partner', 'user', 'point'];
+const MONEY_LOG_TYPES = ['admin', 'partner', 'user', 'point', 'rolling-convert'];
 
 router.get('/money-logs/:type', (req, res) => {
   const type = req.params.type;
@@ -508,13 +613,15 @@ router.patch('/transfers/:id/approve', async (req, res) => {
   if (item.status !== 'pending') return res.json({ success: false, error: '이미 처리된 신청입니다.' });
   item.status = 'approved';
   item.processedAt = new Date().toISOString();
-  // 우리 서버 잔액 변경
+  // 우리 서버 잔액 변경 (환전은 신청 시 이미 차감됨)
   const users = readUsers();
   const user = users.find(u => u.username === item.userId);
   if (user) {
-    if (item.type === 'deposit')  user.money = (user.money || 0) + Number(item.amount);
-    if (item.type === 'withdraw') user.money = (user.money || 0) - Number(item.amount);
-    writeUsers(users);
+    if (item.type === 'deposit') {
+      user.money = (user.money || 0) + Number(item.amount);
+      writeUsers(users);
+    }
+    // withdraw는 신청 시 이미 차감했으므로 승인 시 추가 차감 없음
   }
   writeTransfers(list);
   // 게임 API 머니 반영 (1=입금, 2=출금)
@@ -539,6 +646,17 @@ router.patch('/transfers/:id/reject', (req, res) => {
   if (!item) return res.json({ success: false, error: '항목 없음' });
   item.status = 'rejected';
   item.processedAt = new Date().toISOString();
+
+  // 환전 거절 시 차감했던 머니 복구
+  if (item.type === 'withdraw') {
+    const users = readUsers();
+    const user = users.find(u => u.username === item.userId);
+    if (user) {
+      user.money = (user.money || 0) + Number(item.amount);
+      writeUsers(users);
+    }
+  }
+
   writeTransfers(list);
   res.json({ success: true });
 });
@@ -571,6 +689,23 @@ router.patch('/inquiries/:id/reply', (req, res) => {
   item.status     = 'done';
   item.answer     = req.body.answer;
   item.answeredAt = req.body.answeredAt;
+  writeInquiries(list);
+  res.json({ success: true });
+});
+
+// ── 문의 개별삭제 ──
+router.delete('/inquiries/:id', (req, res) => {
+  let list = readInquiries();
+  list = list.filter(i => i.id !== req.params.id);
+  writeInquiries(list);
+  res.json({ success: true });
+});
+
+// ── 문의 선택삭제 ──
+router.post('/inquiries/delete-batch', (req, res) => {
+  const ids = req.body.ids || [];
+  let list = readInquiries();
+  list = list.filter(i => !ids.includes(i.id));
   writeInquiries(list);
   res.json({ success: true });
 });
@@ -778,6 +913,153 @@ router.post('/emptybet/mode', (req, res) => {
     fs.writeFileSync(ebPath, JSON.stringify(log), 'utf8');
   } catch(e) {}
   res.json({ success: true, mode: mode });
+});
+
+// ══ 설정 및 조회 API ══
+
+// 최대당첨금 알람 내역
+router.get('/maxwin-logs', (_req, res) => {
+  let logs = [];
+  try { logs = readData('maxwin_logs.json'); } catch(e) {}
+  res.json({ success: true, data: logs });
+});
+
+// 통합 설정 GET/POST
+router.get('/settings', (_req, res) => {
+  res.json({ success: true, data: readSettings() });
+});
+router.post('/settings', (req, res) => {
+  const s = readSettings();
+  Object.assign(s, req.body);
+  writeSettings(s);
+  res.json({ success: true });
+});
+
+// 화이트리스트 IP 관리
+router.get('/whitelist-ips', (_req, res) => {
+  const s = readSettings();
+  res.json({ success: true, data: s.whitelistIps || [] });
+});
+router.post('/whitelist-ips', (req, res) => {
+  const s = readSettings();
+  if (!s.whitelistIps) s.whitelistIps = [];
+  const { ip, memo } = req.body;
+  if (!ip) return res.json({ success: false, error: 'IP를 입력하세요.' });
+  if (s.whitelistIps.find(b => b.ip === ip)) return res.json({ success: false, error: '이미 등록된 IP입니다.' });
+  s.whitelistIps.push({ ip, memo: memo || '', createdAt: new Date().toISOString() });
+  writeSettings(s);
+  res.json({ success: true });
+});
+router.delete('/whitelist-ips/:ip', (req, res) => {
+  const s = readSettings();
+  s.whitelistIps = (s.whitelistIps || []).filter(b => b.ip !== req.params.ip);
+  writeSettings(s);
+  res.json({ success: true });
+});
+
+// 차단 IP 관리
+router.get('/blocked-ips', (_req, res) => {
+  const s = readSettings();
+  res.json({ success: true, data: s.blockedIps || [] });
+});
+router.post('/blocked-ips', (req, res) => {
+  const s = readSettings();
+  if (!s.blockedIps) s.blockedIps = [];
+  const { ip, reason } = req.body;
+  if (!ip) return res.json({ success: false, error: 'IP를 입력하세요.' });
+  if (s.blockedIps.find(b => b.ip === ip)) return res.json({ success: false, error: '이미 차단된 IP입니다.' });
+  s.blockedIps.push({ ip, reason: reason || '', createdAt: new Date().toISOString() });
+  writeSettings(s);
+  res.json({ success: true });
+});
+router.delete('/blocked-ips/:ip', (req, res) => {
+  const s = readSettings();
+  s.blockedIps = (s.blockedIps || []).filter(b => b.ip !== req.params.ip);
+  writeSettings(s);
+  res.json({ success: true });
+});
+
+// 유저 차단 IP 관리
+router.get('/blocked-user-ips', (_req, res) => {
+  const s = readSettings();
+  res.json({ success: true, data: s.blockedUserIps || [] });
+});
+router.post('/blocked-user-ips', (req, res) => {
+  const s = readSettings();
+  if (!s.blockedUserIps) s.blockedUserIps = [];
+  const { ip, reason } = req.body;
+  if (!ip) return res.json({ success: false, error: 'IP를 입력하세요.' });
+  if (s.blockedUserIps.find(b => b.ip === ip)) return res.json({ success: false, error: '이미 차단된 IP입니다.' });
+  s.blockedUserIps.push({ ip, reason: reason || '', createdAt: new Date().toISOString() });
+  writeSettings(s);
+  res.json({ success: true });
+});
+router.delete('/blocked-user-ips/:ip', (req, res) => {
+  const s = readSettings();
+  s.blockedUserIps = (s.blockedUserIps || []).filter(b => b.ip !== req.params.ip);
+  writeSettings(s);
+  res.json({ success: true });
+});
+
+// 로그인 기록
+router.get('/login-logs', (_req, res) => {
+  let logs = [];
+  try { logs = readData('login_logs.json'); } catch(e) {}
+  res.json({ success: true, data: logs });
+});
+
+// 도메인 목록 (수동 등록)
+const domainsPath = path.join(__dirname, '..', 'data/collected_domains.json');
+router.get('/domains', (_req, res) => {
+  let domains = {};
+  try { domains = JSON.parse(fs.readFileSync(domainsPath, 'utf8')); } catch(e) {}
+  const list = Object.entries(domains).map(([domain, info]) => ({ domain, ...info }));
+  list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  res.json({ success: true, data: list });
+});
+router.post('/domains', (req, res) => {
+  const domain = (req.body.domain || '').trim().toLowerCase();
+  if (!domain) return res.json({ success: false, message: '도메인을 입력해주세요.' });
+  let domains = {};
+  try { domains = JSON.parse(fs.readFileSync(domainsPath, 'utf8')); } catch(e) {}
+  if (domains[domain]) return res.json({ success: false, message: '이미 등록된 도메인입니다.' });
+  domains[domain] = { createdAt: new Date().toISOString(), memo: req.body.memo || '' };
+  fs.writeFileSync(domainsPath, JSON.stringify(domains, null, 2));
+  res.json({ success: true });
+});
+router.put('/domains/:domain/memo', (req, res) => {
+  let domains = {};
+  try { domains = JSON.parse(fs.readFileSync(domainsPath, 'utf8')); } catch(e) {}
+  const domain = decodeURIComponent(req.params.domain);
+  if (domains[domain]) {
+    domains[domain].memo = req.body.memo || '';
+    fs.writeFileSync(domainsPath, JSON.stringify(domains, null, 2));
+  }
+  res.json({ success: true });
+});
+router.delete('/domains/:domain', (req, res) => {
+  let domains = {};
+  try { domains = JSON.parse(fs.readFileSync(domainsPath, 'utf8')); } catch(e) {}
+  delete domains[decodeURIComponent(req.params.domain)];
+  fs.writeFileSync(domainsPath, JSON.stringify(domains, null, 2));
+  res.json({ success: true });
+});
+
+// 잠긴 계정 목록
+router.get('/locked-accounts', (_req, res) => {
+  const list = [];
+  const now = Date.now();
+  for (const [username, info] of Object.entries(loginFailMap)) {
+    if (info.lockedUntil && info.lockedUntil > now) {
+      list.push({ username, count: info.count, lockedAt: info.lockedAt, lockedUntil: new Date(info.lockedUntil).toISOString() });
+    }
+  }
+  res.json({ success: true, data: list });
+});
+router.delete('/locked-accounts/:username', (req, res) => {
+  const username = decodeURIComponent(req.params.username);
+  delete loginFailMap[username];
+  res.json({ success: true });
 });
 
 module.exports = router;

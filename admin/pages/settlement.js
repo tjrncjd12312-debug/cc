@@ -68,13 +68,13 @@ function renderSettlementPage() {
     +     '<button class="stl-quick-btn df-preset" data-preset="lastmonth">저번달</button>'
     +     '<div class="df-date-range">'
     +       '<input type="date" id="stl-start" value="' + today + '">'
-    +       '<span style="color:#64748b;font-size:0.72rem;">~</span>'
+    +       '<span style="color:var(--text3);font-size:0.72rem;">~</span>'
     +       '<input type="date" id="stl-end" value="' + today + '">'
     +       '<button id="stl-search" class="df-query-btn">조회</button>'
     +     '</div>'
     +     '<div style="display:flex;gap:6px;margin-left:auto;">'
     +       '<button id="stl-eb-applied" style="padding:5px 14px;border-radius:6px;font-size:0.73rem;cursor:pointer;font-weight:600;border:1px solid #f59e0b;background:#f59e0b;color:#000;transition:all 0.15s;">공베팅 적용</button>'
-    +       '<button id="stl-eb-none" style="padding:5px 14px;border-radius:6px;font-size:0.73rem;cursor:pointer;font-weight:600;border:1px solid #64748b;background:var(--bg3);color:var(--text);transition:all 0.15s;">공베팅 미적용</button>'
+    +       '<button id="stl-eb-none" style="padding:5px 14px;border-radius:6px;font-size:0.73rem;cursor:pointer;font-weight:600;border:1px solid var(--text3);background:var(--bg3);color:var(--text);transition:all 0.15s;">공베팅 미적용</button>'
     +     '</div>'
     +   '</div>'
     // 나의 정산데이터
@@ -83,7 +83,7 @@ function renderSettlementPage() {
     +     '<div style="overflow-x:auto;">'
     +       '<table class="db-table" id="stl-my-table" style="font-size:0.75rem;border-collapse:collapse;width:100%;">'
     +         _stlTheadHtml(true)
-    +         '<tbody id="stl-my-tbody"><tr><td colspan="14" style="color:#64748b;text-align:center;padding:24px;">조회 버튼을 눌러주세요.</td></tr></tbody>'
+    +         '<tbody id="stl-my-tbody"><tr><td colspan="14" style="color:var(--text3);text-align:center;padding:24px;">조회 버튼을 눌러주세요.</td></tr></tbody>'
     +       '</table>'
     +     '</div>'
     +   '</div>'
@@ -93,7 +93,7 @@ function renderSettlementPage() {
     +     '<div style="overflow-x:auto;">'
     +       '<table class="db-table" id="stl-sub-table" style="font-size:0.75rem;border-collapse:collapse;width:100%;">'
     +         _stlTheadHtml(false)
-    +         '<tbody id="stl-sub-tbody"><tr><td colspan="14" style="color:#64748b;text-align:center;padding:24px;">조회 버튼을 눌러주세요.</td></tr></tbody>'
+    +         '<tbody id="stl-sub-tbody"><tr><td colspan="14" style="color:var(--text3);text-align:center;padding:24px;">조회 버튼을 눌러주세요.</td></tr></tbody>'
     +       '</table>'
     +     '</div>'
     +   '</div>'
@@ -262,10 +262,10 @@ function _stlUpdateEbButtons() {
   if (!btnApplied || !btnNone) return;
   if (_stlEmptyBetView === 'applied') {
     btnApplied.style.background = '#f59e0b'; btnApplied.style.color = '#000'; btnApplied.style.border = '1px solid #f59e0b';
-    btnNone.style.background = 'var(--bg3)'; btnNone.style.color = 'var(--text)'; btnNone.style.border = '1px solid #64748b';
+    btnNone.style.background = 'var(--bg3)'; btnNone.style.color = 'var(--text)'; btnNone.style.border = '1px solid var(--text3)';
   } else {
     btnNone.style.background = '#f59e0b'; btnNone.style.color = '#000'; btnNone.style.border = '1px solid #f59e0b';
-    btnApplied.style.background = 'var(--bg3)'; btnApplied.style.color = 'var(--text)'; btnApplied.style.border = '1px solid #64748b';
+    btnApplied.style.background = 'var(--bg3)'; btnApplied.style.color = 'var(--text)'; btnApplied.style.border = '1px solid var(--text3)';
   }
 }
 
@@ -297,15 +297,18 @@ function _stlFetchData() {
   var start = startDate + ' 00:00:00';
   var end = endDate + ' 23:59:59';
 
-  // 로컬 저장 트랜잭션 + 공베팅 로그 동시 조회
+  // 로컬 저장 트랜잭션 (아너링크 + 오닉스) + 공베팅 로그 동시 조회
   Promise.all([
     fetch('/api/hl/transactions/local?start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end) + '&types=bet,win&perPage=100000').then(function(r) { return r.json(); }),
+    fetch('/api/game/transactions/local?start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end) + '&types=bet,win&perPage=100000').then(function(r) { return r.json(); }).catch(function() { return { data: [] }; }),
     fetch('/api/admin/emptybet/log').then(function(r) { return r.json(); }).catch(function() { return { data: [] }; }),
     fetch('/api/admin/emptybet/mode').then(function(r) { return r.json(); }).catch(function() { return { mode: 'rolling' }; })
   ]).then(function(results) {
-    var transactions = results[0].data || [];
-    var ebLog = results[1].data || [];
-    var currentMode = (results[2] && results[2].mode) || 'rolling';
+    var hlTx = results[0].data || [];
+    var csTx = results[1].data || [];
+    var transactions = hlTx.concat(csTx);
+    var ebLog = results[2].data || [];
+    var currentMode = (results[3] && results[3].mode) || 'rolling';
     // 현재 모드를 모든 공베팅 로그에 적용
     ebLog.forEach(function(eb) { eb.mode = currentMode; });
     // 공베팅으로 빠진 betTxId 세트
@@ -1325,7 +1328,7 @@ function renderSettlementProviderPage() {
     +   '<button class="stl-prov-quick df-preset" data-preset="lastmonth">저번달</button>'
     +   '<div class="df-date-range">'
     +     '<input type="date" id="stl-prov-start" value="' + today + '">'
-    +     '<span style="color:#64748b;font-size:0.72rem;">~</span>'
+    +     '<span style="color:var(--text3);font-size:0.72rem;">~</span>'
     +     '<input type="date" id="stl-prov-end" value="' + today + '">'
     +     '<button id="stl-prov-search" class="df-query-btn">조회</button>'
     +   '</div>'
