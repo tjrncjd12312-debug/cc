@@ -162,19 +162,13 @@ router.post('/transfers', async (req, res) => {
     }
   } catch(e) { console.error('[Transfer] 한도체크 오류:', e.message); }
 
-  // 환전 신청 시 즉시 보유머니 차감
+  // 환전 신청 시 즉시 보유머니 차감 (atomic)
   if (item.type === 'withdraw' && item.userId) {
-    let users = [];
-    try { users = await dal.readData('users.json'); } catch(e) { console.error('[Transfer] 유저조회 오류:', e.message); }
-    const u = users.find(u => u.username === item.userId);
-    if (u) {
-      const amt = Number(item.amount) || 0;
-      if ((u.money || 0) < amt) {
-        return res.json({ success: false, error: '보유 금액이 부족합니다.' });
-      }
-      u.money = (u.money || 0) - amt;
-      await dal.writeData('users.json', users);
+    const currentMoney = await dal.users.getMoney(item.userId);
+    if (currentMoney < reqAmount) {
+      return res.json({ success: false, error: '보유 금액이 부족합니다.' });
     }
+    await dal.users.addMoney(item.userId, -reqAmount);
   }
 
   try {
@@ -257,19 +251,12 @@ router.post('/users/money-local', async (req, res) => {
   if (!username || typeof username !== 'string') return res.json({ success: false });
   const amount = Number(rawAmount);
   if (!Number.isFinite(amount) || amount === 0) return res.json({ success: false });
-  let users = [];
-  try { users = await dal.readData('users.json'); } catch(e) { return res.json({ success: false }); }
-  const u = users.find(u => u.username === username);
-  if (!u) return res.json({ success: false });
-  const before = u.money || 0;
-  u.money = Math.max(0, before + amount);
-  try {
-    await dal.writeData('users.json', users);
-  } catch(e) {
-    console.error('[MoneyLocal] 저장 오류:', e.message);
-    return res.json({ success: false });
-  }
-  res.json({ success: true, before, after: u.money });
+  const userRow = await dal.users.getByUsername(username);
+  if (!userRow) return res.json({ success: false });
+  const before = userRow.money || 0;
+  await dal.users.addMoney(username, amount);
+  const after = await dal.users.getMoney(username);
+  res.json({ success: true, before, after });
 });
 
 // ── 공개 설정 (한줄공지, 자동로그아웃) ──

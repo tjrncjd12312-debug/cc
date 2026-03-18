@@ -115,17 +115,12 @@ async function _autoSettleOfflineUsers() {
 
       const totalRecovered = gameBal + csBal;
 
-      // 로컬 머니에 추가 + api 동기화 해제
-      const freshUsers = await readUsers();
-      const freshUser = freshUsers.find(u => u.id === userId);
-      if (freshUser) {
-        if (totalRecovered > 0) {
-          freshUser.money = (freshUser.money || 0) + totalRecovered;
-        }
-        freshUser.api = [];
-        await writeUsers(freshUsers);
-        console.log('[AutoSettle] ' + user.username + ': HL=' + gameBal + ' CS=' + csBal + ' → local, api cleared');
+      // 로컬 머니에 추가 + api 동기화 해제 (atomic)
+      if (totalRecovered > 0) {
+        await dal.users.addMoney(user.username, totalRecovered);
       }
+      await dal.users.update(user.id, { api: JSON.stringify([]) });
+      console.log('[AutoSettle] ' + user.username + ': HL=' + gameBal + ' CS=' + csBal + ' → local, api cleared');
     } catch(e) {
       console.error('[AutoSettle] Error for ' + user.username + ':', e.message);
     }
@@ -151,7 +146,6 @@ setTimeout(_autoSettleOfflineUsers, 30 * 1000);
 async function _cleanupStaleApi() {
   const users = await readUsers();
   const onlineIds = getOnlineIds();
-  let changed = false;
   for (const u of users) {
     if (u.api && u.api.length && !onlineIds.includes(u.id)) {
       // HonorLink 잔액 회수
@@ -161,7 +155,7 @@ async function _cleanupStaleApi() {
           const gameBal = Number(hlUser && hlUser.balance || 0);
           if (gameBal > 0) {
             await hl.post('/user/sub-balance-all', { username: u.username });
-            u.money = (u.money || 0) + gameBal;
+            await dal.users.addMoney(u.username, gameBal);
           }
         } catch(e) { console.error('[AutoSettle] HL회수 오류(' + u.username + '):', e.message); }
       }
@@ -171,16 +165,14 @@ async function _cleanupStaleApi() {
         const csBal = Number(csRes && csRes.balance || 0);
         if (csBal > 0) {
           await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '3' });
-          u.money = (u.money || 0) + csBal;
+          await dal.users.addMoney(u.username, csBal);
         }
       } catch(e) { console.error('[AutoSettle] CS회수 오류(' + u.username + '):', e.message); }
-      u.api = [];
+      await dal.users.update(u.id, { api: JSON.stringify([]) });
       delete gameSessionMap[u.username];
-      changed = true;
       console.log('[Cleanup] ' + u.username + ': stale api cleared');
     }
   }
-  if (changed) await writeUsers(users);
 }
 setTimeout(_cleanupStaleApi, 5 * 1000);
 
@@ -496,20 +488,17 @@ async function _delayedRecoverCheck(username, source, target) {
               await cs.post('/csapi/amount', { userid: username, amount: leftover, type: '1' });
               console.log('[DelayedRecover] ' + username + ': auto-deposit ' + leftover + ' to csapi');
             } catch(e) {
-              freshUser.money = (freshUser.money || 0) + leftover;
-              await writeUsers(freshUsers);
+              await dal.users.addMoney(username, leftover);
             }
           } else if (isTargetActive && target === 'honorlink') {
             try {
               await hl.post('/user/add-balance', { username, amount: leftover });
               console.log('[DelayedRecover] ' + username + ': auto-deposit ' + leftover + ' to honorlink');
             } catch(e) {
-              freshUser.money = (freshUser.money || 0) + leftover;
-              await writeUsers(freshUsers);
+              await dal.users.addMoney(username, leftover);
             }
           } else {
-            freshUser.money = (freshUser.money || 0) + leftover;
-            await writeUsers(freshUsers);
+            await dal.users.addMoney(username, leftover);
           }
         }
       } catch(e) {
@@ -561,9 +550,10 @@ router.post('/recover-for-switch', async (req, res) => {
   }
 
   if (recovered > 0) {
-    user.money = (user.money || 0) + recovered;
+    await dal.users.addMoney(username, recovered);
   }
-  await writeUsers(users);
+  // api 필드 업데이트
+  await dal.users.updateByUsername(username, { api: JSON.stringify(user.api) });
 
   // 백그라운드에서 지연 재확인 (당첨금 타이밍 이슈 방지)
   if (source) {
@@ -572,7 +562,8 @@ router.post('/recover-for-switch', async (req, res) => {
     });
   }
 
-  res.json({ success: true, recovered, localBalance: user.money || 0 });
+  const updatedMoney = await dal.users.getMoney(username);
+  res.json({ success: true, recovered, localBalance: updatedMoney || 0 });
 });
 
 // ── 온라인 목록 (어드민용) ──

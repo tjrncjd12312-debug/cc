@@ -204,7 +204,7 @@ router.post('/user-kick', async (req, res) => {
       const hlUser = await hl.get('/user', { username });
       const hlBal = Number(hlUser && hlUser.balance || 0);
       await hl.post('/user/sub-balance-all', { username });
-      if (hlBal > 0) u.money = (u.money || 0) + hlBal;
+      if (hlBal > 0) await dal.users.addMoney(username, hlBal);
     } catch(e) { console.error('[Admin] HL 잔액회수 오류(' + username + '):', e.message); }
   }
   if (u && u.api && u.api.includes('csapi')) {
@@ -214,15 +214,14 @@ router.post('/user-kick', async (req, res) => {
       const csBal = Number(csRes && csRes.balance || 0);
       if (csBal > 0) {
         await cs.post('/csapi/amount', { userid: username, amount: 0, type: '3' });
-        u.money = (u.money || 0) + csBal;
+        await dal.users.addMoney(username, csBal);
       }
     } catch(e) { console.error('[Admin] CS 잔액회수 오류(' + username + '):', e.message); }
   }
 
   // 연동 해제 + 접속자 목록 제거 + 게임세션 제거 + 유저 로그아웃
   if (u) {
-    u.api = [];
-    await writeUsers(users);
+    await dal.users.update(u.id, { api: JSON.stringify([]) });
     delete onlineMap[u.id];
     delete gameSessionMap[username];
     kickedSet.add(u.id);
@@ -288,14 +287,14 @@ router.post('/users/:id/api-disconnect', async (req, res) => {
       const csBal = Number(csRes && csRes.balance || 0);
       if (csBal > 0) {
         await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '3' });
-        u.money = (u.money || 0) + csBal;
+        await dal.users.addMoney(u.username, csBal);
       }
     } catch(e) { console.error('[Admin] CS회수 오류:', e.message); }
   }
 
-  if (u.api) u.api = u.api.filter(a => a !== provider);
-  await writeUsers(users);
-  res.json({ success: true, api: u.api });
+  const newApi = u.api ? u.api.filter(a => a !== provider) : [];
+  await dal.users.update(u.id, { api: JSON.stringify(newApi) });
+  res.json({ success: true, api: newApi });
 });
 
 // ── 거절 (삭제) ──
@@ -310,25 +309,25 @@ router.post('/users/:id/block', asyncHandler(async (req, res) => {
   const users = await readUsers();
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
-  u.status = 'blocked';
-  if (req.body && req.body.belongTo) u.belongTo = req.body.belongTo;
+  const updateFields = { status: 'blocked' };
+  if (req.body && req.body.belongTo) updateFields.belongTo = req.body.belongTo;
   try {
     await cs.post('/csapi/kick', { userid: u.username });
     const csRes = await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '0' });
     const csBal = Number(csRes && csRes.balance || 0);
     if (csBal > 0) {
       await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '3' });
-      u.money = (u.money || 0) + csBal;
+      await dal.users.addMoney(u.username, csBal);
     }
   } catch(e) {}
   try {
     const hlUser = await hl.get('/user', { username: u.username });
     const hlBal = Number(hlUser && hlUser.balance || 0);
     await hl.post('/user/sub-balance-all', { username: u.username });
-    if (hlBal > 0) u.money = (u.money || 0) + hlBal;
+    if (hlBal > 0) await dal.users.addMoney(u.username, hlBal);
   } catch(e) {}
-  u.api = [];
-  await writeUsers(users);
+  updateFields.api = JSON.stringify([]);
+  await dal.users.update(u.id, updateFields);
   res.json({ success: true });
 }));
 
@@ -337,25 +336,25 @@ router.post('/users/:id/delete', asyncHandler(async (req, res) => {
   const users = await readUsers();
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
-  u.status = 'deleted';
-  if (req.body && req.body.belongTo) u.belongTo = req.body.belongTo;
+  const updateFields = { status: 'deleted' };
+  if (req.body && req.body.belongTo) updateFields.belongTo = req.body.belongTo;
   try {
     await cs.post('/csapi/kick', { userid: u.username });
     const csRes = await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '0' });
     const csBal = Number(csRes && csRes.balance || 0);
     if (csBal > 0) {
       await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '3' });
-      u.money = (u.money || 0) + csBal;
+      await dal.users.addMoney(u.username, csBal);
     }
   } catch(e) {}
   try {
     const hlUser = await hl.get('/user', { username: u.username });
     const hlBal = Number(hlUser && hlUser.balance || 0);
     await hl.post('/user/sub-balance-all', { username: u.username });
-    if (hlBal > 0) u.money = (u.money || 0) + hlBal;
+    if (hlBal > 0) await dal.users.addMoney(u.username, hlBal);
   } catch(e) {}
-  u.api = [];
-  await writeUsers(users);
+  updateFields.api = JSON.stringify([]);
+  await dal.users.update(u.id, updateFields);
   res.json({ success: true });
 }));
 
@@ -417,10 +416,10 @@ router.post('/users/:id/give', async (req, res) => {
   if (!u) return res.json({ success: false, error: '유저 없음' });
   const amount = Number(req.body.amount);
   if (!amount || amount <= 0) return res.json({ success: false, error: '올바른 금액' });
-  const before = u.money || 0;
-  u.money = before + amount;
-  await writeUsers(users);
-  res.json({ success: true, before, after: u.money });
+  const before = await dal.users.getMoney(u.username);
+  await dal.users.addMoney(u.username, amount);
+  const after = await dal.users.getMoney(u.username);
+  res.json({ success: true, before, after });
 });
 
 // ── 개별 유저 회수 ──
@@ -428,16 +427,16 @@ router.post('/users/:id/take', async (req, res) => {
   const users = await readUsers();
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
-  const before = u.money || 0;
+  const before = await dal.users.getMoney(u.username);
   if (req.body.all) {
-    u.money = 0;
+    await dal.users.setMoney(u.username, 0);
   } else {
     const amount = Number(req.body.amount);
     if (!amount || amount <= 0) return res.json({ success: false, error: '올바른 금액' });
-    u.money = Math.max(0, before - amount);
+    await dal.users.addMoney(u.username, -amount);
   }
-  await writeUsers(users);
-  res.json({ success: true, before, after: u.money });
+  const after = await dal.users.getMoney(u.username);
+  res.json({ success: true, before, after });
 });
 
 // ── 관리자 머니 지급/회수 (username 기준) ──
@@ -475,10 +474,9 @@ router.post('/users/money', asyncHandler(async (req, res) => {
       }
     } catch(e) { hlResult = { error: e.message }; }
   } else if (u) {
-    before = u.money || 0;
-    u.money = Math.max(0, before + amount);
-    after = u.money;
-    await writeUsers(users);
+    before = await dal.users.getMoney(u.username);
+    await dal.users.addMoney(u.username, amount);
+    after = await dal.users.getMoney(u.username);
   }
   res.json({ success: true, before, after, hlResult });
 }));
@@ -512,12 +510,12 @@ router.post('/users/withdraw-game', async (req, res) => {
     const users = await readUsers();
     const u = users.find(u => u.username === username);
     if (u) {
-      if (totalRecovered > 0) u.money = (u.money || 0) + totalRecovered;
-      u.api = [];
-      await writeUsers(users);
+      if (totalRecovered > 0) await dal.users.addMoney(username, totalRecovered);
+      await dal.users.update(u.id, { api: JSON.stringify([]) });
     }
 
-    res.json({ success: true, recovered: totalRecovered, localBalance: u ? u.money : 0 });
+    const localBalance = u ? await dal.users.getMoney(username) : 0;
+    res.json({ success: true, recovered: totalRecovered, localBalance });
   } catch(e) {
     res.json({ success: false, error: e.message });
   }
@@ -557,10 +555,10 @@ router.post('/users/money-local', async (req, res) => {
   const users = await readUsers();
   const u = users.find(u => u.username === username);
   if (!u) return res.json({ success: false });
-  const before = u.money || 0;
-  u.money = Math.max(0, before + amount);
-  await writeUsers(users);
-  res.json({ success: true, before, after: u.money });
+  const before = await dal.users.getMoney(username);
+  await dal.users.addMoney(username, amount);
+  const after = await dal.users.getMoney(username);
+  res.json({ success: true, before, after });
 });
 
 // ══════════════════════════════════════
@@ -616,13 +614,8 @@ router.patch('/transfers/:id/approve', asyncHandler(async (req, res) => {
   if (item.status !== 'pending') return res.json({ success: false, error: '이미 처리된 신청입니다.' });
   item.status = 'approved';
   item.processedAt = new Date().toISOString();
-  const users = await readUsers();
-  const user = users.find(u => u.username === item.userId);
-  if (user) {
-    if (item.type === 'deposit') {
-      user.money = (user.money || 0) + Number(item.amount);
-      await writeUsers(users);
-    }
+  if (item.type === 'deposit') {
+    await dal.users.addMoney(item.userId, Number(item.amount));
   }
   await writeTransfers(list);
   try {
@@ -647,12 +640,7 @@ router.patch('/transfers/:id/reject', asyncHandler(async (req, res) => {
   item.processedAt = new Date().toISOString();
 
   if (item.type === 'withdraw') {
-    const users = await readUsers();
-    const user = users.find(u => u.username === item.userId);
-    if (user) {
-      user.money = (user.money || 0) + Number(item.amount);
-      await writeUsers(users);
-    }
+    await dal.users.addMoney(item.userId, Number(item.amount));
   }
 
   await writeTransfers(list);

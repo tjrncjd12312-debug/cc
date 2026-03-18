@@ -206,13 +206,17 @@ router.post('/users/:id/give', async (req, res) => {
   // 파트너 머니에서 차감
   if ((node.money || 0) < amount) return res.json({ success: false, error: '보유 머니가 부족합니다.' });
 
+  // Atomic money operations to avoid race conditions
   const beforePartner = node.money || 0;
-  const beforeUser = u.money || 0;
-  node.money = beforePartner - amount;
-  u.money = beforeUser + amount;
+  const beforeUser = await dal.users.getMoney(u.username);
 
+  // Partner tree money update (partner side)
+  node.money = beforePartner - amount;
   await dal.writeData('partnerTree.json', tree);
-  await dal.writeData('users.json', users);
+
+  // Atomic user money update
+  await dal.users.addMoney(u.username, amount);
+  const afterUser = await dal.users.getMoney(u.username);
 
   // 머니 로그 기록
   try {
@@ -227,7 +231,7 @@ router.post('/users/:id/give', async (req, res) => {
       beforePartner: beforePartner,
       afterPartner: node.money,
       beforeUser: beforeUser,
-      afterUser: u.money,
+      afterUser: afterUser,
       datetime: new Date().toISOString(),
       memo: req.body.memo || ''
     });
@@ -235,7 +239,7 @@ router.post('/users/:id/give', async (req, res) => {
     await dal.writeData('money_log_partner.json', logs);
   } catch(e) {}
 
-  res.json({ success: true, partnerMoney: node.money, userMoney: u.money });
+  res.json({ success: true, partnerMoney: node.money, userMoney: afterUser });
 });
 
 router.post('/users/:id/take', async (req, res) => {
@@ -252,13 +256,17 @@ router.post('/users/:id/take', async (req, res) => {
   if (!amount || amount <= 0) return res.json({ success: false, error: '올바른 금액을 입력하세요.' });
   if ((u.money || 0) < amount) return res.json({ success: false, error: '유저 보유 머니가 부족합니다.' });
 
+  // Atomic money operations to avoid race conditions
   const beforePartner = node.money || 0;
-  const beforeUser = u.money || 0;
-  node.money = beforePartner + amount;
-  u.money = beforeUser - amount;
+  const beforeUser = await dal.users.getMoney(u.username);
 
+  // Partner tree money update (partner side)
+  node.money = beforePartner + amount;
   await dal.writeData('partnerTree.json', tree);
-  await dal.writeData('users.json', users);
+
+  // Atomic user money update
+  await dal.users.addMoney(u.username, -amount);
+  const afterUser = await dal.users.getMoney(u.username);
 
   // 머니 로그 기록
   try {
@@ -273,7 +281,7 @@ router.post('/users/:id/take', async (req, res) => {
       beforePartner: beforePartner,
       afterPartner: node.money,
       beforeUser: beforeUser,
-      afterUser: u.money,
+      afterUser: afterUser,
       datetime: new Date().toISOString(),
       memo: req.body.memo || ''
     });
@@ -281,7 +289,7 @@ router.post('/users/:id/take', async (req, res) => {
     await dal.writeData('money_log_partner.json', logs);
   } catch(e) {}
 
-  res.json({ success: true, partnerMoney: node.money, userMoney: u.money });
+  res.json({ success: true, partnerMoney: node.money, userMoney: afterUser });
 });
 
 // ══════════════════════════════════════
