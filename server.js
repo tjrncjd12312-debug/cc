@@ -107,18 +107,18 @@ function userAuthCheck(req, res, next) {
   next();
 }
 
-// API 라우트
-app.use('/api/admin',   adminIpCheck, apiLimiter, require('./routes/admin'));
-app.use('/api/partner', apiLimiter, require('./routes/partner'));
-app.use('/api/user',    userIpCheck, userAuthCheck, apiLimiter, require('./routes/user'));
-app.use('/api/auth',    userIpCheck, require('./routes/auth').router);
-app.use('/api/game',    userIpCheck, userAuthCheck, apiLimiter, require('./routes/game'));
-app.use('/api/hl',      userIpCheck, userAuthCheck, apiLimiter, require('./routes/gamehl'));
-
-// 로그인 엔드포인트에 강화된 Rate Limit 적용
+// 로그인 엔드포인트에 강화된 Rate Limit 적용 (라우터보다 먼저 선언해야 작동)
 app.post('/api/auth/login', loginLimiter);
 app.post('/api/admin/login', loginLimiter);
 app.post('/api/partner/login', loginLimiter);
+
+// API 라우트
+app.use('/api/admin',   adminIpCheck, apiLimiter, require('./routes/admin'));
+app.use('/api/partner', apiLimiter, require('./routes/partner'));
+app.use('/api/user',    userIpCheck, apiLimiter, userAuthCheck, require('./routes/user'));
+app.use('/api/auth',    userIpCheck, require('./routes/auth').router);
+app.use('/api/game',    userIpCheck, apiLimiter, userAuthCheck, require('./routes/game'));
+app.use('/api/hl',      userIpCheck, apiLimiter, userAuthCheck, require('./routes/gamehl'));
 
 // 페이지 라우트 (static보다 먼저 선언)
 app.get('/',        userIpCheck, (req, res) => res.sendFile(path.join(__dirname, 'user/index.html')));
@@ -160,6 +160,24 @@ const server = app.listen(PORT, () => {
     res.on('end', () => console.log('Server External IP:', ip));
   });
 });
+
+// 메모리 누수 방지: 만료된 세션/데이터 주기적 정리 (10분마다)
+const { kickedSet, loginFailMap } = require('./routes/auth');
+setInterval(() => {
+  const now = Date.now();
+  const SESSION_TTL = 24 * 60 * 60 * 1000;
+  // 만료된 세션 토큰 정리
+  for (const [userId, sess] of Object.entries(sessionTokenMap)) {
+    if (now - sess.createdAt > SESSION_TTL) delete sessionTokenMap[userId];
+  }
+  // kickedSet 정리 (최대 1000개 제한)
+  if (kickedSet.size > 1000) kickedSet.clear();
+  // 만료된 로그인 실패 기록 정리
+  for (const [username, info] of Object.entries(loginFailMap)) {
+    if (info.lockedUntil && info.lockedUntil < now) delete loginFailMap[username];
+    else if (info.count === 0) delete loginFailMap[username];
+  }
+}, 10 * 60 * 1000);
 
 // Graceful Shutdown
 function gracefulShutdown(signal) {

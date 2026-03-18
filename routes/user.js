@@ -177,14 +177,19 @@ router.post('/transfers', async (req, res) => {
     }
   }
 
-  list.unshift(item);
-  await dal.writeData('transfers.json', list);
+  try {
+    list.unshift(item);
+    await dal.writeData('transfers.json', list);
+  } catch(e) {
+    console.error('[Transfer] 저장 오류:', e.message);
+    return res.json({ success: false, error: '처리 중 오류가 발생했습니다.' });
+  }
 
   // 텔레그램 알림
   const tgType = item.type === 'deposit' ? 'deposit' : 'withdraw';
   const tgLabel = item.type === 'deposit' ? '충전' : '환전';
   const amt = Number(item.amount || 0).toLocaleString();
-  telegram.send(tgType, '📢 <b>' + tgLabel + ' 신청</b>\n회원: ' + (item.userId || '') + '\n금액: ' + amt + '원\n시간: ' + (item.datetime || ''));
+  telegram.send(tgType, '📢 <b>' + tgLabel + ' 신청</b>\n회원: ' + (item.userId || '') + '\n금액: ' + amt + '원\n시간: ' + (item.datetime || '')).catch(function(){});
 
   res.json({ success: true, data: item });
 });
@@ -258,7 +263,12 @@ router.post('/users/money-local', async (req, res) => {
   if (!u) return res.json({ success: false });
   const before = u.money || 0;
   u.money = Math.max(0, before + amount);
-  await dal.writeData('users.json', users);
+  try {
+    await dal.writeData('users.json', users);
+  } catch(e) {
+    console.error('[MoneyLocal] 저장 오류:', e.message);
+    return res.json({ success: false });
+  }
   res.json({ success: true, before, after: u.money });
 });
 

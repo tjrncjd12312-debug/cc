@@ -983,7 +983,12 @@ router.get('/settings', async (_req, res) => {
 });
 router.post('/settings', async (req, res) => {
   const s = await readSettings();
-  Object.assign(s, req.body);
+  // __proto__, constructor, prototype 오염 방지
+  const body = req.body;
+  for (const key of Object.keys(body)) {
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+    s[key] = body[key];
+  }
   await writeSettings(s);
   res.json({ success: true });
 });
