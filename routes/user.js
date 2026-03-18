@@ -102,10 +102,17 @@ router.post('/transfers', async (req, res) => {
   if (reqAmount <= 0 || !Number.isFinite(reqAmount)) return res.json({ success: false, error: '올바른 금액을 입력해주세요.' });
   if (!userId || typeof userId !== 'string') return res.json({ success: false, error: '잘못된 요청입니다.' });
 
+  // DB에서 유저 은행 정보 조회 (프론트엔드 의존 제거)
+  const userInfo = await dal.users.getByUsername(userId);
+  const userBank = userInfo ? (userInfo.bank || '') : (bank || '');
+  const userAccount = userInfo ? (userInfo.account || '') : (account || '');
+  const userHolder = userInfo ? (userInfo.holder || '') : (holder || '');
+  const userNick = userInfo ? (userInfo.nickname || '') : (nick || '');
+
   let list = [];
   try { list = await dal.readData('transfers.json'); } catch(e) {}
   // 허용된 필드만 추출 (임의 필드 주입 차단)
-  const item = { type, amount: reqAmount, userId, nick: nick || '', bank: bank || '', account: account || '', holder: holder || '', bonus: bonus || '', datetime: datetime || new Date().toISOString(), status: 'pending', id: Date.now().toString(36) + Math.random().toString(36).slice(2) };
+  const item = { type, amount: reqAmount, userId, nick: userNick, bank: userBank, account: userAccount, holder: userHolder, bonus: bonus || '', datetime: datetime || new Date().toISOString(), status: 'pending', id: Date.now().toString(36) + Math.random().toString(36).slice(2) };
 
   // 이체 한도 체크
   try {
