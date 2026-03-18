@@ -3228,16 +3228,39 @@ function _renderPartnerModal(node) {
         if(typeof addPartnerPointLog === 'function') addPartnerPointLog(logEntry);
       } else {
         var before = node.money || 0;
-        var after = isGive ? before + val : Math.max(0, before - val);
-        node.money = after;
-        savePartnerTree();
-        var logEntry = {
-          datetime: nowStr(), type: isGive ? 'give' : 'take', processor: '관리자', processorLevel: 'admin',
-          targetId: node.id, targetNick: node.label, targetLevel: node.level || '',
-          amount: val, before: before, after: after, memo: memo
-        };
-        if(typeof addPartnerMoneyLog === 'function') addPartnerMoneyLog(logEntry);
-        if(node.level === 'member' && typeof addUserMoneyLog === 'function') addUserMoneyLog(logEntry);
+        var apiAmount = isGive ? val : -val;
+        // DB에 머니 반영
+        fetch('/api/admin/users/money', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: node.id, amount: apiAmount })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+          if(res.success) {
+            var after = res.after !== undefined ? res.after : (isGive ? before + val : Math.max(0, before - val));
+            node.money = after;
+            savePartnerTree();
+            var logEntry = {
+              datetime: nowStr(), type: isGive ? 'give' : 'take', processor: '관리자', processorLevel: 'admin',
+              targetId: node.id, targetNick: node.label, targetLevel: node.level || '',
+              amount: val, before: before, after: after, memo: memo
+            };
+            if(typeof addPartnerMoneyLog === 'function') addPartnerMoneyLog(logEntry);
+            if(typeof addAdminMoneyLog === 'function') addAdminMoneyLog(logEntry);
+            if(node.level === 'member' && typeof addUserMoneyLog === 'function') addUserMoneyLog(logEntry);
+            // DOM 업데이트
+            var mnDisp = overlay.querySelector('#pd-money-display');
+            var mnVal2 = overlay.querySelector('#pd-money-val2');
+            if(mnDisp) mnDisp.textContent = after.toLocaleString();
+            if(mnVal2) mnVal2.textContent = after.toLocaleString();
+            loadModalMoneyData(node, overlay);
+            if(typeof fetchSidebarStats === 'function') fetchSidebarStats();
+          } else {
+            _showToast('처리 실패: ' + (res.error || ''), 'error');
+          }
+        })
+        .catch(function(e) { _showToast('서버 오류: ' + e.message, 'error'); });
       }
 
       pop.remove();
@@ -3250,13 +3273,8 @@ function _renderPartnerModal(node) {
         if(ptVal) ptVal.textContent = ((node.point||0)+(node.rollingPoint||0)).toLocaleString();
         if(ptVal2) ptVal2.textContent = ((node.point||0)+(node.rollingPoint||0)).toLocaleString() + 'P';
         loadModalPointData(node, overlay);
-      } else {
-        var mnDisp = overlay.querySelector('#pd-money-display');
-        var mnVal2 = overlay.querySelector('#pd-money-val2');
-        if(mnDisp) mnDisp.textContent = (node.money || 0).toLocaleString();
-        if(mnVal2) mnVal2.textContent = (node.money || 0).toLocaleString();
-        loadModalMoneyData(node, overlay);
       }
+      // 머니 DOM 업데이트는 fetch 콜백 안에서 처리됨
     });
   }
 
