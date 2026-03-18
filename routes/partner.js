@@ -97,10 +97,16 @@ router.get('/check-session', async (req, res) => {
 });
 
 // 인증 미들웨어
+const PARTNER_SESSION_TTL = 24 * 60 * 60 * 1000; // 24시간
 router.use((req, res, next) => {
   const token = (req.headers.authorization || '').replace('Bearer ', '');
   if (token && partnerSessions.has(token)) {
-    req.partnerSession = partnerSessions.get(token);
+    const sess = partnerSessions.get(token);
+    if (Date.now() - sess.createdAt > PARTNER_SESSION_TTL) {
+      partnerSessions.delete(token);
+      return res.status(401).json({ success: false, error: '세션이 만료되었습니다. 다시 로그인해주세요.' });
+    }
+    req.partnerSession = sess;
     return next();
   }
   res.status(401).json({ success: false, error: '인증이 필요합니다.' });

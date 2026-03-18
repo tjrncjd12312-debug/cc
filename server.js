@@ -1,9 +1,28 @@
 const express = require('express');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 const dal = require('./lib/dal');
 const app = express();
 
 app.use(express.json({ limit: '10mb' }));
+
+// ── Rate Limiting ──
+// 로그인: IP당 15분에 20회
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { success: false, error: '로그인 시도가 너무 많습니다. 15분 후 다시 시도해주세요.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+// 일반 API: IP당 1분에 120회
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  message: { success: false, error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 // 캐시 방지 (모든 파일)
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -57,12 +76,17 @@ async function userIpCheck(req, res, next) {
 }
 
 // API 라우트
-app.use('/api/admin',   adminIpCheck, require('./routes/admin'));
-app.use('/api/partner', require('./routes/partner'));
-app.use('/api/user',    userIpCheck, require('./routes/user'));
+app.use('/api/admin',   adminIpCheck, apiLimiter, require('./routes/admin'));
+app.use('/api/partner', apiLimiter, require('./routes/partner'));
+app.use('/api/user',    userIpCheck, apiLimiter, require('./routes/user'));
 app.use('/api/auth',    userIpCheck, require('./routes/auth').router);
-app.use('/api/game',    userIpCheck, require('./routes/game'));
-app.use('/api/hl',      userIpCheck, require('./routes/gamehl'));
+app.use('/api/game',    userIpCheck, apiLimiter, require('./routes/game'));
+app.use('/api/hl',      userIpCheck, apiLimiter, require('./routes/gamehl'));
+
+// 로그인 엔드포인트에 강화된 Rate Limit 적용
+app.post('/api/auth/login', loginLimiter);
+app.post('/api/admin/login', loginLimiter);
+app.post('/api/partner/login', loginLimiter);
 
 // 페이지 라우트 (static보다 먼저 선언)
 app.get('/',        userIpCheck, (req, res) => res.sendFile(path.join(__dirname, 'user/index.html')));

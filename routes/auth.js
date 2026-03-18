@@ -654,4 +654,4 @@ router.get('/online', async (req, res) => {
   res.json({ success: true, data: list });
 });
 
-module.exports = { router, readUsers, writeUsers, onlineMap, kickedSet, gameSessionMap, loginFailMap };
+module.exports = { router, readUsers, writeUsers, onlineMap, kickedSet, gameSessionMap, loginFailMap, sessionTokenMap };

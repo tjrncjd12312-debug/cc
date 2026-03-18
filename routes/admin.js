@@ -56,9 +56,17 @@ router.get('/check-session', (req, res) => {
 });
 
 // 인증 미들웨어 — login/logout/check-session 이후 모든 라우트에 적용
+const ADMIN_SESSION_TTL = 24 * 60 * 60 * 1000; // 24시간
 router.use((req, res, next) => {
   const token = (req.headers.authorization || '').replace('Bearer ', '');
-  if (token && adminSessions.has(token)) return next();
+  if (token && adminSessions.has(token)) {
+    const sess = adminSessions.get(token);
+    if (Date.now() - sess.createdAt > ADMIN_SESSION_TTL) {
+      adminSessions.delete(token);
+      return res.status(401).json({ success: false, error: '세션이 만료되었습니다. 다시 로그인해주세요.' });
+    }
+    return next();
+  }
   res.status(401).json({ success: false, error: '인증이 필요합니다.' });
 });
 
