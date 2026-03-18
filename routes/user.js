@@ -88,7 +88,7 @@ router.delete('/inquiries/delete-all', async (req, res) => {
 router.delete('/inquiries/:id', async (req, res) => {
   let list = [];
   try { list = await dal.readData('inquiries.json'); } catch(e) {}
-  const item = list.find(i => i.id === req.params.id);
+  const item = list.find(i => String(i.id) === String(req.params.id));
   if (item) { item.userDeleted = true; await dal.writeData('inquiries.json', list); }
   res.json({ success: true });
 });
@@ -211,7 +211,7 @@ router.get('/messages', async (req, res) => {
 router.patch('/messages/:id/read', async (req, res) => {
   let list = [];
   try { list = await dal.readData('messages.json'); } catch(e) {}
-  const item = list.find(m => m.id === req.params.id);
+  const item = list.find(m => String(m.id) === String(req.params.id));
   if (item) { item.read = true; await dal.writeData('messages.json', list); }
   res.json({ success: true });
 });
@@ -240,7 +240,7 @@ router.delete('/messages/delete-all', async (req, res) => {
 router.delete('/messages/:id', async (req, res) => {
   let list = [];
   try { list = await dal.readData('messages.json'); } catch(e) {}
-  const item = list.find(m => m.id === req.params.id);
+  const item = list.find(m => String(m.id) === String(req.params.id));
   if (item) { item.userDeleted = true; await dal.writeData('messages.json', list); }
   res.json({ success: true });
 });

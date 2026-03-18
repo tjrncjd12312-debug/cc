@@ -609,7 +609,7 @@ router.post('/transfers', async (req, res) => {
 
 router.patch('/transfers/:id/approve', asyncHandler(async (req, res) => {
   const list = await readTransfers();
-  const item = list.find(t => t.id === req.params.id);
+  const item = list.find(t => String(t.id) === String(req.params.id));
   if (!item) return res.json({ success: false, error: '항목 없음' });
   if (item.status !== 'pending') return res.json({ success: false, error: '이미 처리된 신청입니다.' });
   item.status = 'approved';
@@ -634,7 +634,7 @@ router.patch('/transfers/:id/approve', asyncHandler(async (req, res) => {
 
 router.patch('/transfers/:id/reject', asyncHandler(async (req, res) => {
   const list = await readTransfers();
-  const item = list.find(t => t.id === req.params.id);
+  const item = list.find(t => String(t.id) === String(req.params.id));
   if (!item) return res.json({ success: false, error: '항목 없음' });
   item.status = 'rejected';
   item.processedAt = new Date().toISOString();
@@ -670,7 +670,7 @@ router.post('/inquiries', async (req, res) => {
 
 router.patch('/inquiries/:id/reply', async (req, res) => {
   const list = await readInquiries();
-  const item = list.find(i => i.id === req.params.id);
+  const item = list.find(i => String(i.id) === String(req.params.id));
   if (!item) return res.json({ success: false, error: '항목 없음' });
   item.status     = 'done';
   item.answer     = req.body.answer;
@@ -719,7 +719,7 @@ router.post('/quickreplies', async (req, res) => {
 
 router.put('/quickreplies/:id', async (req, res) => {
   const list = await readQuickReplies();
-  const item = list.find(i => i.id === req.params.id);
+  const item = list.find(i => String(i.id) === String(req.params.id));
   if (!item) return res.json({ success: false, error: '항목 없음' });
   if (req.body.title   !== undefined) item.title   = req.body.title;
   if (req.body.content !== undefined) item.content = req.body.content;
@@ -753,7 +753,7 @@ router.post('/events', async (req, res) => {
 
 router.put('/events/:id', async (req, res) => {
   const list = await readEvents();
-  const idx  = list.findIndex(e => e.id === req.params.id);
+  const idx  = list.findIndex(e => String(e.id) === String(req.params.id));
   if (idx === -1) return res.json({ success: false, error: '항목 없음' });
   list[idx] = { ...list[idx], ...req.body };
   await writeEvents(list);
