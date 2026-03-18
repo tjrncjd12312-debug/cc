@@ -3436,6 +3436,166 @@ function _itmOpenDetail(titleEnc, contentEnc, imageEnc) {
 }
 
 // ══════════════════════════════════════
+//  포인트 내역
+// ══════════════════════════════════════
+function togglePointHistory() {
+  var sub = document.getElementById('point-history-sub');
+  var arrow = document.getElementById('point-history-arrow');
+  if (sub.style.display === 'none') {
+    sub.style.display = 'block';
+    arrow.style.transform = 'rotate(180deg)';
+  } else {
+    sub.style.display = 'none';
+    arrow.style.transform = '';
+  }
+}
+
+function openPointHistoryTab(tab) {
+  if (!_session) return;
+  var existing = document.getElementById('point-history-modal');
+  if (existing) existing.remove();
+
+  var titles = { 'rolling': '롤링내역', 'convert': '롤링전환내역', 'point-give': '포인트 지급/회수' };
+  var ov = document.createElement('div');
+  ov.id = 'point-history-modal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.innerHTML = ''
+    + '<div style="width:100%;max-width:700px;max-height:80vh;background:#0d0d1a;border:1px solid rgba(124,58,237,0.3);border-radius:8px;display:flex;flex-direction:column;overflow:hidden;">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(124,58,237,0.2);flex-shrink:0;">'
+    + '<span style="color:#a78bfa;font-weight:700;font-size:0.95rem;">' + (titles[tab] || '') + '</span>'
+    + '<button onclick="document.getElementById(\'point-history-modal\').remove()" style="background:#c0392b;border:none;color:#fff;width:32px;height:32px;border-radius:4px;cursor:pointer;font-size:0.9rem;">✕</button>'
+    + '</div>'
+    + '<div id="ph-tab-btns" style="display:flex;border-bottom:1px solid rgba(124,58,237,0.15);flex-shrink:0;">'
+    + _phTabBtn('rolling', '롤링내역', tab)
+    + _phTabBtn('convert', '롤링전환내역', tab)
+    + _phTabBtn('point-give', '포인트 지급/회수', tab)
+    + '</div>'
+    + '<div id="ph-body" style="flex:1;overflow-y:auto;padding:16px;scrollbar-width:none;"></div>'
+    + '</div>';
+  ov.addEventListener('click', function(e) { if (e.target === ov) ov.remove(); });
+  document.body.appendChild(ov);
+
+  ov.querySelectorAll('.ph-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      ov.querySelectorAll('.ph-tab').forEach(function(b) {
+        b.style.color = '#666';
+        b.style.borderBottom = '2px solid transparent';
+      });
+      this.style.color = '#a78bfa';
+      this.style.borderBottom = '2px solid #a78bfa';
+      _phRenderTab(this.dataset.tab);
+    });
+  });
+
+  _phRenderTab(tab);
+}
+
+function _phTabBtn(tab, label, active) {
+  var on = tab === active;
+  return '<button class="ph-tab" data-tab="' + tab + '" style="flex:1;padding:10px 4px;border:none;background:transparent;cursor:pointer;font-size:0.8rem;font-weight:600;color:' + (on ? '#a78bfa' : '#666') + ';border-bottom:2px solid ' + (on ? '#a78bfa' : 'transparent') + ';transition:all 0.2s;">' + label + '</button>';
+}
+
+async function _phRenderTab(tab) {
+  var body = document.getElementById('ph-body');
+  if (!body) return;
+  body.innerHTML = '<div style="text-align:center;padding:40px;color:#666;">불러오는 중...</div>';
+  var un = _session.username;
+
+  if (tab === 'rolling') {
+    try {
+      var res = await authFetch('/api/user/my-rolling-logs?username=' + encodeURIComponent(un));
+      var data = await res.json();
+      var logs = data.data || [];
+      if (logs.length === 0) {
+        body.innerHTML = '<div style="text-align:center;padding:40px;color:#555;">롤링 내역이 없습니다.</div>';
+        return;
+      }
+      body.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:0.78rem;">'
+        + '<thead><tr style="color:#888;border-bottom:1px solid #222;">'
+        + '<th style="padding:8px 4px;text-align:left;">일시</th>'
+        + '<th style="padding:8px 4px;text-align:left;">게임</th>'
+        + '<th style="padding:8px 4px;text-align:right;">배팅금</th>'
+        + '<th style="padding:8px 4px;text-align:right;">롤링포인트</th>'
+        + '</tr></thead><tbody>'
+        + logs.slice(0, 100).map(function(l) {
+          return '<tr style="border-bottom:1px solid #1a1a2e;">'
+            + '<td style="padding:7px 4px;color:#aaa;">' + (l.datetime || '') + '</td>'
+            + '<td style="padding:7px 4px;color:#ccc;">' + (l.gameType || l.vendor || '-') + '</td>'
+            + '<td style="padding:7px 4px;text-align:right;color:#ccc;">' + Number(l.betAmount || 0).toLocaleString() + '</td>'
+            + '<td style="padding:7px 4px;text-align:right;color:#a78bfa;font-weight:600;">+' + Number(l.rollingPoint || 0).toLocaleString() + '</td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table>';
+    } catch(e) {
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:#f87171;">조회 실패</div>';
+    }
+
+  } else if (tab === 'convert') {
+    try {
+      var res2 = await authFetch('/api/user/my-convert-logs?username=' + encodeURIComponent(un));
+      var data2 = await res2.json();
+      var logs2 = data2.data || [];
+      if (logs2.length === 0) {
+        body.innerHTML = '<div style="text-align:center;padding:40px;color:#555;">전환 내역이 없습니다.</div>';
+        return;
+      }
+      body.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:0.78rem;">'
+        + '<thead><tr style="color:#888;border-bottom:1px solid #222;">'
+        + '<th style="padding:8px 4px;text-align:left;">일시</th>'
+        + '<th style="padding:8px 4px;text-align:right;">전환 포인트</th>'
+        + '<th style="padding:8px 4px;text-align:right;">전환전 포인트</th>'
+        + '<th style="padding:8px 4px;text-align:right;">전환후 머니</th>'
+        + '</tr></thead><tbody>'
+        + logs2.slice(0, 100).map(function(l) {
+          return '<tr style="border-bottom:1px solid #1a1a2e;">'
+            + '<td style="padding:7px 4px;color:#aaa;">' + (l.datetime || '') + '</td>'
+            + '<td style="padding:7px 4px;text-align:right;color:#f59e0b;font-weight:600;">' + Number(l.amount || 0).toLocaleString() + 'P</td>'
+            + '<td style="padding:7px 4px;text-align:right;color:#ccc;">' + Number(l.beforeRolling || 0).toLocaleString() + 'P</td>'
+            + '<td style="padding:7px 4px;text-align:right;color:#4ade80;">' + Number(l.afterMoney || 0).toLocaleString() + '원</td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table>';
+    } catch(e) {
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:#f87171;">조회 실패</div>';
+    }
+
+  } else if (tab === 'point-give') {
+    try {
+      var res3 = await authFetch('/api/user/my-point-logs?username=' + encodeURIComponent(un));
+      var data3 = await res3.json();
+      var logs3 = data3.data || [];
+      if (logs3.length === 0) {
+        body.innerHTML = '<div style="text-align:center;padding:40px;color:#555;">포인트 지급/회수 내역이 없습니다.</div>';
+        return;
+      }
+      body.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:0.78rem;">'
+        + '<thead><tr style="color:#888;border-bottom:1px solid #222;">'
+        + '<th style="padding:8px 4px;text-align:left;">일시</th>'
+        + '<th style="padding:8px 4px;text-align:center;">구분</th>'
+        + '<th style="padding:8px 4px;text-align:right;">금액</th>'
+        + '<th style="padding:8px 4px;text-align:right;">변동 전</th>'
+        + '<th style="padding:8px 4px;text-align:right;">변동 후</th>'
+        + '<th style="padding:8px 4px;text-align:left;">메모</th>'
+        + '</tr></thead><tbody>'
+        + logs3.slice(0, 100).map(function(l) {
+          var isGive = l.type === 'give';
+          return '<tr style="border-bottom:1px solid #1a1a2e;">'
+            + '<td style="padding:7px 4px;color:#aaa;">' + (l.datetime || '') + '</td>'
+            + '<td style="padding:7px 4px;text-align:center;color:' + (isGive ? '#4ade80' : '#f87171') + ';font-weight:600;">' + (isGive ? '지급' : '회수') + '</td>'
+            + '<td style="padding:7px 4px;text-align:right;color:' + (isGive ? '#4ade80' : '#f87171') + ';font-weight:600;">' + (isGive ? '+' : '-') + Number(l.amount || 0).toLocaleString() + '</td>'
+            + '<td style="padding:7px 4px;text-align:right;color:#ccc;">' + Number(l.before || 0).toLocaleString() + '</td>'
+            + '<td style="padding:7px 4px;text-align:right;color:#ccc;">' + Number(l.after || 0).toLocaleString() + '</td>'
+            + '<td style="padding:7px 4px;color:#888;font-size:0.74rem;">' + (l.memo || '-') + '</td>'
+            + '</tr>';
+        }).join('')
+        + '</tbody></table>';
+    } catch(e) {
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:#f87171;">조회 실패</div>';
+    }
+  }
+}
+
+// ══════════════════════════════════════
 //  포인트 전환 (포인트 → 머니)
 // ══════════════════════════════════════
 

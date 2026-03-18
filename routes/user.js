@@ -38,6 +38,47 @@ router.post('/rolling-convert-log', async (req, res) => {
   res.json({ success: true });
 });
 
+// ── 유저 포인트 내역 조회 ──
+// 롤링내역 (롤링 포인트 적립)
+router.get('/my-rolling-logs', async (req, res) => {
+  const { username } = req.query;
+  if (!username) return res.json({ success: false, data: [] });
+  try {
+    const rows = await dal.rollingLogs.getByUsername(username);
+    res.json({ success: true, data: rows.map(r => ({
+      txId: r.tx_id, username: r.username, betBy: r.bet_by,
+      betAmount: r.bet_amount, rate: r.rate, rollingPoint: r.rolling_point,
+      vendor: r.vendor, gameType: r.game_type,
+      datetime: r.datetime instanceof Date ? r.datetime.toISOString().replace('T',' ').slice(0,19) : r.datetime
+    })) });
+  } catch(e) { res.json({ success: true, data: [] }); }
+});
+
+// 롤링전환내역
+router.get('/my-convert-logs', async (req, res) => {
+  const { username } = req.query;
+  if (!username) return res.json({ success: false, data: [] });
+  try {
+    const logs = await dal.readData('money_log_rolling-convert.json');
+    const mine = (logs || []).filter(l => l.username === username || l.target === username);
+    res.json({ success: true, data: mine });
+  } catch(e) { res.json({ success: true, data: [] }); }
+});
+
+// 포인트 지급/회수 내역
+router.get('/my-point-logs', async (req, res) => {
+  const { username } = req.query;
+  if (!username) return res.json({ success: false, data: [] });
+  try {
+    const rows = await dal.moneyLogPoint.getByTarget(username);
+    res.json({ success: true, data: rows.map(r => ({
+      datetime: r.datetime instanceof Date ? r.datetime.toISOString().replace('T',' ').slice(0,19) : r.datetime,
+      type: r.type, processor: r.processor, amount: r.amount,
+      before: r.before, after: r.after, memo: r.memo
+    })) });
+  } catch(e) { res.json({ success: true, data: [] }); }
+});
+
 // ── 공지사항 (읽기 전용, 도메인 필터링) ──
 router.get('/notices', async (req, res) => {
   try {
