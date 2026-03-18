@@ -390,7 +390,7 @@ router.post('/users/:id/block', asyncHandler(async (req, res) => {
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
   const updateFields = { status: 'blocked' };
-  if (req.body && req.body.belongTo) updateFields.belongTo = req.body.belongTo;
+  if (req.body && req.body.belongTo) updateFields.belong_to = req.body.belongTo;
   try {
     await cs.post('/csapi/kick', { userid: u.username });
     const csRes = await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '0' });
@@ -417,7 +417,7 @@ router.post('/users/:id/delete', asyncHandler(async (req, res) => {
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
   const updateFields = { status: 'deleted' };
-  if (req.body && req.body.belongTo) updateFields.belongTo = req.body.belongTo;
+  if (req.body && req.body.belongTo) updateFields.belong_to = req.body.belongTo;
   try {
     await cs.post('/csapi/kick', { userid: u.username });
     const csRes = await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '0' });
