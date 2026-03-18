@@ -160,12 +160,12 @@ router.post('/transfers', async (req, res) => {
         if (todayTotal + reqAmount > tl.withdrawDailyLimit) return res.json({ success: false, error: '1일 환전 한도(' + Number(tl.withdrawDailyLimit).toLocaleString() + '원)를 초과합니다.' });
       }
     }
-  } catch(e) {}
+  } catch(e) { console.error('[Transfer] 한도체크 오류:', e.message); }
 
   // 환전 신청 시 즉시 보유머니 차감
   if (item.type === 'withdraw' && item.userId) {
     let users = [];
-    try { users = await dal.readData('users.json'); } catch(e) {}
+    try { users = await dal.readData('users.json'); } catch(e) { console.error('[Transfer] 유저조회 오류:', e.message); }
     const u = users.find(u => u.username === item.userId);
     if (u) {
       const amt = Number(item.amount) || 0;

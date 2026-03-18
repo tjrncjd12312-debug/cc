@@ -4,6 +4,14 @@ const rateLimit = require('express-rate-limit');
 const dal = require('./lib/dal');
 const app = express();
 
+// ── 글로벌 에러 핸들러 (서버 크래시 방지) ──
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught Exception:', err.message, err.stack);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] Unhandled Rejection:', reason);
+});
+
 app.use(express.json({ limit: '10mb' }));
 
 // ── Rate Limiting ──

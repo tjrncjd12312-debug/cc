@@ -162,7 +162,7 @@ async function _cleanupStaleApi() {
             await hl.post('/user/sub-balance-all', { username: u.username });
             u.money = (u.money || 0) + gameBal;
           }
-        } catch(e) {}
+        } catch(e) { console.error('[AutoSettle] HL회수 오류(' + u.username + '):', e.message); }
       }
       // CS API 잔액 회수
       try {
@@ -172,7 +172,7 @@ async function _cleanupStaleApi() {
           await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '3' });
           u.money = (u.money || 0) + csBal;
         }
-      } catch(e) {}
+      } catch(e) { console.error('[AutoSettle] CS회수 오류(' + u.username + '):', e.message); }
       u.api = [];
       delete gameSessionMap[u.username];
       changed = true;

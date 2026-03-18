@@ -154,7 +154,7 @@ router.get('/users/stats', async (req, res) => {
   try {
     const txResult = await txCollector.query({ perPage: 100000 });
     allTx = txResult.data || [];
-  } catch(e) {}
+  } catch(e) { console.error('[Admin] 트랜잭션 조회 오류:', e.message); }
 
   // 날짜 필터 (KST 기준 — 트랜잭션 시간을 KST 날짜 문자열로 비교)
   if (startDate || endDate) {
@@ -196,7 +196,7 @@ router.post('/user-kick', async (req, res) => {
       const hlBal = Number(hlUser && hlUser.balance || 0);
       await hl.post('/user/sub-balance-all', { username });
       if (hlBal > 0) u.money = (u.money || 0) + hlBal;
-    } catch(e) {}
+    } catch(e) { console.error('[Admin] HL 잔액회수 오류(' + username + '):', e.message); }
   }
   if (u && u.api && u.api.includes('csapi')) {
     try {
@@ -207,7 +207,7 @@ router.post('/user-kick', async (req, res) => {
         await cs.post('/csapi/amount', { userid: username, amount: 0, type: '3' });
         u.money = (u.money || 0) + csBal;
       }
-    } catch(e) {}
+    } catch(e) { console.error('[Admin] CS 잔액회수 오류(' + username + '):', e.message); }
   }
 
   // 연동 해제 + 접속자 목록 제거 + 게임세션 제거 + 유저 로그아웃
@@ -269,11 +269,11 @@ router.post('/users/:id/api-disconnect', async (req, res) => {
   if (!u) return res.json({ success: false, error: '유저 없음' });
 
   if (provider === 'honorlink') {
-    try { await hl.post('/user/kick', { username: u.username }); } catch(e) {}
-    try { await hl.post('/user/sub-balance-all', { username: u.username }); } catch(e) {}
+    try { await hl.post('/user/kick', { username: u.username }); } catch(e) { console.error('[Admin] HL킥 오류:', e.message); }
+    try { await hl.post('/user/sub-balance-all', { username: u.username }); } catch(e) { console.error('[Admin] HL회수 오류:', e.message); }
   }
   if (provider === 'csapi') {
-    try { await cs.post('/csapi/kick', { userid: u.username }); } catch(e) {}
+    try { await cs.post('/csapi/kick', { userid: u.username }); } catch(e) { console.error('[Admin] CS킥 오류:', e.message); }
     try {
       const csRes = await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '0' });
       const csBal = Number(csRes && csRes.balance || 0);
@@ -281,7 +281,7 @@ router.post('/users/:id/api-disconnect', async (req, res) => {
         await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '3' });
         u.money = (u.money || 0) + csBal;
       }
-    } catch(e) {}
+    } catch(e) { console.error('[Admin] CS회수 오류:', e.message); }
   }
 
   if (u.api) u.api = u.api.filter(a => a !== provider);
