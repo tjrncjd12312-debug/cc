@@ -34,8 +34,9 @@ const deviceMap = {};
 // 로그인 실패 추적: { username: { count, lockedUntil } }
 const loginFailMap = {};
 
-// 세션 토큰: { userId: token } — 중복 로그인 차단용
+// 세션 토큰: { userId: { token, createdAt } } — 중복 로그인 차단 + TTL
 const sessionTokenMap = {};
+const USER_SESSION_TTL = 24 * 60 * 60 * 1000; // 24시간
 
 // 파트너 트리에서 상위 gameGroup 찾기 (가장 가까운 조상의 그룹 반환)
 function findParentGameGroup(nodes, username) {
@@ -321,7 +322,7 @@ router.post('/login', async (req, res) => {
   if (!isAdmin) {
     // 유저: 항상 이전 세션 강제 종료
     if (sessionTokenMap[user.id]) {
-      kickedSet.add(user.id + ':' + sessionTokenMap[user.id]);
+      kickedSet.add(user.id + ':' + sessionTokenMap[user.id].token);
     }
   } else {
     // 관리자/파트너: dupLogin 설정 확인
@@ -329,14 +330,14 @@ router.post('/login', async (req, res) => {
       const s2 = await dal.readData('admin_settings.json');
       const dupLogin = s2.security && s2.security.dupLogin;
       if (!dupLogin && sessionTokenMap[user.id]) {
-        kickedSet.add(user.id + ':' + sessionTokenMap[user.id]);
+        kickedSet.add(user.id + ':' + sessionTokenMap[user.id].token);
       }
     } catch(e) {}
   }
 
   // 세션 토큰 발급
   const sessionToken = require('crypto').randomBytes(32).toString('hex');
-  sessionTokenMap[user.id] = sessionToken;
+  sessionTokenMap[user.id] = { token: sessionToken, createdAt: Date.now() };
 
   // 온라인 등록
   onlineMap[user.id] = Date.now();
@@ -369,8 +370,13 @@ router.post('/ping', (req, res) => {
     return res.json({ success: false, kicked: true });
   }
   // 중복 로그인 체크: 세션 토큰 불일치 시 킥
-  if (userId && sessionToken && sessionTokenMap[userId] && sessionTokenMap[userId] !== sessionToken) {
+  if (userId && sessionToken && sessionTokenMap[userId] && sessionTokenMap[userId].token !== sessionToken) {
     return res.json({ success: false, kicked: true, reason: 'duplicate_login' });
+  }
+  // 세션 만료 체크 (24시간)
+  if (userId && sessionTokenMap[userId] && Date.now() - sessionTokenMap[userId].createdAt > USER_SESSION_TTL) {
+    delete sessionTokenMap[userId];
+    return res.json({ success: false, kicked: true, reason: 'session_expired' });
   }
   // 토큰 키 기반 킥 체크 (이전 세션용)
   if (userId && sessionToken && kickedSet.has(userId + ':' + sessionToken)) {

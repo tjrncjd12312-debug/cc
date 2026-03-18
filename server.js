@@ -96,9 +96,14 @@ function userAuthCheck(req, res, next) {
   if (PUBLIC_PATHS.some(p => req.originalUrl.startsWith(p))) return next();
   const token = (req.headers.authorization || '').replace('Bearer ', '');
   if (!token) return res.status(401).json({ success: false, error: '로그인이 필요합니다.' });
-  // sessionTokenMap: { userId: token } — 유효한 토큰인지 확인
-  const valid = Object.values(sessionTokenMap).includes(token);
-  if (!valid) return res.status(401).json({ success: false, error: '세션이 만료되었습니다. 다시 로그인해주세요.' });
+  // sessionTokenMap: { userId: { token, createdAt } } — 유효한 토큰인지 확인
+  const SESSION_TTL = 24 * 60 * 60 * 1000;
+  const entry = Object.entries(sessionTokenMap).find(([, v]) => v && v.token === token);
+  if (!entry) return res.status(401).json({ success: false, error: '세션이 만료되었습니다. 다시 로그인해주세요.' });
+  if (Date.now() - entry[1].createdAt > SESSION_TTL) {
+    delete sessionTokenMap[entry[0]];
+    return res.status(401).json({ success: false, error: '세션이 만료되었습니다. 다시 로그인해주세요.' });
+  }
   next();
 }
 
@@ -126,6 +131,17 @@ app.use('/admin',   adminIpCheck, express.static(path.join(__dirname, 'admin'), 
 app.use('/partner', express.static(path.join(__dirname, 'partner'), { maxAge: 0, etag: false }));
 app.use('/user',    express.static(path.join(__dirname, 'user')));
 
+// 헬스체크 엔드포인트
+const db = require('./lib/db');
+app.get('/health', async (_req, res) => {
+  try {
+    await db.query('SELECT 1');
+    res.json({ status: 'ok', uptime: process.uptime(), memory: Math.round(process.memoryUsage().rss / 1024 / 1024) + 'MB' });
+  } catch(e) {
+    res.status(503).json({ status: 'error', error: e.message });
+  }
+});
+
 // 트랜잭션 자동 수집기 시작
 const txCollector = require('./lib/transactionCollector');
 txCollector.start();
@@ -135,7 +151,7 @@ const csTxCollector = require('./lib/csTransactionCollector');
 csTxCollector.start();
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
   // 서버 외부 IP 확인
   require('https').get('https://api.ipify.org', (res) => {
@@ -144,3 +160,19 @@ app.listen(PORT, () => {
     res.on('end', () => console.log('Server External IP:', ip));
   });
 });
+
+// Graceful Shutdown
+function gracefulShutdown(signal) {
+  console.log(`[${signal}] Shutting down gracefully...`);
+  server.close(() => {
+    console.log('HTTP server closed');
+    db.end().then(() => {
+      console.log('DB pool closed');
+      process.exit(0);
+    }).catch(() => process.exit(1));
+  });
+  // 10초 내 종료 안 되면 강제 종료
+  setTimeout(() => { console.error('Forced shutdown'); process.exit(1); }, 10000);
+}
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
