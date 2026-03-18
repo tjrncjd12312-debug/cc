@@ -196,8 +196,11 @@ router.get('/check-referral', async (req, res) => {
 // ── 회원가입 ──
 router.post('/register', async (req, res) => {
   const { username, nickname, password, phone, bank, account, holder, referral } = req.body;
-  if (!username || !password) return res.json({ success: false, error: '아이디와 비밀번호를 입력해주세요.' });
-  if (username.length < 4) return res.json({ success: false, error: '아이디는 4자 이상이어야 합니다.' });
+  if (!username || typeof username !== 'string' || !password || typeof password !== 'string') return res.json({ success: false, error: '아이디와 비밀번호를 입력해주세요.' });
+  if (username.length < 4 || username.length > 20) return res.json({ success: false, error: '아이디는 4~20자여야 합니다.' });
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) return res.json({ success: false, error: '아이디는 영문, 숫자, _만 사용 가능합니다.' });
+  if (password.length < 4 || password.length > 50) return res.json({ success: false, error: '비밀번호는 4~50자여야 합니다.' });
+  if (nickname && (typeof nickname !== 'string' || nickname.length > 20)) return res.json({ success: false, error: '닉네임은 20자 이내여야 합니다.' });
 
   const users = await readUsers();
   if (users.find(u => u.username === username)) return res.json({ success: false, error: '이미 사용 중인 아이디입니다.' });
@@ -261,6 +264,9 @@ router.post('/login', async (req, res) => {
   } catch(e) {}
 
   const { username, password } = req.body;
+  if (!username || typeof username !== 'string' || !password || typeof password !== 'string') {
+    return res.json({ success: false, error: '아이디와 비밀번호를 입력해주세요.' });
+  }
 
   // 로그인 실패 잠금 체크
   try {

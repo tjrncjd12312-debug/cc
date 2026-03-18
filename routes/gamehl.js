@@ -250,10 +250,13 @@ router.post('/user/create', async (req, res) => {
 
 // ── 머니 지급
 router.post('/user/add-balance', async (req, res) => {
+  if (!req.body.username || typeof req.body.username !== 'string') return res.status(400).json({ error: '잘못된 요청입니다.' });
+  const amt = Number(req.body.amount);
+  if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ error: '올바른 금액을 입력해주세요.' });
   try {
     const r = await hl.post('/user/add-balance', {
       username: req.body.username,
-      amount:   req.body.amount,
+      amount:   amt,
       uuid:     req.body.uuid || undefined,
     });
     res.json(r);
@@ -262,10 +265,13 @@ router.post('/user/add-balance', async (req, res) => {
 
 // ── 머니 부분 회수
 router.post('/user/sub-balance', async (req, res) => {
+  if (!req.body.username || typeof req.body.username !== 'string') return res.status(400).json({ error: '잘못된 요청입니다.' });
+  const amt = Number(req.body.amount);
+  if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ error: '올바른 금액을 입력해주세요.' });
   try {
     const r = await hl.post('/user/sub-balance', {
       username: req.body.username,
-      amount:   req.body.amount,
+      amount:   amt,
       uuid:     req.body.uuid || undefined,
     });
     res.json(r);
@@ -274,6 +280,7 @@ router.post('/user/sub-balance', async (req, res) => {
 
 // ── 머니 전액 회수
 router.post('/user/sub-balance-all', async (req, res) => {
+  if (!req.body.username || typeof req.body.username !== 'string') return res.status(400).json({ error: '잘못된 요청입니다.' });
   try {
     const r = await hl.post('/user/sub-balance-all', {
       username: req.body.username,

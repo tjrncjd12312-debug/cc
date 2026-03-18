@@ -49,7 +49,12 @@ router.post('/inquiries', async (req, res) => {
     if (pending) return res.json({ success: false, error: 'duplicate' });
   }
 
-  const item = { ...req.body, id: Date.now() + '' + Math.floor(Math.random() * 1000) };
+  // 허용된 필드만 추출
+  const { title, content, userId } = req.body;
+  if (!userId || typeof userId !== 'string') return res.json({ success: false, error: '잘못된 요청입니다.' });
+  if (!title || typeof title !== 'string' || title.length > 200) return res.json({ success: false, error: '제목을 입력해주세요.' });
+  if (content && typeof content === 'string' && content.length > 5000) return res.json({ success: false, error: '내용이 너무 깁니다.' });
+  const item = { title, content: content || '', userId, status: 'open', datetime: new Date().toISOString(), id: Date.now() + '' + Math.floor(Math.random() * 1000) };
   list.unshift(item);
   await dal.writeData('inquiries.json', list);
 
@@ -90,10 +95,17 @@ router.delete('/inquiries/:id', async (req, res) => {
 
 // ── 충환전 신청 ──
 router.post('/transfers', async (req, res) => {
+  // 입력값 검증
+  const { type, amount, userId, datetime } = req.body;
+  if (!type || !['deposit', 'withdraw'].includes(type)) return res.json({ success: false, error: '잘못된 요청입니다.' });
+  const reqAmount = Number(amount) || 0;
+  if (reqAmount <= 0 || !Number.isFinite(reqAmount)) return res.json({ success: false, error: '올바른 금액을 입력해주세요.' });
+  if (!userId || typeof userId !== 'string') return res.json({ success: false, error: '잘못된 요청입니다.' });
+
   let list = [];
   try { list = await dal.readData('transfers.json'); } catch(e) {}
-  const item = { ...req.body, id: Date.now() + '' + Math.floor(Math.random() * 1000) };
-  const reqAmount = Number(item.amount) || 0;
+  // 허용된 필드만 추출 (임의 필드 주입 차단)
+  const item = { type, amount: reqAmount, userId, datetime: datetime || new Date().toISOString(), status: 'pending', id: Date.now() + '' + Math.floor(Math.random() * 1000) };
 
   // 이체 한도 체크
   try {
@@ -237,8 +249,9 @@ router.delete('/messages/:id', async (req, res) => {
 // ── 로컬 머니 변경 (게임 종료 시 잔액 복원용) ──
 router.post('/users/money-local', async (req, res) => {
   const { username, amount: rawAmount } = req.body;
+  if (!username || typeof username !== 'string') return res.json({ success: false });
   const amount = Number(rawAmount);
-  if (!username || !amount || isNaN(amount)) return res.json({ success: false });
+  if (!Number.isFinite(amount) || amount === 0) return res.json({ success: false });
   let users = [];
   try { users = await dal.readData('users.json'); } catch(e) { return res.json({ success: false }); }
   const u = users.find(u => u.username === username);

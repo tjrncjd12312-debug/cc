@@ -12,6 +12,7 @@ const { gameSessionMap } = require('./auth');
 
 // ── CS API 회원가입
 router.post('/register', async (req, res) => {
+  if (!req.body.userid || typeof req.body.userid !== 'string') return res.json({ result: 0, msg: '잘못된 요청입니다.' });
   try {
     const r = await cs.post('/csapi/create', {
       userid:   req.body.userid,
@@ -33,10 +34,13 @@ router.post('/register', async (req, res) => {
 
 // ── CS API 입금 (로컬 → 게임사)
 router.post('/deposit', async (req, res) => {
+  if (!req.body.userid || typeof req.body.userid !== 'string') return res.json({ result: 0, msg: '잘못된 요청입니다.' });
+  const depositAmt = Number(req.body.amount);
+  if (!Number.isFinite(depositAmt) || depositAmt <= 0) return res.json({ result: 0, msg: '올바른 금액을 입력해주세요.' });
   try {
     const r = await cs.post('/csapi/amount', {
       userid: req.body.userid,
-      amount: Number(req.body.amount),
+      amount: depositAmt,
       type:   '1',  // 1 = 입금
     });
     res.json(r);
@@ -45,10 +49,13 @@ router.post('/deposit', async (req, res) => {
 
 // ── CS API 출금 (게임사 → 로컬)
 router.post('/withdraw', async (req, res) => {
+  if (!req.body.userid || typeof req.body.userid !== 'string') return res.json({ result: 0, msg: '잘못된 요청입니다.' });
+  const withdrawAmt = Number(req.body.amount) || 0;
+  if (!req.body.all && (!Number.isFinite(withdrawAmt) || withdrawAmt <= 0)) return res.json({ result: 0, msg: '올바른 금액을 입력해주세요.' });
   try {
     const r = await cs.post('/csapi/amount', {
       userid: req.body.userid,
-      amount: Number(req.body.amount) || 0,
+      amount: withdrawAmt,
       type:   req.body.all ? '3' : '2',  // 3 = 전액출금, 2 = 부분출금
     });
     res.json(r);
