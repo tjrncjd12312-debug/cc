@@ -614,19 +614,20 @@ router.patch('/transfers/:id/approve', asyncHandler(async (req, res) => {
   if (item.status !== 'pending') return res.json({ success: false, error: '이미 처리된 신청입니다.' });
   item.status = 'approved';
   item.processedAt = new Date().toISOString();
+  const username = item.userId || item.username;
   if (item.type === 'deposit') {
-    await dal.users.addMoney(item.userId, Number(item.amount));
+    await dal.users.addMoney(username, Number(item.amount));
   }
   await writeTransfers(list);
   try {
     const csType = item.type === 'deposit' ? '1' : '2';
-    await cs.post('/csapi/amount', { userid: item.userId, amount: Number(item.amount), type: csType });
+    await cs.post('/csapi/amount', { userid: username, amount: Number(item.amount), type: csType });
   } catch(e) {}
   try {
     if (item.type === 'deposit') {
-      await hl.post('/user/add-balance', { username: item.userId, amount: Number(item.amount) });
+      await hl.post('/user/add-balance', { username: username, amount: Number(item.amount) });
     } else {
-      await hl.post('/user/sub-balance', { username: item.userId, amount: Number(item.amount) });
+      await hl.post('/user/sub-balance', { username: username, amount: Number(item.amount) });
     }
   } catch(e) {}
   res.json({ success: true });
@@ -638,9 +639,10 @@ router.patch('/transfers/:id/reject', asyncHandler(async (req, res) => {
   if (!item) return res.json({ success: false, error: '항목 없음' });
   item.status = 'rejected';
   item.processedAt = new Date().toISOString();
+  const username = item.userId || item.username;
 
   if (item.type === 'withdraw') {
-    await dal.users.addMoney(item.userId, Number(item.amount));
+    await dal.users.addMoney(username, Number(item.amount));
   }
 
   await writeTransfers(list);

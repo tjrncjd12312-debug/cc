@@ -183,7 +183,7 @@ router.post('/transfers', async (req, res) => {
   const tgType = item.type === 'deposit' ? 'deposit' : 'withdraw';
   const tgLabel = item.type === 'deposit' ? '충전' : '환전';
   const amt = Number(item.amount || 0).toLocaleString();
-  telegram.send(tgType, '📢 <b>' + tgLabel + ' 신청</b>\n회원: ' + (item.userId || '') + '\n금액: ' + amt + '원\n시간: ' + (item.datetime || '')).catch(function(){});
+  try { telegram.send(tgType, '📢 <b>' + tgLabel + ' 신청</b>\n회원: ' + (item.userId || '') + '\n금액: ' + amt + '원\n시간: ' + (item.datetime || '')); } catch(e) {}
 
   res.json({ success: true, data: item });
 });
