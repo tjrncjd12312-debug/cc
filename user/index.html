@@ -1,52 +1,524 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BLACK CASINO</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CC CASINO</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <!-- user.js가 사용하는 기존 스타일 (모달, 카드, 파티클 등) -->
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* ==================== CC.HTML 디자인 오버라이드 ==================== */
+
+        /* TOP BAR (cc.html 스타일) */
+        .cc-top-bar {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 5px calc((100% - 1300px) / 2);
+            gap: 10px;
+            background: #111;
+        }
+
+        .top-btn {
+            padding: 6px 18px;
+            border-radius: 5px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .top-btn:hover { transform: translateY(-1px); }
+
+        .cc-btn-login {
+            background: transparent;
+            border: 1px solid #6abf40;
+            color: #6abf40;
+            transition: all 0.3s;
+        }
+        .cc-btn-login:hover {
+            background: rgba(106, 191, 64, 0.15);
+            box-shadow: 0 0 10px rgba(106, 191, 64, 0.3);
+        }
+
+        .cc-btn-signup {
+            background: linear-gradient(135deg, #6abf40, #4a9a2e);
+            color: #fff;
+            transition: all 0.3s;
+        }
+        .cc-btn-signup:hover {
+            background: linear-gradient(135deg, #7dd956, #5ab83a);
+            box-shadow: 0 0 12px rgba(106, 191, 64, 0.5);
+        }
+
+        /* HEADER (cc.html 스타일) */
+        .cc-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px calc((100% - 1300px) / 2);
+            padding-left: 20px;
+            padding-right: 20px;
+            background: #000;
+            border-top: 1px solid #6abf40;
+            border-bottom: 1px solid #6abf40;
+            box-shadow: 0 1px 8px rgba(106, 191, 64, 0.5);
+        }
+
+        .cc-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 28px;
+            font-weight: 900;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        .cc-logo .cc-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #6abf40, #3d8a25);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 900;
+            color: #fff;
+        }
+
+        .cc-logo span {
+            font-size: 12px;
+            letter-spacing: 4px;
+            display: block;
+            color: #aaa;
+        }
+
+        .cc-nav {
+            display: flex;
+            gap: 25px;
+        }
+        .cc-nav a {
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            transition: color 0.2s;
+            white-space: nowrap;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .cc-nav a:hover {
+            color: #6abf40;
+            text-shadow: 0 0 8px rgba(106, 191, 64, 0.4);
+        }
+        .cc-nav a::after {
+            content: '';
+            display: block;
+            width: 0;
+            height: 2px;
+            background: #6abf40;
+            transition: width 0.3s;
+            box-shadow: 0 0 6px rgba(106, 191, 64, 0.5);
+        }
+        .cc-nav a:hover::after { width: 100%; }
+
+        /* BANNER (cc.html 스타일) */
+        .cc-banner {
+            width: 100%;
+            border-bottom: 1px solid #6abf40;
+            box-shadow: 0 1px 8px rgba(106, 191, 64, 0.5);
+            max-height: 420px;
+            overflow: hidden;
+        }
+        .cc-banner img {
+            width: 100%;
+            display: block;
+            margin-top: -120px;
+        }
+
+        /* CATEGORY TABS (cc.html 스타일) */
+        .cc-category-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            padding: 20px calc((100% - 1300px) / 2);
+            background: rgba(30, 30, 30, 0.85);
+        }
+        .cc-category-tab {
+            flex: 1;
+            max-width: 100%;
+            text-align: center;
+            padding: 12px 40px;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            border: 1px solid #444;
+            border-radius: 40px;
+            background: linear-gradient(180deg, #3a3a3a 0%, #252525 100%);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        .cc-category-tab::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+        .cc-category-tab:hover {
+            background: linear-gradient(180deg, #4a4a4a 0%, #333 100%);
+            border-color: #6abf40;
+            box-shadow: 0 0 15px rgba(106, 191, 64, 0.2), inset 0 2px 4px rgba(0,0,0,0.4);
+            transform: translateY(-2px);
+        }
+        .cc-category-tab:hover::before { opacity: 1; }
+        .cc-category-tab.active {
+            background: linear-gradient(180deg, #7dd956 0%, #4a9a2e 50%, #3a7a20 100%);
+            border-color: #8ae65a;
+            box-shadow: 0 0 25px rgba(106, 191, 64, 0.5), 0 4px 15px rgba(106, 191, 64, 0.3), inset 0 1px 1px rgba(255,255,255,0.3);
+            transform: translateY(-2px);
+        }
+        .cc-category-tab h3 {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 2px;
+            color: #ddd;
+            transition: color 0.3s, text-shadow 0.3s;
+        }
+        .cc-category-tab:hover h3 { color: #fff; }
+        .cc-category-tab.active h3 {
+            color: #f5e642;
+            text-shadow: 0 0 10px rgba(245, 230, 66, 0.5);
+        }
+        .cc-category-tab p {
+            font-size: 12px;
+            color: #777;
+            letter-spacing: 2px;
+            transition: color 0.3s;
+        }
+        .cc-category-tab:hover p { color: #aaa; }
+        .cc-category-tab.active p { color: rgba(255,255,255,0.9); }
+
+        /* INFO SECTION (cc.html 스타일) */
+        .cc-info-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            padding: 40px calc((100% - 1300px) / 2);
+        }
+        .cc-info-box {
+            background: #1a1a1a;
+            border: 1px solid #6abf40;
+            box-shadow: 0 0 8px rgba(106, 191, 64, 0.3);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .cc-info-box-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 18px;
+            border-bottom: 1px solid #6abf40;
+            box-shadow: 0 1px 8px rgba(106, 191, 64, 0.3);
+            font-size: 20px;
+            font-weight: 700;
+        }
+        .cc-info-box-header .icon { font-size: 18px; }
+        .cc-info-box-header.event { color: #f5e642; }
+        .cc-info-box-header.deposit { color: #00bfff; }
+        .cc-info-box-header.withdraw { color: #ff6b9d; }
+
+        .cc-event-list { padding: 8px 0; }
+        .cc-event-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 18px;
+            height: 48px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-bottom: 1px solid rgba(106, 191, 64, 0.3);
+        }
+        .cc-event-item:last-child { border-bottom: none; }
+        .cc-event-item:hover { background: rgba(106, 191, 64, 0.08); }
+        .cc-event-tag {
+            background: #f5e642;
+            color: #000;
+            font-size: 14px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 3px;
+            white-space: nowrap;
+        }
+        .cc-event-item span { font-size: 17px; color: #ccc; }
+
+        .cc-transaction-list { padding: 8px 0; }
+        .cc-transaction-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            padding: 0 18px;
+            height: 48px;
+            align-items: center;
+            font-size: 16px;
+            border-bottom: 1px solid rgba(106, 191, 64, 0.3);
+        }
+        .cc-transaction-row:last-child { border-bottom: none; }
+        .cc-transaction-row .user { color: #ccc; }
+        .cc-transaction-row .amount { color: #f5e642; text-align: center; font-weight: 600; }
+        .cc-transaction-row .date { color: #666; text-align: right; font-size: 12px; }
+
+        /* JACKPOT (cc.html 스타일) */
+        .cc-jackpot-section {
+            margin: 0 auto 40px;
+            max-width: 1300px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a1000, #0d0800, #1a1000);
+            border: 1px solid #6abf40;
+            box-shadow: 0 0 8px rgba(106, 191, 64, 0.3);
+            padding: 40px;
+            text-align: center;
+            position: relative;
+        }
+        .cc-jackpot-section h3 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 4px;
+            color: #ccc;
+            margin-bottom: 10px;
+        }
+        .cc-jackpot-amount {
+            font-size: 72px;
+            font-weight: 900;
+            background: linear-gradient(180deg, #ffd700, #ff8c00, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+            line-height: 1;
+        }
+
+        /* BANNER LINKS (cc.html 스타일) */
+        .cc-banner-links {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            padding: 0 calc((100% - 1300px) / 2) 40px;
+        }
+        .cc-banner-link {
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .cc-banner-link:hover { transform: translateY(-3px); }
+        .cc-banner-link img { width: 100%; display: block; border-radius: 10px; }
+
+        /* PROVIDERS (cc.html 스타일) */
+        .cc-providers-section {
+            padding: 0 calc((100% - 1300px) / 2) 40px;
+        }
+        .cc-providers-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 2px;
+        }
+        .cc-provider-item {
+            background: #1a1a1a;
+            border: 1px solid rgba(106, 191, 64, 0.3);
+            padding: 15px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60px;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+        .cc-provider-item:hover {
+            background: #252525;
+            border-color: #6abf40;
+            box-shadow: 0 0 8px rgba(106, 191, 64, 0.3);
+        }
+        .cc-provider-item:hover span { color: #6abf40; }
+        .cc-provider-item span {
+            font-size: 11px;
+            color: #888;
+            text-align: center;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
+        /* FOOTER (cc.html 스타일) */
+        .cc-footer {
+            background: #0a0a0a;
+            border-top: 1px solid #6abf40;
+            box-shadow: 0 -1px 8px rgba(106, 191, 64, 0.5);
+            padding: 30px 40px;
+            text-align: center;
+            color: #555;
+            font-size: 12px;
+        }
+
+        /* USER INFO BAR (cc.html 스타일, 로그인 상태) */
+        .cc-user-info-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .cc-user-info-bar .user-balance {
+            color: #f5e642;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .cc-user-info-bar .user-name {
+            color: #6abf40;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        /* 원래 style.css 헤더/hero를 숨김 (cc 디자인으로 대체) */
+        body > header:first-of-type {
+            display: none !important;
+        }
+        .hero {
+            display: none !important;
+        }
+        .navbar {
+            position: sticky;
+            top: 0;
+            margin-top: 0;
+        }
+
+        /* CC 디자인에서 hdr-auth 오버라이드 (top-bar 안에서 사용) */
+        #hdr-auth {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #hdr-auth .btn-ghost {
+            background: transparent;
+            border: 1px solid #6abf40;
+            color: #6abf40;
+            padding: 6px 18px;
+            border-radius: 5px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        #hdr-auth .btn-ghost:hover {
+            background: rgba(106, 191, 64, 0.15);
+            box-shadow: 0 0 10px rgba(106, 191, 64, 0.3);
+        }
+        #hdr-auth .btn-filled {
+            background: linear-gradient(135deg, #6abf40, #4a9a2e);
+            border: none;
+            color: #fff;
+            padding: 6px 18px;
+            border-radius: 5px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        #hdr-auth .btn-filled:hover {
+            background: linear-gradient(135deg, #7dd956, #5ab83a);
+            box-shadow: 0 0 12px rgba(106, 191, 64, 0.5);
+        }
+
+        /* 모달 스타일 오버라이드 (녹색 테마) */
+        .modal-overlay .modal-box {
+            border-color: rgba(106, 191, 64, 0.3);
+        }
+        .modal-overlay .m-btn {
+            background: linear-gradient(135deg, #6abf40, #4a9a2e);
+            color: #fff;
+        }
+        .modal-overlay .m-btn:hover {
+            box-shadow: 0 0 15px rgba(106, 191, 64, 0.4);
+        }
+
+        /* game-cards (벤더 카드 컨테이너) cc.html 스타일 오버라이드 */
+        .live-card {
+            border-color: rgba(106, 191, 64, 0.4) !important;
+        }
+        .live-card:hover {
+            border-color: #6abf40 !important;
+            box-shadow: 0 10px 30px rgba(106, 191, 64, 0.3), 0 0 15px rgba(106, 191, 64, 0.2) !important;
+        }
+
+        /* RESPONSIVE (cc.html 스타일) */
+        @media (max-width: 1024px) {
+            .cc-info-section { grid-template-columns: 1fr; }
+            .cc-banner-links { grid-template-columns: 1fr; }
+            .cc-providers-grid { grid-template-columns: repeat(5, 1fr); }
+            .cc-nav { gap: 15px; }
+        }
+        @media (max-width: 768px) {
+            .cc-header { flex-direction: column; gap: 15px; }
+            .cc-category-tabs { flex-direction: column; padding: 20px; gap: 10px; }
+            .cc-category-tab { max-width: 100%; }
+            .cc-jackpot-amount { font-size: 40px; }
+            .cc-providers-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+    </style>
 </head>
 <body>
 
-<!-- ════ HEADER ════ -->
-<header>
-  <div class="logo" onclick="closeModal()">
-    BLACK CASINO
-    <small>PREMIUM ONLINE CASINO</small>
-  </div>
+<!-- ===== CC TOP BAR (hdr-auth 포함 - user.js가 renderHeader()로 업데이트) ===== -->
+<div class="cc-top-bar">
+    <div id="hdr-auth">
+        <button class="btn-ghost" onclick="openModal('login')">로그인</button>
+        <button class="btn-filled" onclick="openModal('register')">회원가입</button>
+    </div>
+</div>
 
-  <div class="hdr-right" id="hdr-auth">
-    <button class="btn-ghost" onclick="openModal('login')">로그인</button>
-    <button class="btn-filled" onclick="openModal('register')">회원가입</button>
-    <button class="hamburger" id="ham" onclick="toggleMobile()">
-      <span></span><span></span><span></span>
-    </button>
-  </div>
+<!-- ===== CC HEADER / NAV ===== -->
+<header class="cc-header">
+    <div class="cc-logo" onclick="closeModal()">
+        <img src="/static/cclogo.png" alt="CC CASINO" style="height:60px;" onerror="this.style.display='none'">
+        <div>CC CASINO<span>PREMIUM CASINO</span></div>
+    </div>
+    <nav class="cc-nav">
+        <a onclick="switchTab('casino', document.querySelector('.nav-link[data-tab=\'casino\']'))">라이브카지노</a>
+        <a onclick="switchTab('slot', document.querySelector('.nav-link[data-tab=\'slot\']'))">슬롯게임</a>
+        <a onclick="if(!_session){openModal('login');return;}openModal('deposit')">충전신청</a>
+        <a onclick="if(!_session){openModal('login');return;}openModal('withdraw')">환전신청</a>
+        <a onclick="switchTab('notice', document.querySelector('.nav-link[data-tab=\'notice\']'))">공지사항</a>
+        <a onclick="switchTab('event', document.querySelector('.nav-link[data-tab=\'event\']'))">이벤트</a>
+        <a onclick="switchTab('support', document.querySelector('.nav-link[data-tab=\'support\']'))">고객센터</a>
+    </nav>
 </header>
 
-<!-- ════ HERO ════ -->
-<section class="hero">
-  <canvas id="hero-particles"></canvas>
-  <div class="hero-bg">
-    <div class="hero-grid"></div>
-
-
-  </div>
-  <div class="hero-body">
-    <div class="hero-divider"></div>
-    <h1 class="hero-h1">BLACK CASINO</h1>
-    <p class="hero-sub">Premium Casino &amp; Slots</p>
-    <div class="hero-divider"></div>
-
-
-  </div>
+<!-- ===== MAIN BANNER (cc.html 스타일) ===== -->
+<section class="cc-banner">
+    <img src="/static/1313.jpg" alt="배너">
 </section>
 
-<!-- ════ NAVBAR ════ -->
-<nav class="navbar">
+<!-- ===== CATEGORY TABS (cc.html 스타일 → user.js switchTab 연결) ===== -->
+<section class="cc-category-tabs" id="cc-category-tabs">
+    <div class="cc-category-tab active" data-filter="casino" onclick="ccFilterTab(this, 'casino')">
+        <h3>라이브카지노</h3>
+        <p>LIVE CASINO</p>
+    </div>
+    <div class="cc-category-tab" data-filter="slot" onclick="ccFilterTab(this, 'slot')">
+        <h3>슬롯게임</h3>
+        <p>SLOT GAME</p>
+    </div>
+    <div class="cc-category-tab" data-filter="sports" onclick="ccFilterTab(this, 'sports')">
+        <h3>스포츠</h3>
+        <p>SPORTS</p>
+    </div>
+</section>
+
+<!-- ════ NAVBAR (user.js가 사용하는 네비게이션) ════ -->
+<nav class="navbar" style="display:none;">
   <div class="nav-inner">
     <div class="nav-links">
       <div class="nav-link active" data-tab="casino" onclick="switchTab('casino',this)"><i class="fas fa-play-circle"></i>카지노게임</div>
@@ -56,19 +528,17 @@
       <div class="nav-link" data-tab="message" onclick="switchTab('message',this)"><i class="fas fa-envelope"></i>쪽지<span id="msg-unread-badge" style="display:none;background:#ef4444;color:#fff;font-size:0.6rem;padding:1px 5px;border-radius:8px;margin-left:4px;font-weight:700;"></span></div>
       <div class="nav-link" data-tab="support" onclick="switchTab('support',this)"><i class="fas fa-headset"></i>고객센터</div>
     </div>
-
   </div>
 </nav>
 
 <!-- ════ 한줄공지 ════ -->
-<div id="notice-line-bar" style="display:none;background:linear-gradient(90deg,#1a1500,#2a2000,#1a1500);border-bottom:1px solid rgba(200,168,75,0.2);padding:8px 0;overflow:hidden;">
-  <div id="notice-line-text" style="white-space:nowrap;animation:noticeScroll 20s linear infinite;color:#c8a84b;font-size:0.82rem;font-weight:600;padding-left:100%;">
-  </div>
+<div id="notice-line-bar" style="display:none;background:linear-gradient(90deg,#1a1a0a,#2a2a10,#1a1a0a);border-bottom:1px solid rgba(106,191,64,0.2);padding:8px 0;overflow:hidden;">
+  <div id="notice-line-text" style="white-space:nowrap;animation:noticeScroll 20s linear infinite;color:#6abf40;font-size:0.82rem;font-weight:600;padding-left:100%;"></div>
   <style>@keyframes noticeScroll{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}</style>
 </div>
 
-<!-- ════ GAME SECTION WRAPPER ════ -->
-<div id="game-section-wrapper" style="background:radial-gradient(ellipse at 50% 0%, rgba(200,168,75,0.07) 0%, transparent 60%), linear-gradient(180deg,#060604 0%,#0a0904 50%,#060604 100%);">
+<!-- ════ GAME SECTION WRAPPER (user.js가 사용) ════ -->
+<div id="game-section-wrapper" style="background:radial-gradient(ellipse at 50% 0%, rgba(106,191,64,0.07) 0%, transparent 60%), linear-gradient(180deg,#060604 0%,#0a0904 50%,#060604 100%);">
 
   <!-- GAME TABS -->
   <div class="game-tabs">
@@ -94,10 +564,8 @@
 <!-- ════ LIVE CASINO ════ -->
 <div id="live-section" style="position:relative;background:transparent;padding:0;overflow:hidden;">
   <canvas id="live-particles" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;"></canvas>
-  <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(200,168,75,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(200,168,75,0.04) 1px,transparent 1px);background-size:50px 50px;mask-image:radial-gradient(ellipse at center,black 20%,transparent 80%);pointer-events:none;"></div>
+  <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(106,191,64,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(106,191,64,0.04) 1px,transparent 1px);background-size:50px 50px;mask-image:radial-gradient(ellipse at center,black 20%,transparent 80%);pointer-events:none;"></div>
   <div class="main-wrap">
-
-    <!-- Section title -->
     <div class="sec-title">
       <div class="sec-title-line"></div>
       <div class="sec-title-center">
@@ -107,19 +575,14 @@
       </div>
       <div class="sec-title-line sec-title-line-r"></div>
     </div>
-
-    <!-- JS에서 동적으로 채워짐 -->
     <div class="live-grid" id="live-grid-row1"></div>
-
   </div>
 </div>
 
 <!-- ════ SLOT SECTION ════ -->
 <div id="slot-section" style="display:none;position:relative;background:transparent;padding:0;overflow:hidden;">
-  <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(200,168,75,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(200,168,75,0.04) 1px,transparent 1px);background-size:50px 50px;mask-image:radial-gradient(ellipse at center,black 20%,transparent 80%);pointer-events:none;"></div>
+  <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(106,191,64,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(106,191,64,0.04) 1px,transparent 1px);background-size:50px 50px;mask-image:radial-gradient(ellipse at center,black 20%,transparent 80%);pointer-events:none;"></div>
   <div class="main-wrap">
-
-    <!-- Section title -->
     <div class="sec-title">
       <div class="sec-title-line"></div>
       <div class="sec-title-center">
@@ -129,19 +592,14 @@
       </div>
       <div class="sec-title-line sec-title-line-r"></div>
     </div>
-
-    <!-- JS에서 동적으로 채워짐 -->
     <div class="live-grid" id="slot-grid-row1"></div>
-
   </div>
 </div>
 
 <!-- ════ HOTEL CASINO SECTION ════ -->
 <div id="hotel-section" style="display:none;position:relative;background:transparent;padding:0;overflow:hidden;">
-  <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(200,168,75,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(200,168,75,0.04) 1px,transparent 1px);background-size:50px 50px;mask-image:radial-gradient(ellipse at center,black 20%,transparent 80%);pointer-events:none;"></div>
+  <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(106,191,64,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(106,191,64,0.04) 1px,transparent 1px);background-size:50px 50px;mask-image:radial-gradient(ellipse at center,black 20%,transparent 80%);pointer-events:none;"></div>
   <div class="main-wrap">
-
-    <!-- Section title -->
     <div class="sec-title">
       <div class="sec-title-line"></div>
       <div class="sec-title-center">
@@ -151,15 +609,12 @@
       </div>
       <div class="sec-title-line sec-title-line-r"></div>
     </div>
-
-    <!-- JS에서 동적으로 채워짐 -->
     <div class="live-grid" id="hotel-grid-row1"></div>
-
   </div>
 </div>
 
 <!-- ════ EVENT SECTION ════ -->
-<div id="event-section" style="display:none;background:radial-gradient(ellipse at 50% 40%, rgba(200,168,75,0.12) 0%, transparent 65%), linear-gradient(180deg, #060503 0%, #0c0a06 100%);padding:32px 0;">
+<div id="event-section" style="display:none;background:radial-gradient(ellipse at 50% 40%, rgba(106,191,64,0.12) 0%, transparent 65%), linear-gradient(180deg, #060503 0%, #0c0a06 100%);padding:32px 0;">
   <div class="main-wrap">
     <div id="event-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;"></div>
   </div>
@@ -168,11 +623,11 @@
 </div><!-- /game-section-wrapper -->
 
 <!-- ════ SPORTS SECTION ════ -->
-<div id="sports-section" style="display:none;background:radial-gradient(ellipse at 50% 0%, rgba(200,168,75,0.07) 0%, transparent 60%), linear-gradient(180deg,#060604 0%,#0a0904 50%,#060604 100%);min-height:400px;">
+<div id="sports-section" style="display:none;background:radial-gradient(ellipse at 50% 0%, rgba(106,191,64,0.07) 0%, transparent 60%), linear-gradient(180deg,#060604 0%,#0a0904 50%,#060604 100%);min-height:400px;">
   <div class="main-wrap" style="padding-top:32px;padding-bottom:32px;">
     <div id="sports-grid" class="live-grid"></div>
     <div id="sports-empty" style="text-align:center;padding:80px 20px;display:none;">
-      <i class="fas fa-futbol" style="font-size:3rem;color:var(--gold,#c8a84b);margin-bottom:16px;"></i>
+      <i class="fas fa-futbol" style="font-size:3rem;color:#6abf40;margin-bottom:16px;"></i>
       <h2 style="color:#e2e8f0;font-size:1.3rem;font-weight:700;margin-bottom:8px;">스포츠</h2>
       <p style="color:#64748b;font-size:0.9rem;">준비 중입니다.</p>
     </div>
@@ -180,7 +635,7 @@
 </div>
 
 <!-- ════ MESSAGE SECTION ════ -->
-<div id="message-section" style="display:none;background:radial-gradient(ellipse at 50% 0%, rgba(200,168,75,0.07) 0%, transparent 60%), linear-gradient(180deg,#060604 0%,#0a0904 50%,#060604 100%);min-height:400px;">
+<div id="message-section" style="display:none;background:radial-gradient(ellipse at 50% 0%, rgba(106,191,64,0.07) 0%, transparent 60%), linear-gradient(180deg,#060604 0%,#0a0904 50%,#060604 100%);min-height:400px;">
   <div style="padding:24px 40px 0;">
     <h2 style="font-size:1.6rem;font-weight:800;color:#e2e8f0;margin:0;letter-spacing:2px;">쪽지함</h2>
   </div>
@@ -222,7 +677,7 @@
 </div>
 
 <!-- ════ NOTICE SECTION ════ -->
-<div id="notice-section" style="display:none;background:radial-gradient(ellipse at 50% 0%, rgba(200,168,75,0.07) 0%, transparent 60%), linear-gradient(180deg,#060604 0%,#0a0904 50%,#060604 100%);min-height:400px;">
+<div id="notice-section" style="display:none;background:radial-gradient(ellipse at 50% 0%, rgba(106,191,64,0.07) 0%, transparent 60%), linear-gradient(180deg,#060604 0%,#0a0904 50%,#060604 100%);min-height:400px;">
   <div style="padding:24px 40px 0;">
     <h2 style="font-size:1.6rem;font-weight:800;color:#e2e8f0;margin:0;letter-spacing:2px;">공지사항</h2>
   </div>
@@ -257,13 +712,11 @@
 </div>
 
 <!-- ════ SUPPORT SECTION ════ -->
-<div id="support-section" style="display:none;background:radial-gradient(ellipse at 50% 0%, rgba(200,168,75,0.07) 0%, transparent 60%), linear-gradient(180deg,#060604 0%,#0a0904 50%,#060604 100%);min-height:400px;">
-  <!-- 타이틀 -->
+<div id="support-section" style="display:none;background:radial-gradient(ellipse at 50% 0%, rgba(106,191,64,0.07) 0%, transparent 60%), linear-gradient(180deg,#060604 0%,#0a0904 50%,#060604 100%);min-height:400px;">
   <div style="padding:24px 40px 0;">
     <h2 style="font-size:1.6rem;font-weight:800;color:#e2e8f0;margin:0;letter-spacing:2px;">고객센터</h2>
   </div>
   <div style="max-width:1280px;margin:0 auto;padding:24px 16px;">
-    <!-- 안내문구 + 문의하기 버튼 -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
       <div style="color:#94a3b8;font-size:0.85rem;">※ <a href="javascript:void(0)" onclick="openInquiryModal()" style="color:#60a5fa;text-decoration:underline;cursor:pointer;">문의</a>를 남겨주시면 최대한 빠르게 답변 드리겠습니다.</div>
       <div style="display:flex;gap:8px;">
@@ -271,7 +724,6 @@
         <button onclick="openInquiryModal()" style="background:#ef4444;color:#fff;border:none;border-radius:6px;padding:10px 24px;font-size:0.85rem;font-weight:700;cursor:pointer;white-space:nowrap;">문의하기</button>
       </div>
     </div>
-    <!-- 테이블 -->
     <div style="border:1px solid #1e293b;border-radius:8px;overflow:hidden;">
       <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
         <thead>
@@ -288,7 +740,6 @@
         </tbody>
       </table>
     </div>
-    <!-- 페이지네이션 -->
     <div id="cs-pagination" style="display:flex;justify-content:center;align-items:center;gap:8px;margin-top:16px;"></div>
   </div>
 </div>
@@ -313,12 +764,11 @@
   </div>
 </div>
 
-<!-- ════ INFO SECTION ════ -->
+<!-- ===== CC INFO SECTION (이벤트 + 입출금현황) ===== -->
 <div class="info-section" id="info-section" style="position:relative;">
   <canvas id="info-particles" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;"></canvas>
   <div class="main-wrap" style="position:relative;z-index:1;">
     <div class="info-grid">
-
       <div class="info-box">
         <div class="info-header">
           <i class="fas fa-bullhorn info-header-icon"></i>
@@ -350,49 +800,65 @@
         </div>
         <div class="info-body" id="event-info-list"></div>
       </div>
-
     </div>
   </div>
 </div>
 
-<!-- ════ PARTNERS ════ -->
-<div class="partners">
-  <div class="main-wrap">
-    <div style="text-align:center;margin-bottom:14px;">
-      <span style="font-family:'Cinzel',serif;font-size:0.65rem;letter-spacing:0.25em;color:var(--text3);">— OFFICIAL GAME PARTNERS —</span>
-    </div>
-    <div class="partner-logo-grid">
-      <div class="p-logo-img"><img src="/static/logos/logo_ag.png" alt="AG"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_bbin.png" alt="BBIN"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_blue.png" alt="Blue"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_booongo.png" alt="Booongo"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_cq9.png" alt="CQ9"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_dragoonsoft.png" alt="Dragoon Soft"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_dreamgaming.png" alt="Dream Gaming"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_elk.png" alt="ELK"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_evoplay.png" alt="Evoplay"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_fantasma.png" alt="Fantasma"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_gameart.png" alt="GameArt"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_hacksaw.png" alt="Hacksaw"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_mobilots.png" alt="Mobilots"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_nolimit.png" alt="Nolimit"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_1x2gaming.png" alt="1x2 Gaming"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_misc1.png" alt="Partner"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_playngo.png" alt="Play'n GO"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_playtech.png" alt="Playtech"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_pragmatic.png" alt="Pragmatic"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_relax.png" alt="Relax"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_spribe.png" alt="Spribe"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_white1.png" alt="Partner"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_skywind.png" alt="Skywind"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_white2.png" alt="Partner"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_white3.png" alt="Partner"></div>
-      <div class="p-logo-img"><img src="/static/logos/logo_vmcasino.png" alt="VM Casino"></div>
-    </div>
-  </div>
-</div>
+<!-- ===== PROGRESSIVE JACKPOT (cc.html 스타일) ===== -->
+<section class="cc-jackpot-section">
+    <h3>PROGRESSIVE JACKPOT</h3>
+    <div class="cc-jackpot-amount" id="cc-jackpot">2,773,582,502</div>
+</section>
 
-<!-- ════ LOGIN MODAL ════ -->
+<!-- ===== BANNER LINKS (cc.html 스타일) ===== -->
+<section class="cc-banner-links">
+    <a href="#" class="cc-banner-link"><img src="/static/하나.jpg" alt="공식 텔레그램"></a>
+    <a href="#" class="cc-banner-link"><img src="/static/둘.jpg" alt="공식 채널"></a>
+    <a href="#" class="cc-banner-link"><img src="/static/셋.jpg" alt="평생도메인"></a>
+</section>
+
+<!-- ===== GAME PROVIDERS (cc.html 스타일) ===== -->
+<section class="cc-providers-section">
+    <div class="cc-providers-grid">
+        <div class="cc-provider-item"><span>PRAGMATIC PLAY</span></div>
+        <div class="cc-provider-item"><span>CQ9 GAMING</span></div>
+        <div class="cc-provider-item"><span>HABANERO</span></div>
+        <div class="cc-provider-item"><span>AG Asia Gaming</span></div>
+        <div class="cc-provider-item"><span>Booongo</span></div>
+        <div class="cc-provider-item"><span>STARGAMES</span></div>
+        <div class="cc-provider-item"><span>RTG SLOTS</span></div>
+        <div class="cc-provider-item"><span>DREAMTECH</span></div>
+        <div class="cc-provider-item"><span>Play'n GO</span></div>
+        <div class="cc-provider-item"><span>DREAMGAME</span></div>
+        <div class="cc-provider-item"><span>PLAYSTAR</span></div>
+        <div class="cc-provider-item"><span>GAMEART</span></div>
+        <div class="cc-provider-item"><span>TOPTREND</span></div>
+        <div class="cc-provider-item"><span>Genesis</span></div>
+        <div class="cc-provider-item"><span>ORIENT</span></div>
+        <div class="cc-provider-item"><span>PLAYSON</span></div>
+        <div class="cc-provider-item"><span>BGAMING</span></div>
+        <div class="cc-provider-item"><span>BETSOFT</span></div>
+        <div class="cc-provider-item"><span>EVOPLAY</span></div>
+        <div class="cc-provider-item"><span>AFB CASINO</span></div>
+        <div class="cc-provider-item"><span>GG</span></div>
+        <div class="cc-provider-item"><span>Microgaming</span></div>
+        <div class="cc-provider-item"><span>ALLBET</span></div>
+        <div class="cc-provider-item"><span>TGAME</span></div>
+        <div class="cc-provider-item"><span>WM CASINO</span></div>
+        <div class="cc-provider-item"><span>SA GAMING</span></div>
+        <div class="cc-provider-item"><span>BBIN</span></div>
+        <div class="cc-provider-item"><span>SEXYBCRT</span></div>
+        <div class="cc-provider-item"><span>Evolution</span></div>
+        <div class="cc-provider-item"><span>VIVO GAMING</span></div>
+    </div>
+</section>
+
+<!-- ===== CC FOOTER ===== -->
+<footer class="cc-footer">
+    <p>&copy; CC CASINO. All Rights Reserved.</p>
+</footer>
+
+<!-- ════ LOGIN MODAL (user.js 호환) ════ -->
 <div id="modal-login" class="modal-overlay">
   <div class="modal-box">
     <button class="modal-close" onclick="closeModal('login')"><i class="fas fa-times"></i></button>
@@ -403,9 +869,9 @@
     <input id="login-password" class="m-input" type="password" placeholder="비밀번호">
     <div style="display:flex;justify-content:space-between;margin-bottom:14px;">
       <label style="font-size:0.74rem;color:var(--text2);display:flex;align-items:center;gap:5px;cursor:pointer;">
-        <input type="checkbox" id="login-remember" style="accent-color:var(--gold);"> 자동 로그인
+        <input type="checkbox" id="login-remember" style="accent-color:#6abf40;"> 자동 로그인
       </label>
-      <span style="font-size:0.74rem;color:var(--gold-dim);cursor:pointer;">아이디/비밀번호 찾기</span>
+      <span style="font-size:0.74rem;color:#6abf40;cursor:pointer;opacity:0.7;">아이디/비밀번호 찾기</span>
     </div>
     <button class="m-btn shine-wrap" id="login-btn" onclick="doLogin()">로그인</button>
     <div class="m-divider"></div>
@@ -413,7 +879,7 @@
   </div>
 </div>
 
-<!-- ════ REGISTER MODAL ════ -->
+<!-- ════ REGISTER MODAL (user.js 호환) ════ -->
 <div id="modal-register" class="modal-overlay">
   <div class="modal-box" style="max-width:720px;width:95vw;">
     <button class="modal-close" onclick="closeModal('register')"><i class="fas fa-times"></i></button>
@@ -423,10 +889,8 @@
     <div id="reg-ok" style="display:none;background:rgba(74,222,128,0.12);border:1px solid rgba(74,222,128,0.3);color:#4ade80;padding:9px 12px;border-radius:6px;font-size:0.78rem;margin-bottom:10px;"></div>
 
     <div style="display:flex;gap:28px;">
-      <!-- ── 좌측: 계정 정보 ── -->
       <div style="flex:1;min-width:0;">
         <div class="reg-section-title"><i class="fas fa-user-circle"></i> 계정 정보</div>
-
         <div class="reg-field">
           <label class="reg-label">아이디 <span class="reg-req">*</span></label>
           <div class="reg-input-wrap">
@@ -435,7 +899,6 @@
           </div>
           <div class="reg-msg" id="msg-username"></div>
         </div>
-
         <div class="reg-field">
           <label class="reg-label">비밀번호 <span class="reg-req">*</span></label>
           <div class="reg-input-wrap">
@@ -444,7 +907,6 @@
           </div>
           <div class="reg-msg" id="msg-password"></div>
         </div>
-
         <div class="reg-field">
           <label class="reg-label">비밀번호 확인 <span class="reg-req">*</span></label>
           <div class="reg-input-wrap">
@@ -453,7 +915,6 @@
           </div>
           <div class="reg-msg" id="msg-password2"></div>
         </div>
-
         <div class="reg-field">
           <label class="reg-label">닉네임 <span class="reg-req">*</span></label>
           <div class="reg-input-wrap">
@@ -462,7 +923,6 @@
           </div>
           <div class="reg-msg" id="msg-nickname"></div>
         </div>
-
         <div class="reg-field">
           <label class="reg-label">휴대폰 번호 <span class="reg-req">*</span></label>
           <div class="reg-input-wrap">
@@ -471,7 +931,6 @@
           </div>
           <div class="reg-msg" id="msg-phone"></div>
         </div>
-
         <div class="reg-field">
           <label class="reg-label">추천코드 <span class="reg-req">*</span></label>
           <div class="reg-input-wrap">
@@ -482,10 +941,8 @@
         </div>
       </div>
 
-      <!-- ── 우측: 은행 계좌 ── -->
       <div style="flex:1;min-width:0;">
         <div class="reg-section-title"><i class="fas fa-university"></i> 은행 계좌</div>
-
         <div class="reg-field">
           <label class="reg-label">은행 <span class="reg-req">*</span></label>
           <input type="hidden" id="reg-bank" value="">
@@ -527,7 +984,6 @@
           </div>
           <div class="reg-msg" id="msg-bank"></div>
         </div>
-
         <div class="reg-field">
           <label class="reg-label">계좌번호 <span class="reg-req">*</span></label>
           <div class="reg-input-wrap">
@@ -536,7 +992,6 @@
           </div>
           <div class="reg-msg" id="msg-account"></div>
         </div>
-
         <div class="reg-field">
           <label class="reg-label">예금주 <span class="reg-req">*</span></label>
           <div class="reg-input-wrap">
@@ -549,7 +1004,7 @@
     </div>
 
     <label style="display:flex;align-items:flex-start;gap:8px;font-size:0.72rem;color:var(--text2);margin:18px 0 14px;cursor:pointer;line-height:1.5;">
-      <input type="checkbox" id="reg-agree" style="accent-color:var(--gold);margin-top:2px;flex-shrink:0;">
+      <input type="checkbox" id="reg-agree" style="accent-color:#6abf40;margin-top:2px;flex-shrink:0;">
       만 19세 이상이며 이용약관 및 개인정보처리방침에 동의합니다
     </label>
     <button class="m-btn shine-wrap" id="reg-btn" onclick="doRegister()"><i class="fas fa-user-plus" style="margin-right:6px;"></i>회원가입</button>
@@ -558,19 +1013,19 @@
   </div>
 </div>
 
-<!-- ════ USER INFO PANEL (로그인 후) ════ -->
+<!-- ════ MY PAGE MODAL (user.js 호환) ════ -->
 <div id="modal-mypage" class="modal-overlay">
   <div class="modal-box">
     <button class="modal-close" onclick="closeModal('mypage')"><i class="fas fa-times"></i></button>
     <div class="modal-title">MY PAGE</div>
     <div style="text-align:center;padding:10px 0 20px;">
-      <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold2));display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:24px;">👤</div>
-      <div id="my-nickname" style="font-size:1.1rem;font-weight:700;color:var(--gold);margin-bottom:4px;"></div>
+      <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#6abf40,#4a9a2e);display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:24px;">👤</div>
+      <div id="my-nickname" style="font-size:1.1rem;font-weight:700;color:#6abf40;margin-bottom:4px;"></div>
       <div id="my-username" style="font-size:0.78rem;color:var(--text2);margin-bottom:16px;"></div>
       <div style="display:flex;gap:10px;margin-bottom:20px;">
-        <div style="flex:1;background:var(--black3);border:1px solid var(--gold-border);border-radius:8px;padding:14px;">
+        <div style="flex:1;background:var(--black3);border:1px solid rgba(106,191,64,0.35);border-radius:8px;padding:14px;">
           <div style="font-size:0.72rem;color:var(--text2);margin-bottom:4px;">보유 잔액</div>
-          <div id="my-balance" style="font-size:1.4rem;font-weight:700;color:var(--gold);"></div>
+          <div id="my-balance" style="font-size:1.4rem;font-weight:700;color:#6abf40;"></div>
         </div>
         <div style="flex:1;background:var(--black3);border:1px solid rgba(168,85,247,0.3);border-radius:8px;padding:14px;">
           <div style="font-size:0.72rem;color:var(--text2);margin-bottom:4px;">보유 포인트</div>
@@ -610,9 +1065,9 @@
           <div style="font-size:0.68rem;color:#888;margin-bottom:4px;">보유 포인트</div>
           <div id="pc-current-point" style="font-size:1.1rem;font-weight:700;color:#a78bfa;">0P</div>
         </div>
-        <div style="flex:1;background:#12122a;border:1px solid rgba(200,168,75,0.2);border-radius:8px;padding:12px;text-align:center;">
+        <div style="flex:1;background:#12122a;border:1px solid rgba(106,191,64,0.2);border-radius:8px;padding:12px;text-align:center;">
           <div style="font-size:0.68rem;color:#888;margin-bottom:4px;">보유 머니</div>
-          <div id="pc-current-money" style="font-size:1.1rem;font-weight:700;color:var(--gold);">0</div>
+          <div id="pc-current-money" style="font-size:1.1rem;font-weight:700;color:#6abf40;">0</div>
         </div>
       </div>
       <div style="margin-bottom:12px;">
@@ -635,36 +1090,26 @@
   </div>
 </div>
 
-<!-- ════ 입금/출금 통합 모달 ════ -->
+<!-- ════ 입금/출금 통합 모달 (user.js 호환) ════ -->
 <div class="modal-backdrop" id="deposit-modal" style="display:none;">
   <div class="tw-modal-container">
     <button class="tw-modal-x" onclick="closeModal('deposit')"><i class="fas fa-times"></i></button>
-
-    <!-- 헤더 배너 -->
     <div class="tw-banner">
       <div class="tw-banner-overlay"></div>
       <h2 class="tw-banner-title" id="tw-banner-title">입금신청</h2>
     </div>
-
-    <!-- 탭 -->
     <div class="tw-tabs">
       <button class="tw-tab active" id="tw-tab-deposit" onclick="switchTransferTab('deposit')">입금신청</button>
       <button class="tw-tab" id="tw-tab-withdraw" onclick="switchTransferTab('withdraw')">출금신청</button>
     </div>
-
     <div class="tw-content">
-      <!-- ── 왼쪽: 폼 ── -->
       <div class="tw-left">
-
-        <!-- 내 머니정보 -->
         <div class="tw-section-label">내 머니정보</div>
         <div class="tw-money-info">
           <div class="tw-money-item">
             <span class="tw-money-dot"></span> 게임머니 <strong id="tw-game-money">0 원</strong>
           </div>
         </div>
-
-        <!-- 입금신청금액 (deposit) -->
         <div id="tw-deposit-form">
           <div class="tw-section-label">입금신청금액</div>
           <div class="tw-amount-btns">
@@ -678,7 +1123,6 @@
             <button class="tw-reset-btn" onclick="document.getElementById('dep-amount').value='0'"><i class="fas fa-undo"></i></button>
             <input type="text" id="dep-amount" class="tw-amount-input" value="0" readonly>
           </div>
-
           <div class="tw-section-label">입금보너스 선택</div>
           <div class="tw-bonus-list">
             <button class="tw-bonus-btn active" onclick="selectBonus(this)">입금 보너스 (입금 시 무제한 5% 최대 50만) - 카지노 불가</button>
@@ -686,24 +1130,19 @@
             <button class="tw-bonus-btn" onclick="selectBonus(this)">슬롯 이벤트 (매일 첫 입금 15% 최대 50만) - 슬롯 외 게임 불가</button>
             <button class="tw-bonus-btn none" onclick="selectBonus(this)">보너스 미지급 (카지노, 스포츠 단폴더 이용)</button>
           </div>
-
           <div id="dep-err" style="display:none;color:#f87171;font-size:0.8rem;margin-bottom:10px;"></div>
           <div class="tw-submit-row">
             <button class="tw-btn-sub" onclick="requestDepositAccount()">입금계좌요청</button>
             <button class="tw-btn-main" onclick="submitDeposit()">입금신청</button>
           </div>
         </div>
-
-        <!-- 출금신청금액 (withdraw) -->
         <div id="tw-withdraw-form" style="display:none;">
           <div class="tw-notice">※ <span class="highlight">회원가입 시</span> 등록된 아래 예금주 명의로 출금신청 금액이 입금됩니다.</div>
-
           <div class="tw-section-label">내 계좌정보</div>
           <div class="tw-money-info" style="flex-direction:column;gap:8px;">
             <div class="tw-money-item"><span class="tw-money-dot"></span> 예금주 <strong id="tw-holder-name">-</strong> <span style="margin-left:20px;">•</span> <span style="margin-left:8px;color:#6080a0;">입금계좌</span> <strong id="tw-account-info" style="margin-left:8px;">-</strong></div>
             <div class="tw-money-item" style="gap:12px;"><span class="tw-money-dot"></span> 출금 비밀번호 <input type="password" id="wit-password" class="tw-text-input" style="width:220px;margin:0;" placeholder="출금 비밀번호 입력"></div>
           </div>
-
           <div class="tw-section-label">출금신청금액</div>
           <div class="tw-amount-btns">
             <button onclick="twAddAmount('wit',50000)">50,000</button>
@@ -717,12 +1156,10 @@
             <input type="text" id="wit-amount" class="tw-amount-input" value="0" readonly>
           </div>
           <div class="tw-after-amount" id="tw-wit-after">출금 후 금액 <strong>0 원</strong></div>
-
           <div id="wit-err" style="display:none;color:#f87171;font-size:0.8rem;margin:10px 0;"></div>
           <div class="tw-submit-row">
             <button class="tw-btn-main full" onclick="submitWithdraw()">출금신청</button>
           </div>
-
           <div class="tw-history-label">출금내역</div>
           <table class="tw-history-table">
             <thead><tr><th>번호</th><th>요청일시</th><th>구분</th><th>금액</th><th>상태</th></tr></thead>
@@ -730,11 +1167,8 @@
           </table>
         </div>
       </div>
-
-      <!-- ── 오른쪽: 규정 ── -->
       <div class="tw-right">
         <div class="tw-rule-header" id="tw-rule-header">입금 규정</div>
-
         <div id="tw-deposit-rules">
           <div class="tw-rule-section">
             <div class="tw-rule-title"><i class="fas fa-play"></i> 입금방법</div>
@@ -766,9 +1200,7 @@
             <p>신청 란의 "보너스 미지급" 버튼을 선택 후 입금 신청 진행해주시기 바랍니다.</p>
           </div>
         </div>
-
         <div id="tw-withdraw-rules" style="display:none;">
-          <!-- 롤링현황 -->
           <div class="tw-rolling-box">
             <div class="tw-rolling-title">롤링현황</div>
             <div class="tw-rolling-info">
@@ -792,7 +1224,6 @@
             </div>
           </div>
           <p class="tw-rolling-note">※ [카지노/슬롯] 롤링의 경우 배팅 후 반영 시간이 1분 ~ 20분 내외 시간이 소요됩니다.</p>
-
           <div class="tw-rule-section">
             <div class="tw-rule-title"><i class="fas fa-play"></i> 최소 출금금액</div>
             <p>10,000원부터 가능하시며, 1,000원단위 혹은 100원단위로는 출금 처리가 불가능합니다.</p>
@@ -812,10 +1243,76 @@
   </div>
 </div>
 
-<!-- withdraw-modal은 deposit-modal 내부 탭으로 통합 -->
 <div class="modal-backdrop" id="withdraw-modal" style="display:none;"></div>
 
-<script src="/user/user.js?v=28"></script>
+<!-- CC 카테고리 탭 → user.js switchTab 연결 스크립트 -->
+<script>
+function ccFilterTab(el, filter) {
+    document.querySelectorAll('.cc-category-tab').forEach(function(t) { t.classList.remove('active'); });
+    el.classList.add('active');
+    // user.js의 switchTab과 동기화
+    var navEl = document.querySelector('.nav-link[data-tab="' + filter + '"]');
+    if (typeof switchTab === 'function') switchTab(filter, navEl);
+}
+
+// 잭팟 숫자 애니메이션
+(function() {
+    var jackpotEl = document.getElementById('cc-jackpot');
+    if (!jackpotEl) return;
+    var jackpotValue = 2773582502;
+    setInterval(function() {
+        jackpotValue += Math.floor(Math.random() * 100) + 1;
+        jackpotEl.textContent = jackpotValue.toLocaleString();
+    }, 100);
+})();
+
+// CC 입출금 데이터 자동 롤링
+(function() {
+    var names = ['se***','ba***','x2***','m***','ak***','jo***','ki***','pa***','ch***','lu***'];
+    var amounts = [50000,100000,150000,200000,300000,500000,750000,1000000,2000000,3500000,5000000];
+
+    function rollTransaction(listEl) {
+        var rows = listEl.querySelectorAll('.cc-transaction-row');
+        if (!rows.length) return;
+        var lastRow = rows[rows.length - 1];
+        lastRow.style.transition = 'opacity 0.4s, transform 0.4s';
+        lastRow.style.opacity = '0';
+        lastRow.style.transform = 'translateY(10px)';
+
+        setTimeout(function() {
+            var newRow = document.createElement('div');
+            newRow.className = 'cc-transaction-row';
+            var name = names[Math.floor(Math.random() * names.length)];
+            var amount = amounts[Math.floor(Math.random() * amounts.length)];
+            var isHighAmount = amount >= 2000000;
+            var today = new Date();
+            var dateStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+            newRow.innerHTML = '<span class="user">' + name + '</span>'
+                + '<span class="amount"' + (isHighAmount ? ' style="color:#ff69b4;"' : '') + '>' + amount.toLocaleString() + '원</span>'
+                + '<span class="date">' + dateStr + '</span>';
+            newRow.style.opacity = '0';
+            newRow.style.transform = 'translateY(-10px)';
+            listEl.insertBefore(newRow, listEl.firstChild);
+
+            requestAnimationFrame(function() {
+                newRow.style.transition = 'opacity 0.4s, transform 0.4s';
+                newRow.style.opacity = '1';
+                newRow.style.transform = 'translateY(0)';
+            });
+
+            if (listEl.children.length > 5) {
+                listEl.removeChild(listEl.lastChild);
+            }
+        }, 400);
+    }
+
+    document.querySelectorAll('.cc-transaction-list').forEach(function(list) {
+        setInterval(function() { rollTransaction(list); }, 3000 + Math.random() * 2000);
+    });
+})();
+</script>
+
+<script src="/user/user.js?v=29"></script>
 
 </body>
 </html>

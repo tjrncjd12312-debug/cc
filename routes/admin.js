@@ -98,10 +98,34 @@ router.get('/partner-tree', async (_req, res) => {
     const users = await dal.users.readAll();
     const userMap = {};
     users.forEach(u => { userMap[u.username] = u; userMap[u.id] = u; });
+
+    // 게임 API 잔액 조회 (api 연동된 유저만)
+    const apiUsers = users.filter(u => u.api && u.api.length > 0);
+    const gameBalMap = {};
+    await Promise.all(apiUsers.map(async (u) => {
+      let bal = 0;
+      try {
+        if (u.api.includes('honorlink')) {
+          const hlUser = await hl.get('/user', { username: u.username });
+          bal += Math.floor(Number(hlUser && hlUser.balance || 0));
+        }
+        if (u.api.includes('csapi')) {
+          const csRes = await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '0' });
+          bal += Math.floor(Number(csRes && csRes.balance || 0));
+        }
+      } catch(e) {}
+      gameBalMap[u.username] = bal;
+    }));
+
     (function syncMoney(nodes) {
       (nodes || []).forEach(n => {
         const u = userMap[n.id];
-        if (u) { n.money = Number(u.money) || 0; n.point = Number(u.point) || 0; n.rollingPoint = Number(u.rollingPoint) || 0; }
+        if (u) {
+          const gameBal = gameBalMap[u.username] || 0;
+          n.money = (Number(u.money) || 0) + gameBal;
+          n.point = Number(u.point) || 0;
+          n.rollingPoint = Number(u.rollingPoint) || 0;
+        }
         if (n.children) syncMoney(n.children);
       });
     })(tree);
@@ -278,6 +302,49 @@ router.post('/users/:id/approve', asyncHandler(async (req, res) => {
   u.approvedAt = new Date().toISOString();
   if (!u.api) u.api = [];
   await writeUsers(users);
+
+  // 추천코드가 있으면 해당 파트너 밑에 회원으로 자동 배치
+  if (u.referredBy) {
+    try {
+      const tree = await dal.readData('partnerTree.json');
+      // 이미 트리에 있는지 확인
+      function findNode(nodes, id) {
+        for (const n of nodes || []) {
+          if (n.id === id) return n;
+          const f = findNode(n.children, id);
+          if (f) return f;
+        }
+        return null;
+      }
+      if (!findNode(tree, u.username)) {
+        const parent = findNode(tree, u.referredBy);
+        if (parent) {
+          if (!parent.children) parent.children = [];
+          parent.children.push({
+            id: u.username,
+            label: u.nickname || u.username,
+            level: 'member',
+            money: 0,
+            point: 0,
+            status: 'active',
+            children: [],
+            rollingPoint: 0,
+            gameGroup: '',
+            password: u.password,
+            lastLoginAt: u.lastLoginAt,
+            lastLoginIp: u.lastLoginIp,
+            registeredAt: u.registeredAt,
+            expanded: false
+          });
+          await dal.writeData('partnerTree.json', tree);
+          // belongTo도 업데이트
+          u.belongTo = u.referredBy;
+          await writeUsers(users);
+        }
+      }
+    } catch(e) { console.error('[Approve] 파트너트리 배치 오류:', e.message); }
+  }
+
   res.json({ success: true });
 }));
 
@@ -467,23 +534,43 @@ router.post('/users/money', asyncHandler(async (req, res) => {
   const isCs = u && u.api && u.api.includes('csapi');
 
   if (isHl) {
-    before = u.money || 0;
-    after = before;
+    // 게임 API에서 현재 잔액 조회
+    let gameBal = 0;
+    try {
+      const info = await hl.get('/user', { username });
+      gameBal = Math.floor(Number(info.balance) || 0);
+    } catch(e) {}
+    before = gameBal;
     try {
       if (amount > 0) {
         hlResult = await hl.post('/user/add-balance', { username, amount: amount });
+        after = before + amount;
       } else {
-        hlResult = await hl.post('/user/sub-balance-all', { username });
+        const takeAmt = Math.min(Math.abs(amount), gameBal);
+        if (takeAmt <= 0) return res.json({ success: false, error: '회수할 잔액이 없습니다.' });
+        // 부분 회수 (게임 끊김 없음)
+        hlResult = await hl.post('/user/sub-balance', { username, amount: takeAmt });
+        after = before - takeAmt;
       }
     } catch(e) { hlResult = { error: e.message }; }
   } else if (isCs) {
-    before = u.money || 0;
-    after = before;
+    // CS API에서 현재 잔액 조회
+    let gameBal = 0;
+    try {
+      const info = await cs.post('/csapi/amount', { userid: username, amount: 0, type: '0' });
+      gameBal = Math.floor(Number(info.balance || info.balance2) || 0);
+    } catch(e) {}
+    before = gameBal;
     try {
       if (amount > 0) {
         hlResult = await cs.post('/csapi/amount', { userid: username, amount: amount, type: '1' });
+        after = before + amount;
       } else {
-        hlResult = await cs.post('/csapi/amount', { userid: username, amount: 0, type: '3' });
+        const takeAmt = Math.min(Math.abs(amount), gameBal);
+        if (takeAmt <= 0) return res.json({ success: false, error: '회수할 잔액이 없습니다.' });
+        // 부분 회수 (게임 끊김 없음)
+        hlResult = await cs.post('/csapi/amount', { userid: username, amount: takeAmt, type: '2' });
+        after = before - takeAmt;
       }
     } catch(e) { hlResult = { error: e.message }; }
   } else if (u) {
@@ -1133,3 +1220,4 @@ router.delete('/locked-accounts/:username', (req, res) => {
 });
 
 module.exports = router;
+module.exports.adminSessions = adminSessions;

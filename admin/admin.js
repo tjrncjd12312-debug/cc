@@ -6,7 +6,7 @@ var _origFetch = window.fetch;
 var _moneyApiPatterns = ['/money/', '/deposit', '/withdraw', '/give', '/take', '/approve', '/reject', '/add-balance', '/sub-balance', '/partner-tree'];
 var _sidebarRefreshTimer = null;
 window.fetch = function(url, opts) {
-  if (typeof url === 'string' && url.indexOf('/api/admin/') !== -1 && url.indexOf('/api/admin/login') === -1 && url.indexOf('/api/admin/check-session') === -1) {
+  if (typeof url === 'string' && (url.indexOf('/api/admin/') !== -1 || url.indexOf('/api/hl/') !== -1 || url.indexOf('/api/game/') !== -1) && url.indexOf('/api/admin/login') === -1 && url.indexOf('/api/admin/check-session') === -1) {
     var tk = sessionStorage.getItem('adminToken') || '';
     if (!tk) return Promise.resolve(new Response(JSON.stringify({data:[]}), {status:200, headers:{'Content-Type':'application/json'}}));
     opts = opts || {};

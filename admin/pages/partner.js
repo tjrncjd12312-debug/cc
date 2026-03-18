@@ -230,13 +230,13 @@ async function renderPartnerPage(subPage) {
     var userMap = {};
     var users = res.data || [];
     users.forEach(function(u){ userMap[u.username] = u; });
-    // API 연동 유저만 HonorLink 잔액 조회 (1회)
-    var hlUsers = users.filter(function(u){ return u.api && u.api.length > 0; });
-    if (hlUsers.length) {
-      var balResults = await Promise.all(hlUsers.map(function(u) {
-        return fetch('/api/hl/balance?username=' + encodeURIComponent(u.username))
+    // API 연동 유저: 로컬 + 게임 API 잔액 합산 조회
+    var apiUsers = users.filter(function(u){ return u.api && u.api.length > 0; });
+    if (apiUsers.length) {
+      var balResults = await Promise.all(apiUsers.map(function(u) {
+        return fetch('/api/auth/balance?userId=' + encodeURIComponent(u.id))
           .then(function(r){ return r.json(); })
-          .then(function(d){ return { username: u.username, balance: Number(d.balance) || 0 }; })
+          .then(function(d){ return { username: u.username, balance: d.success ? Number(d.balance) || 0 : (userMap[u.username].money || 0) }; })
           .catch(function(){ return { username: u.username, balance: userMap[u.username].money || 0 }; });
       }));
       balResults.forEach(function(b){ if(userMap[b.username]) userMap[b.username].money = b.balance; });
@@ -3365,17 +3365,46 @@ function _renderPartnerModal(node) {
   var refAddBtn = overlay.querySelector('#pd-ref-add-btn');
   if(refAddBtn) {
     refAddBtn.addEventListener('click', function() {
-      var code = prompt('추천코드를 입력하세요:');
-      if(!code || !code.trim()) return;
-      fetch('/api/admin/referrals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: node.id, code: code.trim() })
-      })
-      .then(function(r){ return r.json(); })
-      .then(function(res) {
-        if(!res.success) { alert(res.error || '추가 실패'); return; }
-        loadModalReferralData(node, overlay);
+      var modal = document.createElement('div');
+      modal.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);';
+      modal.innerHTML = '<div style="background:var(--bg,#0f172a);border:1px solid var(--border,#1e293b);border-radius:14px;width:400px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,0.5);animation:cfmPop 0.25s ease;">'
+        + '<div style="padding:24px 24px 16px;">'
+        + '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">'
+        + '<div style="width:42px;height:42px;border-radius:50%;background:rgba(0,229,255,0.1);display:flex;align-items:center;justify-content:center;"><i class="fas fa-link" style="font-size:1.1rem;color:#00e5ff;"></i></div>'
+        + '<div><div style="font-size:0.95rem;font-weight:700;color:var(--text1,#e2e8f0);">추천코드 추가</div>'
+        + '<div style="font-size:0.72rem;color:var(--text3,#64748b);">' + node.label + ' (' + node.id + ')</div></div>'
+        + '</div>'
+        + '<input id="ref-code-input" type="text" placeholder="추천코드를 입력하세요" style="width:100%;padding:11px 14px;background:var(--input-bg,#1a2030);border:1px solid var(--border,#334155);border-radius:8px;color:var(--text1,#e2e8f0);font-size:0.88rem;outline:none;margin-bottom:6px;">'
+        + '<div id="ref-code-error" style="color:#ef4444;font-size:0.75rem;min-height:18px;"></div>'
+        + '</div>'
+        + '<div style="padding:8px 24px 20px;display:flex;gap:10px;justify-content:flex-end;">'
+        + '<button id="ref-cancel" style="padding:9px 20px;border-radius:8px;border:1px solid var(--border,#334155);background:var(--bg2,#1e293b);color:var(--text2,#94a3b8);font-size:0.82rem;font-weight:600;cursor:pointer;">취소</button>'
+        + '<button id="ref-submit" style="padding:9px 20px;border-radius:8px;border:none;background:linear-gradient(135deg,#00e5ff,#00b8d4);color:#000;font-size:0.82rem;font-weight:700;cursor:pointer;">추가</button>'
+        + '</div></div>';
+      document.body.appendChild(modal);
+      var input = modal.querySelector('#ref-code-input');
+      var errEl = modal.querySelector('#ref-code-error');
+      input.focus();
+      input.addEventListener('keydown', function(e) { if(e.key === 'Enter') modal.querySelector('#ref-submit').click(); });
+      modal.querySelector('#ref-cancel').addEventListener('click', function() { modal.remove(); });
+      modal.addEventListener('click', function(e) { if(e.target === modal) modal.remove(); });
+      modal.querySelector('#ref-submit').addEventListener('click', function() {
+        var code = input.value.trim();
+        if(!code) { errEl.textContent = '추천코드를 입력하세요.'; return; }
+        modal.querySelector('#ref-submit').disabled = true;
+        modal.querySelector('#ref-submit').textContent = '추가 중...';
+        fetch('/api/admin/referrals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: node.id, code: code })
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(res) {
+          if(!res.success) { errEl.textContent = res.error || '추가 실패'; modal.querySelector('#ref-submit').disabled = false; modal.querySelector('#ref-submit').textContent = '추가'; return; }
+          modal.remove();
+          if(typeof _showToast === 'function') _showToast('추천코드 추가 완료: ' + code, 'success');
+          loadModalReferralData(node, overlay);
+        });
       });
     });
   }

@@ -1411,6 +1411,14 @@ async function launchGame(code, subcode, title, lobby) {
     _showGameErrorModal('해당 게임은 현재 점검중 입니다.');
     return;
   }
+  // 에이전트 잔고 체크 (OnX)
+  try {
+    var agInfo = await authFetch('/api/game/aginfo').then(function(r){ return r.json(); });
+    if (!agInfo || agInfo.result !== 1 || Number(agInfo.balance2 || 0) <= 0) {
+      alert('에이전트 잔고 부족');
+      return;
+    }
+  } catch(e) { alert('에이전트 잔고 확인 실패'); return; }
   try {
     // 1) CS API 회원가입 (최초 1회)
     if (!_session._csRegistered) {
@@ -1488,6 +1496,14 @@ async function launchHL(vendor, gameId, title) {
     _showGameErrorModal('해당 게임은 현재 점검중 입니다.');
     return;
   }
+  // 에이전트 잔고 체크 (HonorLink)
+  try {
+    var agInfo = await authFetch('/api/hl/my-info').then(function(r){ return r.json(); });
+    if (!agInfo || Number(agInfo.balance || 0) <= 0) {
+      alert('에이전트 잔고 부족');
+      return;
+    }
+  } catch(e) { alert('에이전트 잔고 확인 실패'); return; }
   try {
     // 1) 오닉스 잔액 회수 → 로컬로 복원 (게임 전환 대비)
     await authFetch('/api/auth/recover-for-switch', {
@@ -2313,8 +2329,8 @@ async function openHLGameModal(vendor, vendorName, filterType) {
           var liveApi = vendorApi[v.name] || 'honorlink';
           if (hiddenVendors.indexOf(v.name) < 0 && liveApi !== 'none') liveVendors.push(v);
           var slotClone = Object.assign({}, v, { name: v.name + '_slot', _mixedSlot: true, _hlVendor: v.name, displayName: v.name + '_slot' });
-          var slotApi = vendorApi[slotClone.name] || 'honorlink';
-          if (hiddenVendors.indexOf(slotClone.name) < 0 && slotApi !== 'none') slotVendors.push(slotClone);
+          var slotApi = vendorApi[slotClone.name] || vendorApi[v.name] || 'none';
+          if (hiddenVendors.indexOf(slotClone.name) < 0 && hiddenVendors.indexOf(v.name) < 0 && slotApi !== 'none') slotVendors.push(slotClone);
           return;
         }
         if (hiddenVendors.indexOf(v.name) >= 0) return;

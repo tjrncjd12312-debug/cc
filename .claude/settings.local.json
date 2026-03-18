@@ -99,7 +99,30 @@
       "Bash(grep -E \"\\\\.js$\")",
       "Bash(python3 -c \":*)",
       "Bash(python3:*)",
-      "Bash(py --version)"
+      "Bash(py --version)",
+      "Bash(curl -v -m 5 \"http://localhost:3000/api/admin/games\" -H \"Authorization: Bearer 37bda32397f342df86b5edfa5bbedd0e7615f382aeafdc53792d30858a170c35\")",
+      "Bash(\"/c/Program Files/MySQL/MySQL Server 8.4/bin/mysql.exe\" -u root ccasino -e \"SELECT config_key, LEFT\\(CAST\\(config_value AS CHAR\\), 80\\) as val FROM games_config;\")",
+      "Bash(curl -s -m 10 \"http://localhost:3000/api/hl/vendors\")",
+      "Bash(curl -s -m 5 \"http://localhost:3000/api/auth/balance?userId=mmwb7gz50j67itjct0ui\")",
+      "Bash(curl -s -m 5 \"http://localhost:3000/api/hl/vendors\")",
+      "Bash(curl -s -m 5 \"http://localhost:3000/api/hl/settings\")",
+      "Bash(curl -s -m 5 -X POST \"http://localhost:3000/api/game/providers\" -H \"Content-Type: application/json\" -d '{\"\"\"\"type\"\"\"\":\"\"\"\"1\"\"\"\",\"\"\"\"gametype\"\"\"\":\"\"\"\"\"\"\"\"}')",
+      "Bash(curl -s -m 10 \"http://localhost:3000/api/hl/settings\")",
+      "Bash(node -e \"process.stdin.resume\\(\\);let d='''''''';process.stdin.on\\(''''data'''',c=>d+=c\\);process.stdin.on\\(''''end'''',\\(\\)=>{const j=JSON.parse\\(d\\);console.log\\(''''hiddenVendors count:'''',j.hiddenVendors?.length\\);console.log\\(''''vendorApi.evolution:'''',j.vendorApi?.evolution\\);console.log\\(''''vendorApi.AllBet:'''',j.vendorApi?.AllBet\\);console.log\\(''''AllBet in hiddenVendors:'''',j.hiddenVendors?.includes\\(''''AllBet''''\\)\\);console.log\\(''''7-mojos in hiddenVendors:'''',j.hiddenVendors?.includes\\(''''7-mojos''''\\)\\);console.log\\(''''absolute in hiddenVendors:'''',j.hiddenVendors?.includes\\(''''absolute''''\\)\\);console.log\\(''''Asia Gaming in hiddenVendors:'''',j.hiddenVendors?.includes\\(''''Asia Gaming''''\\)\\);}\\)\")",
+      "Bash(node -e \"process.stdin.resume\\(\\);let d='''''''';process.stdin.on\\(''''data'''',c=>d+=c\\);process.stdin.on\\(''''end'''',\\(\\)=>{const j=JSON.parse\\(d\\);console.log\\(''''hiddenVendors:'''',JSON.stringify\\(j.hiddenVendors||[]\\)\\);console.log\\(''''vendorApi keys:'''',Object.keys\\(j.vendorApi||{}\\).length\\);}\\)\")",
+      "Bash(node -e \"process.stdin.resume\\(\\);let d='''''''';process.stdin.on\\(''''data'''',c=>d+=c\\);process.stdin.on\\(''''end'''',\\(\\)=>{const j=JSON.parse\\(d\\);const va=j.vendorApi||{};const hv=j.hiddenVendors||[];[''''evolution'''',''''7-mojos'''',''''absolute'''',''''AllBet'''',''''Asia Gaming'''',''''Betgames.tv'''',''''bota'''',''''DreamGame''''].forEach\\(v=>{console.log\\(v+'''': api=''''+\\(va[v]||''''미설정''''\\)+'''', hidden=''''+hv.includes\\(v\\)\\);}\\);}\\)\")",
+      "Bash(cat \"c:/Users/USER/Desktop/카지노 - 복사본 \\(2\\)/.gitignore\")",
+      "Bash(wc -l \"c:/Users/USER/Desktop/카지노 - 복사본 \\(2\\)/cc.html\")",
+      "Bash(ls \"c:/Users/USER/Desktop/카지노 - 복사본 \\(2\\)/cc-html/images/\")",
+      "Bash(ls \"c:/Users/USER/Desktop/카지노 - 복사본 \\(2\\)/public/static/\")",
+      "Bash(wc -l \"c:/Users/USER/Desktop/카지노 - 복사본 \\(2\\)/user/index.html\")",
+      "Bash(ls -la \"c:/Users/USER/Desktop/카지노 - 복사본 \\(2\\)/public/static/cclogo.png\" \"c:/Users/USER/Desktop/카지노 - 복사본 \\(2\\)/public/static/1313.jpg\" \"c:/Users/USER/Desktop/카지노 - 복사본 \\(2\\)/public/static/하나.jpg\" \"c:/Users/USER/Desktop/카지노 - 복사본 \\(2\\)/public/static/둘.jpg\" \"c:/Users/USER/Desktop/카지노 - 복사본 \\(2\\)/public/static/셋.jpg\")",
+      "Bash(\"/c/Program Files/MySQL/MySQL Server 8.4/bin/mysql.exe\" -u root ccasino -e \"SELECT id, user_id, code FROM referrals;\")",
+      "Bash(\"/c/Program Files/MySQL/MySQL Server 8.4/bin/mysql.exe\" -u root ccasino -e \"SELECT username, referred_by, referral_code, belong_to FROM users WHERE username=''test03'';\")"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\USER\\Desktop",
+      "c:\\Users\\USER\\Desktop\\카지노 - 복사본 (2)\\cc-html\\images"
     ]
   }
 }

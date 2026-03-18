@@ -31,7 +31,12 @@ function saveGameSettings() {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(_gdSettings)
-  }).catch(function() {});
+  }).then(function(r) {
+    return r.json().then(function(res) {
+      if (!res.success) console.error('[saveGameSettings] 저장 실패:', res);
+      return res;
+    });
+  }).catch(function(e) { console.error('[saveGameSettings] 에러:', e); });
 }
 
 function isVendorHidden(name) {

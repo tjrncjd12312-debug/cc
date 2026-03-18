@@ -90,12 +90,15 @@ async function userIpCheck(req, res, next) {
 
 // 유저 API 인증 미들웨어 (sessionToken 검증)
 const { sessionTokenMap } = require('./routes/auth');
-const PUBLIC_PATHS = ['/api/auth/login', '/api/auth/register', '/api/auth/check-referral', '/api/auth/balance', '/api/user/public-settings', '/api/user/notices', '/api/user/events', '/api/hl/my-info', '/api/hl/transactions', '/api/hl/balance', '/api/game/aginfo'];
+const { adminSessions } = require('./routes/admin');
+const PUBLIC_PATHS = ['/api/auth/login', '/api/auth/register', '/api/auth/check-referral', '/api/auth/balance', '/api/user/public-settings', '/api/user/notices', '/api/user/events', '/api/hl/my-info', '/api/hl/transactions', '/api/hl/balance', '/api/game/aginfo', '/api/hl/vendors', '/api/hl/settings', '/api/hl/lobbies', '/api/game/providers'];
 function userAuthCheck(req, res, next) {
   // 공개 경로는 인증 불필요
   if (PUBLIC_PATHS.some(p => req.originalUrl.startsWith(p))) return next();
   const token = (req.headers.authorization || '').replace('Bearer ', '');
   if (!token) return res.status(401).json({ success: false, error: '로그인이 필요합니다.' });
+  // 관리자 토큰이면 통과
+  if (adminSessions.has(token)) return next();
   // sessionTokenMap: { userId: { token, createdAt } } — 유효한 토큰인지 확인
   const SESSION_TTL = 24 * 60 * 60 * 1000;
   const entry = Object.entries(sessionTokenMap).find(([, v]) => v && v.token === token);

@@ -210,7 +210,7 @@ router.post('/register', async (req, res) => {
     if (!found.usedBy) found.usedBy = [];
     found.usedBy.push(username);
     await dal.writeData('referrals.json', refs);
-    referredBy = found.userId;
+    referredBy = found.userId || found.user_id;
   }
 
   const newUser = {
