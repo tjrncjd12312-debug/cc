@@ -220,8 +220,8 @@ const DDL = [
 `CREATE TABLE IF NOT EXISTS notices (
   id INT AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(500),
-  content TEXT,
-  image VARCHAR(500),
+  content MEDIUMTEXT,
+  image MEDIUMTEXT,
   partner_popup TINYINT(1) DEFAULT 0,
   user_popup TINYINT(1) DEFAULT 0,
   login_popup TINYINT(1) DEFAULT 0,
@@ -236,8 +236,8 @@ const DDL = [
 `CREATE TABLE IF NOT EXISTS events (
   id INT AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(500),
-  content TEXT,
-  image VARCHAR(500),
+  content MEDIUMTEXT,
+  image MEDIUMTEXT,
   status VARCHAR(50) DEFAULT 'active',
   created_at DATETIME DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
