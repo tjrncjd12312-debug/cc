@@ -2376,7 +2376,7 @@ function openInfoPopup(title, mode, field, node) {
       // 포인트 내역 로그
       var totalAfter = (node.point||0) + (node.rollingPoint||0);
       var logEntry = { datetime: nowStr(), type: isGive ? 'give' : 'take', processor: '관리자', targetId: node.id, targetNick: node.label || node.id, amount: val, before: cur, after: totalAfter, memo: '포인트' };
-      if(typeof addPartnerMoneyLog === 'function') addPartnerMoneyLog(logEntry);
+      if(typeof addPartnerPointLog === 'function') addPartnerPointLog(logEntry);
       var displayId = 'pt-info-rolling';
       var el = document.getElementById(displayId);
       if(el) el.textContent = totalAfter.toLocaleString();

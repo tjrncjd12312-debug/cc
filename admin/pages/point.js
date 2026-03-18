@@ -434,3 +434,143 @@ function _pcRender(logs, startDate, endDate, userFilter) {
     document.getElementById('pc-pagination').innerHTML = '';
   }
 }
+
+// ══════════════════════════════════════
+//  포인트 지급/회수 내역
+// ══════════════════════════════════════
+var _pgData = [];
+var _pgPage = 1;
+var _pgPerPage = 30;
+
+function renderPointGivePage() {
+  var el = document.getElementById('content');
+  if (!el) return;
+  var today = new Date().toISOString().slice(0, 10);
+  var qBtn = 'background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:5px 14px;border-radius:6px;font-size:0.73rem;cursor:pointer;';
+  var thS = 'padding:10px 8px;text-align:center;border-bottom:2px solid var(--border);border-right:1px solid var(--border);';
+
+  el.innerHTML =
+    '<div style="padding:16px 20px;">'
+    + '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px;">'
+    +   '<input type="text" id="pg-user-filter" placeholder="아이디 검색" style="width:150px;padding:6px 10px;font-size:0.8rem;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);">'
+    +   '<select id="pg-type-filter" style="padding:6px 10px;font-size:0.8rem;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);">'
+    +     '<option value="">전체</option><option value="give">지급</option><option value="take">회수</option>'
+    +   '</select>'
+    +   '<button class="pg-quick-btn df-preset active" data-preset="today" style="' + qBtn + '">오늘</button>'
+    +   '<button class="pg-quick-btn df-preset" data-preset="yesterday" style="' + qBtn + '">어제</button>'
+    +   '<button class="pg-quick-btn df-preset" data-preset="week" style="' + qBtn + '">이번주</button>'
+    +   '<button class="pg-quick-btn df-preset" data-preset="month" style="' + qBtn + '">이번달</button>'
+    +   '<button class="pg-quick-btn df-preset" data-preset="all" style="' + qBtn + '">전체</button>'
+    +   '<input type="date" id="pg-date-start" value="' + today + '" style="padding:6px 10px;font-size:0.8rem;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);">'
+    +   '<span style="color:var(--text);">~</span>'
+    +   '<input type="date" id="pg-date-end" value="' + today + '" style="padding:6px 10px;font-size:0.8rem;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);color:var(--text);">'
+    +   '<button id="pg-search" class="pt-action-btn pt-btn-blue" style="padding:6px 18px;font-size:0.8rem;border-radius:6px;font-weight:600;">조회</button>'
+    + '</div>'
+    + '<div style="overflow-x:auto;">'
+    +   '<table class="db-table" style="font-size:0.78rem;border-collapse:collapse;width:100%;">'
+    +     '<thead><tr style="background:var(--input-bg);font-size:0.72rem;color:var(--text);">'
+    +       '<th style="' + thS + '">#</th>'
+    +       '<th style="' + thS + '">시간</th>'
+    +       '<th style="' + thS + '">구분</th>'
+    +       '<th style="' + thS + '">처리자</th>'
+    +       '<th style="' + thS + '">대상</th>'
+    +       '<th style="' + thS + '">닉네임</th>'
+    +       '<th style="' + thS + '">금액</th>'
+    +       '<th style="' + thS + '">변동전</th>'
+    +       '<th style="' + thS + '">변동후</th>'
+    +       '<th style="' + thS + 'border-right:none;">메모</th>'
+    +     '</tr></thead>'
+    +     '<tbody id="pg-tbody"><tr><td colspan="10" style="color:var(--text3);text-align:center;padding:24px;">조회 버튼을 눌러주세요.</td></tr></tbody>'
+    +   '</table>'
+    + '</div>'
+    + '<div id="pg-pagination" style="display:flex;justify-content:center;gap:6px;margin-top:14px;"></div>'
+    + '</div>';
+
+  document.getElementById('pg-search').addEventListener('click', _pgFetch);
+  bindDatePresets('pg-quick-btn', 'pg-date-start', 'pg-date-end', _pgFetch);
+
+  var _pgTimer = null;
+  document.getElementById('pg-user-filter').addEventListener('input', function() {
+    clearTimeout(_pgTimer);
+    _pgTimer = setTimeout(_pgFetch, 300);
+  });
+  document.getElementById('pg-type-filter').addEventListener('change', _pgFetch);
+
+  _pgFetch();
+}
+
+function _pgFetch() {
+  _pgPage = 1;
+  adminFetch('/api/admin/money-logs/point')
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      var logs = Array.isArray(res) ? res : (res.data || []);
+      var uf = (document.getElementById('pg-user-filter').value || '').trim().toLowerCase();
+      var tf = document.getElementById('pg-type-filter').value;
+      var ds = document.getElementById('pg-date-start').value;
+      var de = document.getElementById('pg-date-end').value;
+
+      _pgData = logs.filter(function(l) {
+        if (uf && !(l.targetId || '').toLowerCase().includes(uf) && !(l.processor || '').toLowerCase().includes(uf)) return false;
+        if (tf && l.type !== tf) return false;
+        var dt = (l.datetime || '').slice(0, 10);
+        if (ds && dt < ds) return false;
+        if (de && dt > de) return false;
+        return true;
+      });
+      _pgRender();
+    }).catch(function() { _pgData = []; _pgRender(); });
+}
+
+function _pgRender() {
+  var tbody = document.getElementById('pg-tbody');
+  if (!tbody) return;
+  var tdS = 'padding:8px 6px;text-align:center;border-bottom:1px solid var(--border);border-right:1px solid var(--border);white-space:nowrap;';
+
+  if (_pgData.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" style="color:var(--text3);text-align:center;padding:24px;">데이터가 없습니다.</td></tr>';
+    document.getElementById('pg-pagination').innerHTML = '';
+    return;
+  }
+
+  var totalPages = Math.ceil(_pgData.length / _pgPerPage);
+  if (_pgPage > totalPages) _pgPage = totalPages;
+  var start = (_pgPage - 1) * _pgPerPage;
+  var page = _pgData.slice(start, start + _pgPerPage);
+
+  tbody.innerHTML = page.map(function(l, i) {
+    var isGive = l.type === 'give';
+    var typeLabel = isGive ? '지급' : '회수';
+    var typeColor = isGive ? '#4ade80' : '#f87171';
+    var dt = l.datetime || '';
+    if (dt instanceof Date) dt = dt.toISOString().replace('T', ' ').slice(0, 19);
+    return '<tr>'
+      + '<td style="' + tdS + '">' + (start + i + 1) + '</td>'
+      + '<td style="' + tdS + 'font-size:0.72rem;">' + dt + '</td>'
+      + '<td style="' + tdS + 'color:' + typeColor + ';font-weight:600;">' + typeLabel + '</td>'
+      + '<td style="' + tdS + '">' + (l.processor || '-') + '</td>'
+      + '<td style="' + tdS + '">' + (l.targetId || '-') + '</td>'
+      + '<td style="' + tdS + '">' + (l.targetNick || '-') + '</td>'
+      + '<td style="' + tdS + 'color:' + typeColor + ';font-weight:600;">' + (isGive ? '+' : '-') + Number(l.amount || 0).toLocaleString() + '</td>'
+      + '<td style="' + tdS + '">' + Number(l.before || 0).toLocaleString() + '</td>'
+      + '<td style="' + tdS + '">' + Number(l.after || 0).toLocaleString() + '</td>'
+      + '<td style="' + tdS + 'border-right:none;text-align:left;max-width:200px;overflow:hidden;text-overflow:ellipsis;">' + (l.memo || '-') + '</td>'
+      + '</tr>';
+  }).join('');
+
+  if (totalPages > 1) {
+    var pagHtml = '';
+    for (var p = 1; p <= totalPages; p++) {
+      pagHtml += '<button class="pg-page-btn" data-page="' + p + '" style="padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:' + (p === _pgPage ? '#6366f1' : 'var(--bg3)') + ';color:' + (p === _pgPage ? '#fff' : 'var(--text)') + ';font-size:0.72rem;cursor:pointer;">' + p + '</button>';
+    }
+    document.getElementById('pg-pagination').innerHTML = pagHtml;
+    document.querySelectorAll('.pg-page-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        _pgPage = parseInt(this.dataset.page, 10);
+        _pgRender();
+      });
+    });
+  } else {
+    document.getElementById('pg-pagination').innerHTML = '';
+  }
+}
