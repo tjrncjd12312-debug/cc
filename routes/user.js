@@ -29,13 +29,25 @@ router.post('/point-convert', async (req, res) => {
 
 // ── 롤링전환 로그 저장 ──
 router.post('/rolling-convert-log', async (req, res) => {
-  let logs = [];
-  try { logs = await dal.readData('money_log_rolling-convert.json'); } catch(e) {}
-  if (!Array.isArray(logs)) logs = [];
-  logs.unshift(req.body);
-  if (logs.length > 5000) logs = logs.slice(0, 5000);
-  await dal.writeData('money_log_rolling-convert.json', logs);
-  res.json({ success: true });
+  try {
+    const b = req.body;
+    await dal.moneyLogRollingConvert.add({
+      datetime: b.datetime || new Date(),
+      type: b.type || 'rolling-convert',
+      processor: b.username || '',
+      processorLevel: '',
+      targetId: b.target || b.username || '',
+      targetNick: b.nick || '',
+      targetLevel: '',
+      amount: b.amount || 0,
+      before: b.beforeRolling || 0,
+      after: b.afterRolling || 0,
+      memo: '포인트전환 (머니 ' + (b.beforeMoney||0) + '→' + (b.afterMoney||0) + ')'
+    });
+    res.json({ success: true });
+  } catch(e) {
+    res.json({ success: false, error: e.message });
+  }
 });
 
 // ── 유저 포인트 내역 조회 ──
