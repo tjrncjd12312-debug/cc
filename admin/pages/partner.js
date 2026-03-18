@@ -3256,6 +3256,8 @@ function _renderPartnerModal(node) {
             if(mnVal2) mnVal2.textContent = after.toLocaleString();
             loadModalMoneyData(node, overlay);
             if(typeof fetchSidebarStats === 'function') fetchSidebarStats();
+            if(typeof _ptRenderTableBody === 'function') _ptRenderTableBody();
+            if(typeof _ptRenderListPage === 'function' && document.getElementById('ptl-tbody')) _ptRenderListPage();
           } else {
             _showToast('처리 실패: ' + (res.error || ''), 'error');
           }
