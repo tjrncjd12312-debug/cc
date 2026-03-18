@@ -329,7 +329,7 @@ router.post('/login', async (req, res) => {
   }
 
   // 세션 토큰 발급
-  const sessionToken = Date.now().toString(36) + Math.random().toString(36).slice(2);
+  const sessionToken = require('crypto').randomBytes(32).toString('hex');
   sessionTokenMap[user.id] = sessionToken;
 
   // 온라인 등록
