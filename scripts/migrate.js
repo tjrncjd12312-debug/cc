@@ -473,7 +473,8 @@ async function main() {
   // 테이블 생성
   console.log('[1/2] Creating tables...');
   for (const ddl of DDL) {
-    const tableName = ddl.match(/CREATE TABLE IF NOT EXISTS (\w+)/)?.[1] || '?';
+    const m = ddl.match(/CREATE TABLE IF NOT EXISTS (\w+)/);
+    const tableName = (m && m[1]) || '?';
     try {
       await conn.query(ddl);
       console.log(`  ✓ ${tableName}`);
