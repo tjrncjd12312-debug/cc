@@ -96,7 +96,7 @@ router.delete('/inquiries/:id', async (req, res) => {
 // ── 충환전 신청 ──
 router.post('/transfers', async (req, res) => {
   // 입력값 검증
-  const { type, amount, userId, datetime } = req.body;
+  const { type, amount, userId, datetime, bank, account, holder, nick, bonus } = req.body;
   if (!type || !['deposit', 'withdraw'].includes(type)) return res.json({ success: false, error: '잘못된 요청입니다.' });
   const reqAmount = Number(amount) || 0;
   if (reqAmount <= 0 || !Number.isFinite(reqAmount)) return res.json({ success: false, error: '올바른 금액을 입력해주세요.' });
@@ -105,7 +105,7 @@ router.post('/transfers', async (req, res) => {
   let list = [];
   try { list = await dal.readData('transfers.json'); } catch(e) {}
   // 허용된 필드만 추출 (임의 필드 주입 차단)
-  const item = { type, amount: reqAmount, userId, datetime: datetime || new Date().toISOString(), status: 'pending', id: Date.now().toString(36) + Math.random().toString(36).slice(2) };
+  const item = { type, amount: reqAmount, userId, nick: nick || '', bank: bank || '', account: account || '', holder: holder || '', bonus: bonus || '', datetime: datetime || new Date().toISOString(), status: 'pending', id: Date.now().toString(36) + Math.random().toString(36).slice(2) };
 
   // 이체 한도 체크
   try {

@@ -2719,6 +2719,7 @@ async function submitDeposit() {
         type: 'deposit',
         userId: _session.username, nick: _session.nickname||_session.username,
         amount: amount, bonus: bonus,
+        bank: _session.bank||'', account: _session.account||'', holder: _session.holder||'',
         datetime: dt, status: 'pending', memo: ''
       })
     });
@@ -2756,6 +2757,7 @@ async function submitWithdraw() {
         type: 'withdraw',
         userId: _session.username, nick: _session.nickname||_session.username,
         amount: amount,
+        bank: _session.bank||'', account: _session.account||'', holder: _session.holder||'',
         datetime: dt, status: 'pending', memo: ''
       })
     });
