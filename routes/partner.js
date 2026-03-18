@@ -1,6 +1,7 @@
 const express = require('express');
 const router  = express.Router();
 const crypto  = require('crypto');
+const bcrypt  = require('bcrypt');
 const dal     = require('../lib/dal');
 const txCollector = require('../lib/transactionCollector');
 
@@ -72,7 +73,8 @@ router.post('/login', async (req, res) => {
   const node = findNodeInTree(tree, username);
   if (!node) return res.json({ success: false, error: '존재하지 않는 파트너입니다.' });
   if (node.level === 'admin' || node.level === 'member') return res.json({ success: false, error: '파트너 계정이 아닙니다.' });
-  if (node.password !== password) return res.json({ success: false, error: '비밀번호가 일치하지 않습니다.' });
+  const pwMatch = await bcrypt.compare(password, node.password || '');
+  if (!pwMatch) return res.json({ success: false, error: '비밀번호가 일치하지 않습니다.' });
   if (node.status === 'blocked' || node.status === '정지') return res.json({ success: false, error: '정지된 계정입니다.' });
 
   const token = crypto.randomBytes(32).toString('hex');
@@ -141,9 +143,10 @@ router.post('/change-password', async (req, res) => {
   const tree = await dal.readData('partnerTree.json');
   const node = findNodeInTree(tree, req.partnerSession.partnerId);
   if (!node) return res.json({ success: false, error: '파트너 정보 없음' });
-  if (node.password !== currentPassword) return res.json({ success: false, error: '현재 비밀번호가 일치하지 않습니다.' });
+  const cpMatch = await bcrypt.compare(currentPassword, node.password || '');
+  if (!cpMatch) return res.json({ success: false, error: '현재 비밀번호가 일치하지 않습니다.' });
   if (!newPassword || newPassword.length < 4) return res.json({ success: false, error: '새 비밀번호는 4자 이상이어야 합니다.' });
-  node.password = newPassword;
+  node.password = await bcrypt.hash(newPassword, 10);
   await dal.writeData('partnerTree.json', tree);
   res.json({ success: true });
 });
