@@ -40,7 +40,7 @@ async function run() {
   console.log('[admin_account] ' + adminCount + '/' + admins.length + '명 해싱 완료');
 
   // 3. partners 테이블 (파트너 트리의 비밀번호)
-  const [partners] = await db.query('SELECT id, node_id, password FROM partners WHERE password IS NOT NULL AND password != \'\'');
+  const [partners] = await db.query('SELECT id, password FROM partners WHERE password IS NOT NULL AND password != \'\'');
   let partnerCount = 0;
   for (const p of partners) {
     if (!p.password || isHashed(p.password)) continue;
