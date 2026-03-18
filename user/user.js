@@ -412,11 +412,20 @@ document.addEventListener('keydown', e => {
   let _refTimer = null;
   document.addEventListener('DOMContentLoaded', () => {
     // 아이디
+    let _usernameTimer = null;
     document.getElementById('reg-username').addEventListener('input', function() {
+      clearTimeout(_usernameTimer);
       const v = this.value.trim();
       if (!v) return _clearField('username');
-      if (v.length < 4) _setField('username', false, '4자 이상 입력해주세요.');
-      else _setField('username', true, '사용 가능한 아이디입니다.');
+      if (v.length < 4) return _setField('username', false, '4자 이상 입력해주세요.');
+      _usernameTimer = setTimeout(async () => {
+        try {
+          const res = await fetch('/api/auth/check-username?username=' + encodeURIComponent(v));
+          const data = await res.json();
+          if (data.available) _setField('username', true, '사용 가능한 아이디입니다.');
+          else _setField('username', false, '이미 사용중인 아이디입니다.');
+        } catch(e) { _setField('username', false, '확인 실패'); }
+      }, 400);
     });
     // 비밀번호
     document.getElementById('reg-password').addEventListener('input', function() {

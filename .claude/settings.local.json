@@ -118,7 +118,8 @@
       "Bash(wc -l \"c:/Users/USER/Desktop/카지노 - 복사본 \\(2\\)/user/index.html\")",
       "Bash(ls -la \"c:/Users/USER/Desktop/카지노 - 복사본 \\(2\\)/public/static/cclogo.png\" \"c:/Users/USER/Desktop/카지노 - 복사본 \\(2\\)/public/static/1313.jpg\" \"c:/Users/USER/Desktop/카지노 - 복사본 \\(2\\)/public/static/하나.jpg\" \"c:/Users/USER/Desktop/카지노 - 복사본 \\(2\\)/public/static/둘.jpg\" \"c:/Users/USER/Desktop/카지노 - 복사본 \\(2\\)/public/static/셋.jpg\")",
       "Bash(\"/c/Program Files/MySQL/MySQL Server 8.4/bin/mysql.exe\" -u root ccasino -e \"SELECT id, user_id, code FROM referrals;\")",
-      "Bash(\"/c/Program Files/MySQL/MySQL Server 8.4/bin/mysql.exe\" -u root ccasino -e \"SELECT username, referred_by, referral_code, belong_to FROM users WHERE username=''test03'';\")"
+      "Bash(\"/c/Program Files/MySQL/MySQL Server 8.4/bin/mysql.exe\" -u root ccasino -e \"SELECT username, referred_by, referral_code, belong_to FROM users WHERE username=''test03'';\")",
+      "Bash(curl -s -m 10 \"http://158.247.193.99:3000/api/admin/login\" -X POST -H \"Content-Type: application/json\" -d '{\"\"username\"\":\"\"admin\"\",\"\"password\"\":\"\"1234\"\"}')"
     ],
     "additionalDirectories": [
       "c:\\Users\\USER\\Desktop",

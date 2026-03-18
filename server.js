@@ -91,7 +91,7 @@ async function userIpCheck(req, res, next) {
 // 유저 API 인증 미들웨어 (sessionToken 검증)
 const { sessionTokenMap } = require('./routes/auth');
 const { adminSessions } = require('./routes/admin');
-const PUBLIC_PATHS = ['/api/auth/login', '/api/auth/register', '/api/auth/check-referral', '/api/auth/balance', '/api/user/public-settings', '/api/user/notices', '/api/user/events', '/api/hl/my-info', '/api/hl/transactions', '/api/hl/balance', '/api/game/aginfo', '/api/hl/vendors', '/api/hl/settings', '/api/hl/lobbies', '/api/game/providers'];
+const PUBLIC_PATHS = ['/api/auth/login', '/api/auth/register', '/api/auth/check-referral', '/api/auth/check-username', '/api/auth/balance', '/api/user/public-settings', '/api/user/notices', '/api/user/events', '/api/hl/my-info', '/api/hl/transactions', '/api/hl/balance', '/api/game/aginfo', '/api/hl/vendors', '/api/hl/settings', '/api/hl/lobbies', '/api/game/providers'];
 function userAuthCheck(req, res, next) {
   // 공개 경로는 인증 불필요
   if (PUBLIC_PATHS.some(p => req.originalUrl.startsWith(p))) return next();

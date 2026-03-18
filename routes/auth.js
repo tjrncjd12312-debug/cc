@@ -176,6 +176,20 @@ async function _cleanupStaleApi() {
 }
 setTimeout(_cleanupStaleApi, 5 * 1000);
 
+// ── 아이디 중복 확인 (유저 + 파트너 동시 체크) ──
+router.get('/check-username', async (req, res) => {
+  const username = (req.query.username || '').trim();
+  if (!username) return res.json({ success: false });
+  const users = await readUsers();
+  const userExists = users.some(u => u.username === username);
+  let partnerExists = false;
+  try {
+    const partners = await dal.partners.getAll();
+    partnerExists = partners.some(p => p.id === username);
+  } catch(e) {}
+  res.json({ success: true, available: !userExists && !partnerExists });
+});
+
 // ── 추천코드 확인 ──
 router.get('/check-referral', async (req, res) => {
   const code = (req.query.code || '').trim();
