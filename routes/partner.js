@@ -1,18 +1,8 @@
 const express = require('express');
 const router  = express.Router();
 const crypto  = require('crypto');
-const fs      = require('fs');
-const path    = require('path');
+const dal     = require('../lib/dal');
 const txCollector = require('../lib/transactionCollector');
-
-function readData(file) {
-  const p = path.join(__dirname, '../data', file);
-  return JSON.parse(fs.readFileSync(p, 'utf8'));
-}
-function writeData(file, data) {
-  const p = path.join(__dirname, '../data', file);
-  fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf8');
-}
 
 // ══════════════════════════════════════
 //  파트너 세션 관리
@@ -70,12 +60,12 @@ function collectPartnerIds(node) {
 // ══════════════════════════════════════
 //  로그인
 // ══════════════════════════════════════
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.json({ success: false, error: '아이디와 비밀번호를 입력하세요.' });
 
   let tree;
-  try { tree = readData('partnerTree.json'); } catch(e) {
+  try { tree = await dal.readData('partnerTree.json'); } catch(e) {
     return res.json({ success: false, error: '파트너 데이터 오류' });
   }
 
@@ -91,13 +81,13 @@ router.post('/login', (req, res) => {
   res.json({ success: true, token, partnerId: node.id, level: node.level, label: node.label });
 });
 
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
   const token = (req.headers.authorization || '').replace('Bearer ', '');
   partnerSessions.delete(token);
   res.json({ success: true });
 });
 
-router.get('/check-session', (req, res) => {
+router.get('/check-session', async (req, res) => {
   const token = (req.headers.authorization || '').replace('Bearer ', '');
   if (token && partnerSessions.has(token)) {
     const sess = partnerSessions.get(token);
@@ -119,8 +109,8 @@ router.use((req, res, next) => {
 // ══════════════════════════════════════
 //  내 정보
 // ══════════════════════════════════════
-router.get('/me', (req, res) => {
-  const tree = readData('partnerTree.json');
+router.get('/me', async (req, res) => {
+  const tree = await dal.readData('partnerTree.json');
   const node = findNodeInTree(tree, req.partnerSession.partnerId);
   if (!node) return res.json({ success: false, error: '파트너 정보 없음' });
 
@@ -146,23 +136,23 @@ router.get('/me', (req, res) => {
 });
 
 // 비밀번호 변경
-router.post('/change-password', (req, res) => {
+router.post('/change-password', async (req, res) => {
   const { currentPassword, newPassword } = req.body;
-  const tree = readData('partnerTree.json');
+  const tree = await dal.readData('partnerTree.json');
   const node = findNodeInTree(tree, req.partnerSession.partnerId);
   if (!node) return res.json({ success: false, error: '파트너 정보 없음' });
   if (node.password !== currentPassword) return res.json({ success: false, error: '현재 비밀번호가 일치하지 않습니다.' });
   if (!newPassword || newPassword.length < 4) return res.json({ success: false, error: '새 비밀번호는 4자 이상이어야 합니다.' });
   node.password = newPassword;
-  writeData('partnerTree.json', tree);
+  await dal.writeData('partnerTree.json', tree);
   res.json({ success: true });
 });
 
 // ══════════════════════════════════════
 //  하위 트리 조회
 // ══════════════════════════════════════
-router.get('/tree', (req, res) => {
-  const tree = readData('partnerTree.json');
+router.get('/tree', async (req, res) => {
+  const tree = await dal.readData('partnerTree.json');
   const node = findNodeInTree(tree, req.partnerSession.partnerId);
   if (!node) return res.json({ success: true, data: [] });
 
@@ -179,13 +169,13 @@ router.get('/tree', (req, res) => {
 // ══════════════════════════════════════
 //  하위 회원 목록
 // ══════════════════════════════════════
-router.get('/users', (req, res) => {
-  const tree = readData('partnerTree.json');
+router.get('/users', async (req, res) => {
+  const tree = await dal.readData('partnerTree.json');
   const node = findNodeInTree(tree, req.partnerSession.partnerId);
   if (!node) return res.json({ success: true, data: [] });
 
   const memberIds = collectMemberIds(node);
-  const users = readData('users.json');
+  const users = await dal.readData('users.json');
   const filtered = users.filter(u => memberIds.includes(u.username) || memberIds.includes(u.id));
 
   res.json({ success: true, data: filtered });
@@ -194,13 +184,13 @@ router.get('/users', (req, res) => {
 // ══════════════════════════════════════
 //  하위 회원 머니 지급/차감
 // ══════════════════════════════════════
-router.post('/users/:id/give', (req, res) => {
-  const tree = readData('partnerTree.json');
+router.post('/users/:id/give', async (req, res) => {
+  const tree = await dal.readData('partnerTree.json');
   const node = findNodeInTree(tree, req.partnerSession.partnerId);
   if (!node) return res.json({ success: false, error: '파트너 정보 없음' });
 
   const memberIds = collectMemberIds(node);
-  const users = readData('users.json');
+  const users = await dal.readData('users.json');
   const u = users.find(u => (u.id === req.params.id || u.username === req.params.id) && (memberIds.includes(u.username) || memberIds.includes(u.id)));
   if (!u) return res.json({ success: false, error: '권한이 없거나 유저가 없습니다.' });
 
@@ -215,13 +205,13 @@ router.post('/users/:id/give', (req, res) => {
   node.money = beforePartner - amount;
   u.money = beforeUser + amount;
 
-  writeData('partnerTree.json', tree);
-  writeData('users.json', users);
+  await dal.writeData('partnerTree.json', tree);
+  await dal.writeData('users.json', users);
 
   // 머니 로그 기록
   try {
     let logs = [];
-    try { logs = readData('money_log_partner.json'); } catch(e) {}
+    try { logs = await dal.readData('money_log_partner.json'); } catch(e) {}
     logs.unshift({
       type: 'give',
       from: node.id,
@@ -236,19 +226,19 @@ router.post('/users/:id/give', (req, res) => {
       memo: req.body.memo || ''
     });
     if (logs.length > 2000) logs = logs.slice(0, 2000);
-    writeData('money_log_partner.json', logs);
+    await dal.writeData('money_log_partner.json', logs);
   } catch(e) {}
 
   res.json({ success: true, partnerMoney: node.money, userMoney: u.money });
 });
 
-router.post('/users/:id/take', (req, res) => {
-  const tree = readData('partnerTree.json');
+router.post('/users/:id/take', async (req, res) => {
+  const tree = await dal.readData('partnerTree.json');
   const node = findNodeInTree(tree, req.partnerSession.partnerId);
   if (!node) return res.json({ success: false, error: '파트너 정보 없음' });
 
   const memberIds = collectMemberIds(node);
-  const users = readData('users.json');
+  const users = await dal.readData('users.json');
   const u = users.find(u => (u.id === req.params.id || u.username === req.params.id) && (memberIds.includes(u.username) || memberIds.includes(u.id)));
   if (!u) return res.json({ success: false, error: '권한이 없거나 유저가 없습니다.' });
 
@@ -261,13 +251,13 @@ router.post('/users/:id/take', (req, res) => {
   node.money = beforePartner + amount;
   u.money = beforeUser - amount;
 
-  writeData('partnerTree.json', tree);
-  writeData('users.json', users);
+  await dal.writeData('partnerTree.json', tree);
+  await dal.writeData('users.json', users);
 
   // 머니 로그 기록
   try {
     let logs = [];
-    try { logs = readData('money_log_partner.json'); } catch(e) {}
+    try { logs = await dal.readData('money_log_partner.json'); } catch(e) {}
     logs.unshift({
       type: 'take',
       from: node.id,
@@ -282,7 +272,7 @@ router.post('/users/:id/take', (req, res) => {
       memo: req.body.memo || ''
     });
     if (logs.length > 2000) logs = logs.slice(0, 2000);
-    writeData('money_log_partner.json', logs);
+    await dal.writeData('money_log_partner.json', logs);
   } catch(e) {}
 
   res.json({ success: true, partnerMoney: node.money, userMoney: u.money });
@@ -291,8 +281,8 @@ router.post('/users/:id/take', (req, res) => {
 // ══════════════════════════════════════
 //  하위 회원 베팅 통계
 // ══════════════════════════════════════
-router.get('/users/stats', (req, res) => {
-  const tree = readData('partnerTree.json');
+router.get('/users/stats', async (req, res) => {
+  const tree = await dal.readData('partnerTree.json');
   const node = findNodeInTree(tree, req.partnerSession.partnerId);
   if (!node) return res.json({ success: true, data: {} });
 
@@ -302,7 +292,7 @@ router.get('/users/stats', (req, res) => {
 
   let allTx = [];
   try {
-    const txResult = txCollector.query({ perPage: 100000 });
+    const txResult = await txCollector.query({ perPage: 100000 });
     allTx = txResult.data || [];
   } catch(e) {}
 
@@ -335,14 +325,14 @@ router.get('/users/stats', (req, res) => {
 // ══════════════════════════════════════
 //  하위 회원 충환전 내역
 // ══════════════════════════════════════
-router.get('/transfers', (req, res) => {
-  const tree = readData('partnerTree.json');
+router.get('/transfers', async (req, res) => {
+  const tree = await dal.readData('partnerTree.json');
   const node = findNodeInTree(tree, req.partnerSession.partnerId);
   if (!node) return res.json({ success: true, data: [] });
 
   const memberIds = collectMemberIds(node);
   let list = [];
-  try { list = readData('transfers.json'); } catch(e) {}
+  try { list = await dal.readData('transfers.json'); } catch(e) {}
   list = list.filter(t => memberIds.includes(t.userId));
   if (req.query.type) list = list.filter(t => t.type === req.query.type);
   if (req.query.status) list = list.filter(t => t.status === req.query.status);
@@ -353,8 +343,8 @@ router.get('/transfers', (req, res) => {
 // ══════════════════════════════════════
 //  하위 회원 베팅 내역
 // ══════════════════════════════════════
-router.get('/betting', (req, res) => {
-  const tree = readData('partnerTree.json');
+router.get('/betting', async (req, res) => {
+  const tree = await dal.readData('partnerTree.json');
   const node = findNodeInTree(tree, req.partnerSession.partnerId);
   if (!node) return res.json({ success: true, data: [], total: 0 });
 
@@ -368,7 +358,7 @@ router.get('/betting', (req, res) => {
 
   let allTx = [];
   try {
-    const txResult = txCollector.query({ perPage: 100000 });
+    const txResult = await txCollector.query({ perPage: 100000 });
     allTx = txResult.data || [];
   } catch(e) {}
 
@@ -413,10 +403,10 @@ router.get('/betting', (req, res) => {
 // ══════════════════════════════════════
 //  머니 로그 (파트너 관련만)
 // ══════════════════════════════════════
-router.get('/money-logs', (req, res) => {
+router.get('/money-logs', async (req, res) => {
   const partnerId = req.partnerSession.partnerId;
   let logs = [];
-  try { logs = readData('money_log_partner.json'); } catch(e) {}
+  try { logs = await dal.readData('money_log_partner.json'); } catch(e) {}
   // 자신이 지급/차감한 것만
   logs = logs.filter(l => l.from === partnerId);
   res.json({ success: true, data: logs });
@@ -425,8 +415,8 @@ router.get('/money-logs', (req, res) => {
 // ══════════════════════════════════════
 //  정산 (하위 회원 베팅 기반)
 // ══════════════════════════════════════
-router.get('/settlement', (req, res) => {
-  const tree = readData('partnerTree.json');
+router.get('/settlement', async (req, res) => {
+  const tree = await dal.readData('partnerTree.json');
   const node = findNodeInTree(tree, req.partnerSession.partnerId);
   if (!node) return res.json({ success: true, data: [] });
 
@@ -436,7 +426,7 @@ router.get('/settlement', (req, res) => {
 
   let allTx = [];
   try {
-    const txResult = txCollector.query({ perPage: 100000 });
+    const txResult = await txCollector.query({ perPage: 100000 });
     allTx = txResult.data || [];
   } catch(e) {}
 
@@ -478,14 +468,14 @@ router.get('/settlement', (req, res) => {
 // ══════════════════════════════════════
 //  롤링 내역
 // ══════════════════════════════════════
-router.get('/rolling-log', (req, res) => {
-  const tree = readData('partnerTree.json');
+router.get('/rolling-log', async (req, res) => {
+  const tree = await dal.readData('partnerTree.json');
   const node = findNodeInTree(tree, req.partnerSession.partnerId);
   if (!node) return res.json({ success: true, data: [] });
 
   const memberIds = collectMemberIds(node);
   let logs = [];
-  try { logs = readData('rolling_log.json'); } catch(e) {}
+  try { logs = await dal.readData('rolling_log.json'); } catch(e) {}
   logs = logs.filter(l => memberIds.includes(l.username));
   res.json({ success: true, data: logs });
 });
@@ -493,8 +483,8 @@ router.get('/rolling-log', (req, res) => {
 // ══════════════════════════════════════
 //  공지사항 (읽기 전용)
 // ══════════════════════════════════════
-router.get('/notices', (_req, res) => {
-  try { res.json({ success: true, data: readData('notices.json') }); }
+router.get('/notices', async (_req, res) => {
+  try { res.json({ success: true, data: await dal.readData('notices.json') }); }
   catch(e) { res.json({ success: true, data: [] }); }
 });
 

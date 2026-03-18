@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const dal = require('./lib/dal');
 const app = express();
 
 app.use(express.json({ limit: '10mb' }));
@@ -12,11 +13,9 @@ app.use((req, res, next) => {
 });
 
 // 관리자 IP 제한 미들웨어
-const fs = require('fs');
-function adminIpCheck(req, res, next) {
+async function adminIpCheck(req, res, next) {
   try {
-    const settingsPath = path.join(__dirname, 'data/admin_settings.json');
-    const s = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    const s = await dal.readData('admin_settings.json');
     const sec = s.security || {};
     const clientIp = req.ip || req.headers['x-forwarded-for'] || '0.0.0.0';
 
@@ -45,10 +44,9 @@ function adminIpCheck(req, res, next) {
 }
 
 // 유저 IP 차단 미들웨어
-function userIpCheck(req, res, next) {
+async function userIpCheck(req, res, next) {
   try {
-    const settingsPath = path.join(__dirname, 'data/admin_settings.json');
-    const s = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    const s = await dal.readData('admin_settings.json');
     const clientIp = req.ip || req.headers['x-forwarded-for'] || '0.0.0.0';
     const bl = s.blockedUserIps || [];
     if (bl.some(b => b.ip === clientIp)) {

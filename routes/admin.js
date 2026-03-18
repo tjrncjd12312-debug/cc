@@ -8,28 +8,20 @@ const hl      = require('../lib/honorlink');
 const { onlineMap, kickedSet, gameSessionMap, loginFailMap } = require('./auth');
 const txCollector = require('../lib/transactionCollector');
 const telegram = require('../lib/telegram');
-
-function readData(file) {
-  const p = path.join(__dirname, '../data', file);
-  return JSON.parse(fs.readFileSync(p, 'utf8'));
-}
-function writeData(file, data) {
-  const p = path.join(__dirname, '../data', file);
-  fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf8');
-}
+const dal     = require('../lib/dal');
 
 // ══════════════════════════════════════
 //  관리자 세션 관리
 // ══════════════════════════════════════
 const adminSessions = new Map(); // token -> { createdAt }
 
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { username, password } = req.body;
   let account;
-  try { account = readData('admin_account.json'); } catch(e) {
+  try { account = await dal.adminAccount.get(); } catch(e) {
     return res.json({ success: false, error: '계정 설정 오류' });
   }
-  if (username === account.username && password === account.password) {
+  if (account && username === account.username && password === account.password) {
     const token = crypto.randomBytes(32).toString('hex');
     adminSessions.set(token, { createdAt: Date.now() });
     const clientIp = req.ip || req.headers['x-forwarded-for'] || '0.0.0.0';
@@ -39,16 +31,15 @@ router.post('/login', (req, res) => {
   res.json({ success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다.' });
 });
 
-router.post('/change-password', (req, res) => {
+router.post('/change-password', async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   let account;
-  try { account = readData('admin_account.json'); } catch(e) {
+  try { account = await dal.adminAccount.get(); } catch(e) {
     return res.json({ success: false, error: '계정 설정 오류' });
   }
   if (currentPassword !== account.password) return res.json({ success: false, error: '현재 비밀번호가 일치하지 않습니다.' });
   if (!newPassword || newPassword.length < 4) return res.json({ success: false, error: '새 비밀번호는 4자 이상이어야 합니다.' });
-  account.password = newPassword;
-  writeData('admin_account.json', account);
+  await dal.adminAccount.updatePassword(account.username, newPassword);
   res.json({ success: true });
 });
 
@@ -71,36 +62,36 @@ router.use((req, res, next) => {
   res.status(401).json({ success: false, error: '인증이 필요합니다.' });
 });
 
-function readUsers()      { return readData('users.json'); }
-function writeUsers(data) { writeData('users.json', data); }
+async function readUsers()      { return await dal.users.readAll(); }
+async function writeUsers(data) { await dal.users.writeAll(data); }
 
 // 공지사항
-router.get('/notices',    (req, res) => res.json({ success: true, data: readData('notices.json') }));
-router.post('/notices',   (req, res) => { writeData('notices.json', req.body); res.json({ success: true }); });
+router.get('/notices',    async (req, res) => res.json({ success: true, data: await dal.readData('notices.json') }));
+router.post('/notices',   async (req, res) => { await dal.writeData('notices.json', req.body); res.json({ success: true }); });
 
 // 게임
-router.get('/games',      (req, res) => res.json({ success: true, data: readData('games.json') }));
-router.post('/games',     (req, res) => { writeData('games.json', req.body); res.json({ success: true }); });
+router.get('/games',      async (req, res) => res.json({ success: true, data: await dal.readData('games.json') }));
+router.post('/games',     async (req, res) => { await dal.writeData('games.json', req.body); res.json({ success: true }); });
 
 // 파트너 트리 (서버 동기화)
-router.get('/partner-tree', (_req, res) => {
-  try { res.json({ success: true, data: readData('partnerTree.json') }); }
+router.get('/partner-tree', async (_req, res) => {
+  try { res.json({ success: true, data: await dal.readData('partnerTree.json') }); }
   catch(e) { res.json({ success: true, data: [] }); }
 });
-router.post('/partner-tree', (req, res) => { writeData('partnerTree.json', req.body); res.json({ success: true }); });
+router.post('/partner-tree', async (req, res) => { await dal.writeData('partnerTree.json', req.body); res.json({ success: true }); });
 
 // 롤링 로그
-router.get('/rolling-log', (_req, res) => {
-  try { res.json({ success: true, data: readData('rolling_log.json') }); }
+router.get('/rolling-log', async (_req, res) => {
+  try { res.json({ success: true, data: await dal.readData('rolling_log.json') }); }
   catch(e) { res.json({ success: true, data: [] }); }
 });
 
 // 입출금
-router.get('/deposits',          (_req, res) => { let d = []; try { d = readData('transfers.json'); } catch(e){} res.json({ success: true, data: d }); });
-router.post('/deposits',         (req,  res) => { writeData('transfers.json', req.body); res.json({ success: true }); });
-router.get('/deposits/pending',  (_req, res) => {
+router.get('/deposits', async (_req, res) => { let d = []; try { d = await dal.readData('transfers.json'); } catch(e){} res.json({ success: true, data: d }); });
+router.post('/deposits', async (req, res) => { await dal.writeData('transfers.json', req.body); res.json({ success: true }); });
+router.get('/deposits/pending', async (_req, res) => {
   let all = [];
-  try { all = readData('transfers.json'); } catch(e) {}
+  try { all = await dal.readData('transfers.json'); } catch(e) {}
   res.json({
     success: true,
     deposit:  all.filter(d => d.type === 'deposit'  && d.status === 'pending').length,
@@ -113,7 +104,7 @@ router.post('/partner/create', async (req, res) => {
   const { username, nickname, password } = req.body;
   if (!username || !password) return res.json({ success: false, error: '아이디와 비밀번호를 입력하세요.' });
 
-  const users = readUsers();
+  const users = await readUsers();
   const existing = users.find(u => u.username === username);
 
   let newUser;
@@ -135,25 +126,25 @@ router.post('/partner/create', async (req, res) => {
       api: []
     };
     users.push(newUser);
-    writeUsers(users);
+    await writeUsers(users);
   }
 
   res.json({ success: true, user: newUser });
 });
 
 // ── 회원 목록 전체 ──
-router.get('/users', (_req, res) => {
-  res.json({ success: true, data: readUsers() });
+router.get('/users', async (_req, res) => {
+  res.json({ success: true, data: await readUsers() });
 });
 
 // ── 회원별 베팅/당첨 집계 (날짜 필터) ──
-router.get('/users/stats', (req, res) => {
+router.get('/users/stats', async (req, res) => {
   const startDate = req.query.start || '';
   const endDate = req.query.end || '';
 
   let allTx = [];
   try {
-    const txResult = txCollector.query({ perPage: 100000 });
+    const txResult = await txCollector.query({ perPage: 100000 });
     allTx = txResult.data || [];
   } catch(e) {}
 
@@ -162,7 +153,6 @@ router.get('/users/stats', (req, res) => {
     allTx = allTx.filter(tx => {
       const dt = tx.processed_at || tx.created_at || '';
       if (!dt) return false;
-      // KST 날짜 추출
       const txMs = new Date(dt).getTime();
       const kstDate = new Date(txMs + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
       if (startDate && kstDate < startDate) return false;
@@ -187,7 +177,7 @@ router.get('/users/stats', (req, res) => {
 router.post('/user-kick', async (req, res) => {
   const { username } = req.body;
   if (!username) return res.json({ success: false, error: 'username 필요' });
-  const users = readUsers();
+  const users = await readUsers();
   const u = users.find(u => u.username === username);
 
   // 게임사 킥 + 잔액 전액 회수
@@ -215,7 +205,7 @@ router.post('/user-kick', async (req, res) => {
   // 연동 해제 + 접속자 목록 제거 + 게임세션 제거 + 유저 로그아웃
   if (u) {
     u.api = [];
-    writeUsers(users);
+    await writeUsers(users);
     delete onlineMap[u.id];
     delete gameSessionMap[username];
     kickedSet.add(u.id);
@@ -226,11 +216,10 @@ router.post('/user-kick', async (req, res) => {
 
 // ── 유저 API 연동 상태 확인 ──
 router.get('/users/:id/api-status', async (req, res) => {
-  const users = readUsers();
+  const users = await readUsers();
   const u = users.find(u => u.id === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
 
-  // users.json의 api 필드 기준으로만 판단
   const result = {
     csapi: u.api && u.api.includes('csapi'),
     honorlink: u.api && u.api.includes('honorlink')
@@ -240,46 +229,43 @@ router.get('/users/:id/api-status', async (req, res) => {
 });
 
 // ── 승인 대기 목록 ──
-router.get('/users/pending', (_req, res) => {
-  const list = readUsers().filter(u => u.status === 'pending');
+router.get('/users/pending', async (_req, res) => {
+  const list = (await readUsers()).filter(u => u.status === 'pending');
   res.json({ success: true, data: list });
 });
 
 // ── 블랙리스트 (차단 + 삭제) ──
-router.get('/users/blacklist', (_req, res) => {
-  const list = readUsers().filter(u => u.status === 'blocked' || u.status === 'deleted');
+router.get('/users/blacklist', async (_req, res) => {
+  const list = (await readUsers()).filter(u => u.status === 'blocked' || u.status === 'deleted');
   res.json({ success: true, data: list });
 });
 
 // ── 승인 ──
 router.post('/users/:id/approve', async (req, res) => {
-  const users = readUsers();
+  const users = await readUsers();
   const u = users.find(u => u.id === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
   u.status = 'active';
   u.approvedAt = new Date().toISOString();
   if (!u.api) u.api = [];
-  // 게임 API 연동은 게임 접속 시 자동 처리
-  writeUsers(users);
+  await writeUsers(users);
   res.json({ success: true });
 });
 
 // ── API 연동 해제 (킥 + 잔액회수 + 연동 제거) ──
 router.post('/users/:id/api-disconnect', async (req, res) => {
-  const { provider } = req.body; // 'honorlink' or 'csapi'
+  const { provider } = req.body;
   if (!provider) return res.json({ success: false, error: 'provider 필요' });
-  const users = readUsers();
+  const users = await readUsers();
   const u = users.find(u => u.id === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
 
-  // 게임에서 강제 퇴장 + 잔액 전액 회수
   if (provider === 'honorlink') {
     try { await hl.post('/user/kick', { username: u.username }); } catch(e) {}
     try { await hl.post('/user/sub-balance-all', { username: u.username }); } catch(e) {}
   }
   if (provider === 'csapi') {
     try { await cs.post('/csapi/kick', { userid: u.username }); } catch(e) {}
-    // CS API 잔액 전액 회수 → 로컬로 복원
     try {
       const csRes = await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '0' });
       const csBal = Number(csRes && csRes.balance || 0);
@@ -291,25 +277,24 @@ router.post('/users/:id/api-disconnect', async (req, res) => {
   }
 
   if (u.api) u.api = u.api.filter(a => a !== provider);
-  writeUsers(users);
+  await writeUsers(users);
   res.json({ success: true, api: u.api });
 });
 
 // ── 거절 (삭제) ──
-router.post('/users/:id/reject', (req, res) => {
-  const users = readUsers().filter(u => u.id !== req.params.id);
-  writeUsers(users);
+router.post('/users/:id/reject', async (req, res) => {
+  const users = (await readUsers()).filter(u => u.id !== req.params.id);
+  await writeUsers(users);
   res.json({ success: true });
 });
 
 // ── 차단 ──
 router.post('/users/:id/block', async (req, res) => {
-  const users = readUsers();
+  const users = await readUsers();
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
   u.status = 'blocked';
   if (req.body && req.body.belongTo) u.belongTo = req.body.belongTo;
-  // CS API 잔액 회수
   try {
     await cs.post('/csapi/kick', { userid: u.username });
     const csRes = await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '0' });
@@ -319,7 +304,6 @@ router.post('/users/:id/block', async (req, res) => {
       u.money = (u.money || 0) + csBal;
     }
   } catch(e) {}
-  // HonorLink 잔액 회수
   try {
     const hlUser = await hl.get('/user', { username: u.username });
     const hlBal = Number(hlUser && hlUser.balance || 0);
@@ -327,18 +311,17 @@ router.post('/users/:id/block', async (req, res) => {
     if (hlBal > 0) u.money = (u.money || 0) + hlBal;
   } catch(e) {}
   u.api = [];
-  writeUsers(users);
+  await writeUsers(users);
   res.json({ success: true });
 });
 
 // ── 삭제 (soft) ──
 router.post('/users/:id/delete', async (req, res) => {
-  const users = readUsers();
+  const users = await readUsers();
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
   u.status = 'deleted';
   if (req.body && req.body.belongTo) u.belongTo = req.body.belongTo;
-  // CS API 잔액 회수
   try {
     await cs.post('/csapi/kick', { userid: u.username });
     const csRes = await cs.post('/csapi/amount', { userid: u.username, amount: 0, type: '0' });
@@ -348,7 +331,6 @@ router.post('/users/:id/delete', async (req, res) => {
       u.money = (u.money || 0) + csBal;
     }
   } catch(e) {}
-  // HonorLink 잔액 회수
   try {
     const hlUser = await hl.get('/user', { username: u.username });
     const hlBal = Number(hlUser && hlUser.balance || 0);
@@ -356,69 +338,69 @@ router.post('/users/:id/delete', async (req, res) => {
     if (hlBal > 0) u.money = (u.money || 0) + hlBal;
   } catch(e) {}
   u.api = [];
-  writeUsers(users);
+  await writeUsers(users);
   res.json({ success: true });
 });
 
 // ── 블랙리스트 해제 ──
-router.post('/users/:id/unblock', (req, res) => {
-  const users = readUsers();
+router.post('/users/:id/unblock', async (req, res) => {
+  const users = await readUsers();
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
   u.status = 'active';
-  writeUsers(users);
+  await writeUsers(users);
   res.json({ success: true });
 });
 
 // ── 회원 정보 수정 ──
-router.post('/users/:id/update', (req, res) => {
-  const users = readUsers();
+router.post('/users/:id/update', async (req, res) => {
+  const users = await readUsers();
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
   const allowed = ['nickname','phone','bank','account','holder','casino','slot','status','memo','grade','password','point','gameGroup','rollCasino','rollSlot','losingCasino','losingSlot'];
   allowed.forEach(k => { if (req.body[k] !== undefined) u[k] = req.body[k]; });
-  writeUsers(users);
+  await writeUsers(users);
   res.json({ success: true });
 });
-router.patch('/users/:id/update', (req, res) => {
-  const users = readUsers();
+router.patch('/users/:id/update', async (req, res) => {
+  const users = await readUsers();
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
   const allowed = ['nickname','phone','bank','account','holder','casino','slot','status','memo','grade','password','point','gameGroup','rollCasino','rollSlot','losingCasino','losingSlot'];
   allowed.forEach(k => { if (req.body[k] !== undefined) u[k] = req.body[k]; });
-  writeUsers(users);
+  await writeUsers(users);
   res.json({ success: true });
 });
 
 // ── gameGroup 일괄 변경 ──
-router.post('/users/batch-group', (req, res) => {
+router.post('/users/batch-group', async (req, res) => {
   const { ids, gameGroup } = req.body;
   if (!Array.isArray(ids)) return res.json({ success: false, error: '잘못된 요청' });
-  const users = readUsers();
+  const users = await readUsers();
   ids.forEach(id => {
     const u = users.find(u => u.id === id || u.username === id);
     if (u) u.gameGroup = gameGroup || '';
   });
-  writeUsers(users);
+  await writeUsers(users);
   res.json({ success: true, count: ids.length });
 });
 
 // ── 개별 유저 지급 ──
 router.post('/users/:id/give', async (req, res) => {
-  const users = readUsers();
+  const users = await readUsers();
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
   const amount = Number(req.body.amount);
   if (!amount || amount <= 0) return res.json({ success: false, error: '올바른 금액' });
   const before = u.money || 0;
   u.money = before + amount;
-  writeUsers(users);
+  await writeUsers(users);
   res.json({ success: true, before, after: u.money });
 });
 
 // ── 개별 유저 회수 ──
 router.post('/users/:id/take', async (req, res) => {
-  const users = readUsers();
+  const users = await readUsers();
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
   const before = u.money || 0;
@@ -429,7 +411,7 @@ router.post('/users/:id/take', async (req, res) => {
     if (!amount || amount <= 0) return res.json({ success: false, error: '올바른 금액' });
     u.money = Math.max(0, before - amount);
   }
-  writeUsers(users);
+  await writeUsers(users);
   res.json({ success: true, before, after: u.money });
 });
 
@@ -440,7 +422,7 @@ router.post('/users/money', async (req, res) => {
   if (!username) return res.json({ success: false, error: '유저명을 입력하세요.' });
   if (!amount || isNaN(amount)) return res.json({ success: false, error: '올바른 금액을 입력하세요.' });
 
-  const users = readUsers();
+  const users = await readUsers();
   const u = users.find(u => u.username === username);
   let before = 0, after = 0;
   let hlResult = null;
@@ -448,7 +430,6 @@ router.post('/users/money', async (req, res) => {
   const isCs = u && u.api && u.api.includes('csapi');
 
   if (isHl) {
-    // HonorLink 연동 유저: 게임사에만 지급/회수
     before = u.money || 0;
     after = before;
     try {
@@ -459,7 +440,6 @@ router.post('/users/money', async (req, res) => {
       }
     } catch(e) { hlResult = { error: e.message }; }
   } else if (isCs) {
-    // 오닉스 연동 유저: CS API에 지급/회수
     before = u.money || 0;
     after = before;
     try {
@@ -470,11 +450,10 @@ router.post('/users/money', async (req, res) => {
       }
     } catch(e) { hlResult = { error: e.message }; }
   } else if (u) {
-    // 미연동 유저: 로컬 money만 변경
     before = u.money || 0;
     u.money = Math.max(0, before + amount);
     after = u.money;
-    writeUsers(users);
+    await writeUsers(users);
   }
   res.json({ success: true, before, after, hlResult });
 });
@@ -487,7 +466,6 @@ router.post('/users/withdraw-game', async (req, res) => {
   try {
     let totalRecovered = 0;
 
-    // 1) HonorLink 잔액 회수
     try {
       const userInfo = await hl.get('/user', { username });
       const hlBalance = Number(userInfo && userInfo.balance || 0);
@@ -497,7 +475,6 @@ router.post('/users/withdraw-game', async (req, res) => {
       }
     } catch(e) {}
 
-    // 2) CS API(오닉스) 잔액 회수
     try {
       const csRes = await cs.post('/csapi/amount', { userid: username, amount: 0, type: '0' });
       const csBal = Number(csRes && csRes.balance || 0);
@@ -507,13 +484,12 @@ router.post('/users/withdraw-game', async (req, res) => {
       }
     } catch(e) {}
 
-    // 3) 로컬 DB에 복원 + api 필드 초기화
-    const users = readUsers();
+    const users = await readUsers();
     const u = users.find(u => u.username === username);
     if (u) {
       if (totalRecovered > 0) u.money = (u.money || 0) + totalRecovered;
       u.api = [];
-      writeUsers(users);
+      await writeUsers(users);
     }
 
     res.json({ success: true, recovered: totalRecovered, localBalance: u ? u.money : 0 });
@@ -526,7 +502,7 @@ router.post('/users/withdraw-game', async (req, res) => {
 router.get('/users/balance', async (req, res) => {
   const { username } = req.query;
   if (!username) return res.json({ success: false, error: '유저명 필요' });
-  const users = readUsers();
+  const users = await readUsers();
   const u = users.find(u => u.username === username);
   if (!u) return res.json({ success: false, error: '유저 없음' });
   let localMoney = u.money || 0;
@@ -549,16 +525,16 @@ router.get('/users/balance', async (req, res) => {
 });
 
 // ── 로컬 DB 잔액만 변경 (게임사 동기화용, 게임사 API 호출 안함) ──
-router.post('/users/money-local', (req, res) => {
+router.post('/users/money-local', async (req, res) => {
   const { username, amount: rawAmount } = req.body;
   const amount = Number(rawAmount);
   if (!username || !amount || isNaN(amount)) return res.json({ success: false });
-  const users = readUsers();
+  const users = await readUsers();
   const u = users.find(u => u.username === username);
   if (!u) return res.json({ success: false });
   const before = u.money || 0;
   u.money = Math.max(0, before + amount);
-  writeUsers(users);
+  await writeUsers(users);
   res.json({ success: true, before, after: u.money });
 });
 
@@ -567,71 +543,67 @@ router.post('/users/money-local', (req, res) => {
 // ══════════════════════════════════════
 const MONEY_LOG_TYPES = ['admin', 'partner', 'user', 'point', 'rolling-convert'];
 
-router.get('/money-logs/:type', (req, res) => {
+router.get('/money-logs/:type', async (req, res) => {
   const type = req.params.type;
   if (!MONEY_LOG_TYPES.includes(type)) return res.json([]);
-  try { res.json(readData(`money_log_${type}.json`)); }
+  try { res.json(await dal.readData('money_log_' + type + '.json')); }
   catch(e) { res.json([]); }
 });
 
-router.post('/money-logs/:type', (req, res) => {
+router.post('/money-logs/:type', async (req, res) => {
   const type = req.params.type;
   if (!MONEY_LOG_TYPES.includes(type)) return res.json({ success: false });
   let logs = [];
-  try { logs = readData(`money_log_${type}.json`); } catch(e) {}
+  try { logs = await dal.readData('money_log_' + type + '.json'); } catch(e) {}
   if (!Array.isArray(logs)) logs = [];
   logs.unshift(req.body);
   if (logs.length > 2000) logs = logs.slice(0, 2000);
-  writeData(`money_log_${type}.json`, logs);
+  await dal.writeData('money_log_' + type + '.json', logs);
   res.json({ success: true });
 });
 
 // ══════════════════════════════════════
 //  충환전 API
 // ══════════════════════════════════════
-function readTransfers()      { try { return readData('transfers.json'); } catch(e) { return []; } }
-function writeTransfers(data) { writeData('transfers.json', data); }
+async function readTransfers()      { try { return await dal.readData('transfers.json'); } catch(e) { return []; } }
+async function writeTransfers(data) { await dal.writeData('transfers.json', data); }
 
-router.get('/transfers', (req, res) => {
-  let list = readTransfers();
+router.get('/transfers', async (req, res) => {
+  let list = await readTransfers();
   if (req.query.type)   list = list.filter(t => t.type   === req.query.type);
   if (req.query.userId) list = list.filter(t => t.userId === req.query.userId);
   if (req.query.status) list = list.filter(t => t.status === req.query.status);
   res.json({ success: true, data: list });
 });
 
-router.post('/transfers', (req, res) => {
-  const list = readTransfers();
+router.post('/transfers', async (req, res) => {
+  const list = await readTransfers();
   const item = { ...req.body, id: Date.now() + '' + Math.floor(Math.random() * 1000) };
   list.unshift(item);
-  writeTransfers(list);
+  await writeTransfers(list);
   res.json({ success: true, data: item });
 });
 
 router.patch('/transfers/:id/approve', async (req, res) => {
-  const list = readTransfers();
+  const list = await readTransfers();
   const item = list.find(t => t.id === req.params.id);
   if (!item) return res.json({ success: false, error: '항목 없음' });
   if (item.status !== 'pending') return res.json({ success: false, error: '이미 처리된 신청입니다.' });
   item.status = 'approved';
   item.processedAt = new Date().toISOString();
-  // 우리 서버 잔액 변경 (환전은 신청 시 이미 차감됨)
-  const users = readUsers();
+  const users = await readUsers();
   const user = users.find(u => u.username === item.userId);
   if (user) {
     if (item.type === 'deposit') {
       user.money = (user.money || 0) + Number(item.amount);
-      writeUsers(users);
+      await writeUsers(users);
     }
-    // withdraw는 신청 시 이미 차감했으므로 승인 시 추가 차감 없음
   }
-  writeTransfers(list);
-  // 게임 API 머니 반영 (1=입금, 2=출금)
+  await writeTransfers(list);
   try {
     const csType = item.type === 'deposit' ? '1' : '2';
     await cs.post('/csapi/amount', { userid: item.userId, amount: Number(item.amount), type: csType });
   } catch(e) {}
-  // HonorLink 머니 반영
   try {
     if (item.type === 'deposit') {
       await hl.post('/user/add-balance', { username: item.userId, amount: Number(item.amount) });
@@ -642,88 +614,85 @@ router.patch('/transfers/:id/approve', async (req, res) => {
   res.json({ success: true });
 });
 
-router.patch('/transfers/:id/reject', (req, res) => {
-  const list = readTransfers();
+router.patch('/transfers/:id/reject', async (req, res) => {
+  const list = await readTransfers();
   const item = list.find(t => t.id === req.params.id);
   if (!item) return res.json({ success: false, error: '항목 없음' });
   item.status = 'rejected';
   item.processedAt = new Date().toISOString();
 
-  // 환전 거절 시 차감했던 머니 복구
   if (item.type === 'withdraw') {
-    const users = readUsers();
+    const users = await readUsers();
     const user = users.find(u => u.username === item.userId);
     if (user) {
       user.money = (user.money || 0) + Number(item.amount);
-      writeUsers(users);
+      await writeUsers(users);
     }
   }
 
-  writeTransfers(list);
+  await writeTransfers(list);
   res.json({ success: true });
 });
 
 // ══════════════════════════════════════
 //  문의 API
 // ══════════════════════════════════════
-function readInquiries()      { try { return readData('inquiries.json'); } catch(e) { return []; } }
-function writeInquiries(data) { writeData('inquiries.json', data); }
+async function readInquiries()      { try { return await dal.readData('inquiries.json'); } catch(e) { return []; } }
+async function writeInquiries(data) { await dal.writeData('inquiries.json', data); }
 
-router.get('/inquiries', (req, res) => {
-  let list = readInquiries();
+router.get('/inquiries', async (req, res) => {
+  let list = await readInquiries();
   if (req.query.userId) list = list.filter(i => i.userId === req.query.userId);
   if (req.query.status) list = list.filter(i => i.status === req.query.status);
   res.json({ success: true, data: list });
 });
 
-router.post('/inquiries', (req, res) => {
-  const list = readInquiries();
+router.post('/inquiries', async (req, res) => {
+  const list = await readInquiries();
   const item = { ...req.body, id: Date.now() + '' + Math.floor(Math.random() * 1000) };
   list.unshift(item);
-  writeInquiries(list);
+  await writeInquiries(list);
   res.json({ success: true, data: item });
 });
 
-router.patch('/inquiries/:id/reply', (req, res) => {
-  const list = readInquiries();
+router.patch('/inquiries/:id/reply', async (req, res) => {
+  const list = await readInquiries();
   const item = list.find(i => i.id === req.params.id);
   if (!item) return res.json({ success: false, error: '항목 없음' });
   item.status     = 'done';
   item.answer     = req.body.answer;
   item.answeredAt = req.body.answeredAt;
-  writeInquiries(list);
+  await writeInquiries(list);
   res.json({ success: true });
 });
 
-// ── 문의 개별삭제 ──
-router.delete('/inquiries/:id', (req, res) => {
-  let list = readInquiries();
+router.delete('/inquiries/:id', async (req, res) => {
+  let list = await readInquiries();
   list = list.filter(i => i.id !== req.params.id);
-  writeInquiries(list);
+  await writeInquiries(list);
   res.json({ success: true });
 });
 
-// ── 문의 선택삭제 ──
-router.post('/inquiries/delete-batch', (req, res) => {
+router.post('/inquiries/delete-batch', async (req, res) => {
   const ids = req.body.ids || [];
-  let list = readInquiries();
+  let list = await readInquiries();
   list = list.filter(i => !ids.includes(i.id));
-  writeInquiries(list);
+  await writeInquiries(list);
   res.json({ success: true });
 });
 
 // ══════════════════════════════════════
 //  고정답변 API
 // ══════════════════════════════════════
-function readQuickReplies()      { try { return readData('quickreplies.json'); } catch(e) { return []; } }
-function writeQuickReplies(data) { writeData('quickreplies.json', data); }
+async function readQuickReplies()      { try { return await dal.readData('quickreplies.json'); } catch(e) { return []; } }
+async function writeQuickReplies(data) { await dal.writeData('quickreplies.json', data); }
 
-router.get('/quickreplies', (_req, res) => {
-  res.json({ success: true, data: readQuickReplies() });
+router.get('/quickreplies', async (_req, res) => {
+  res.json({ success: true, data: await readQuickReplies() });
 });
 
-router.post('/quickreplies', (req, res) => {
-  const list = readQuickReplies();
+router.post('/quickreplies', async (req, res) => {
+  const list = await readQuickReplies();
   const item = {
     id: Date.now() + '' + Math.floor(Math.random() * 1000),
     title: req.body.title || '',
@@ -731,77 +700,74 @@ router.post('/quickreplies', (req, res) => {
     createdAt: new Date().toISOString()
   };
   list.unshift(item);
-  writeQuickReplies(list);
+  await writeQuickReplies(list);
   res.json({ success: true, data: item });
 });
 
-router.put('/quickreplies/:id', (req, res) => {
-  const list = readQuickReplies();
+router.put('/quickreplies/:id', async (req, res) => {
+  const list = await readQuickReplies();
   const item = list.find(i => i.id === req.params.id);
   if (!item) return res.json({ success: false, error: '항목 없음' });
   if (req.body.title   !== undefined) item.title   = req.body.title;
   if (req.body.content !== undefined) item.content = req.body.content;
-  writeQuickReplies(list);
+  await writeQuickReplies(list);
   res.json({ success: true });
 });
 
-router.delete('/quickreplies/:id', (req, res) => {
-  let list = readQuickReplies();
+router.delete('/quickreplies/:id', async (req, res) => {
+  let list = await readQuickReplies();
   list = list.filter(i => i.id !== req.params.id);
-  writeQuickReplies(list);
+  await writeQuickReplies(list);
   res.json({ success: true });
 });
 
 // ══════════════════════════════════════
 //  이벤트 API
 // ══════════════════════════════════════
-function readEvents()      { try { return readData('events.json'); } catch(e) { return []; } }
-function writeEvents(data) { writeData('events.json', data); }
+async function readEvents()      { try { return await dal.readData('events.json'); } catch(e) { return []; } }
+async function writeEvents(data) { await dal.writeData('events.json', data); }
 
-router.get('/events', (_req, res) => {
-  res.json({ success: true, data: readEvents() });
+router.get('/events', async (_req, res) => {
+  res.json({ success: true, data: await readEvents() });
 });
 
-router.post('/events', (req, res) => {
-  const list = readEvents();
+router.post('/events', async (req, res) => {
+  const list = await readEvents();
   list.unshift(req.body);
-  writeEvents(list);
+  await writeEvents(list);
   res.json({ success: true });
 });
 
-router.put('/events/:id', (req, res) => {
-  const list = readEvents();
+router.put('/events/:id', async (req, res) => {
+  const list = await readEvents();
   const idx  = list.findIndex(e => e.id === req.params.id);
   if (idx === -1) return res.json({ success: false, error: '항목 없음' });
   list[idx] = { ...list[idx], ...req.body };
-  writeEvents(list);
+  await writeEvents(list);
   res.json({ success: true });
 });
 
-router.delete('/events/:id', (req, res) => {
-  writeEvents(readEvents().filter(e => e.id !== req.params.id));
+router.delete('/events/:id', async (req, res) => {
+  await writeEvents((await readEvents()).filter(e => e.id !== req.params.id));
   res.json({ success: true });
 });
 
 // ══════════════════════════════════════
 //  추천코드 API
 // ══════════════════════════════════════
-function readReferrals()      { try { return readData('referrals.json'); } catch(e) { return []; } }
-function writeReferrals(data) { writeData('referrals.json', data); }
+async function readReferrals()      { try { return await dal.readData('referrals.json'); } catch(e) { return []; } }
+async function writeReferrals(data) { await dal.writeData('referrals.json', data); }
 
-// 특정 유저의 추천코드 목록
-router.get('/referrals', (req, res) => {
-  let list = readReferrals();
+router.get('/referrals', async (req, res) => {
+  let list = await readReferrals();
   if (req.query.userId) list = list.filter(r => r.userId === req.query.userId);
   res.json({ success: true, data: list });
 });
 
-// 추천코드 추가
-router.post('/referrals', (req, res) => {
-  const list = readReferrals();
+router.post('/referrals', async (req, res) => {
+  const list = await readReferrals();
   const { userId, code } = req.body;
   if (!userId || !code) return res.json({ success: false, error: '유저ID와 코드를 입력하세요.' });
-  // 중복 체크
   if (list.find(r => r.code === code)) return res.json({ success: false, error: '이미 존재하는 코드입니다.' });
   const item = {
     id: Date.now() + '' + Math.floor(Math.random() * 1000),
@@ -812,33 +778,30 @@ router.post('/referrals', (req, res) => {
     createdAt: new Date().toISOString()
   };
   list.push(item);
-  writeReferrals(list);
+  await writeReferrals(list);
   res.json({ success: true, data: item });
 });
 
-// 추천코드 삭제
-router.delete('/referrals/:id', (req, res) => {
-  const list = readReferrals().filter(r => r.id !== req.params.id);
-  writeReferrals(list);
+router.delete('/referrals/:id', async (req, res) => {
+  const list = (await readReferrals()).filter(r => r.id !== req.params.id);
+  await writeReferrals(list);
   res.json({ success: true });
 });
 
 // ══════════════════════════════════════
 //  쪽지 API
 // ══════════════════════════════════════
-function readMessages()      { try { return readData('messages.json'); } catch(e) { return []; } }
-function writeMessages(data) { writeData('messages.json', data); }
+async function readMessages()      { try { return await dal.readData('messages.json'); } catch(e) { return []; } }
+async function writeMessages(data) { await dal.writeData('messages.json', data); }
 
-// 특정 유저의 쪽지 목록
-router.get('/messages', (req, res) => {
-  let list = readMessages();
+router.get('/messages', async (req, res) => {
+  let list = await readMessages();
   if (req.query.userId) list = list.filter(m => m.userId === req.query.userId);
   res.json({ success: true, data: list });
 });
 
-// 쪽지 보내기
-router.post('/messages', (req, res) => {
-  const list = readMessages();
+router.post('/messages', async (req, res) => {
+  const list = await readMessages();
   const { userId, title, content } = req.body;
   if (!userId || !title) return res.json({ success: false, error: '제목을 입력하세요.' });
   const item = {
@@ -850,21 +813,20 @@ router.post('/messages', (req, res) => {
     createdAt: new Date().toISOString()
   };
   list.unshift(item);
-  writeMessages(list);
+  await writeMessages(list);
   res.json({ success: true, data: item });
 });
 
-// 쪽지 삭제
-router.delete('/messages/:id', (req, res) => {
-  const list = readMessages().filter(m => m.id !== req.params.id);
-  writeMessages(list);
+router.delete('/messages/:id', async (req, res) => {
+  const list = (await readMessages()).filter(m => m.id !== req.params.id);
+  await writeMessages(list);
   res.json({ success: true });
 });
 
 // ── 롤링 로그 조회 ──
-router.get('/rolling/log', (_req, res) => {
+router.get('/rolling/log', async (_req, res) => {
   try {
-    const log = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/rolling_log.json'), 'utf8'));
+    const log = await dal.readData('rolling_log.json');
     res.json({ success: true, data: log });
   } catch(e) {
     res.json({ success: true, data: [] });
@@ -872,11 +834,10 @@ router.get('/rolling/log', (_req, res) => {
 });
 
 // ── 공베팅 로그 조회 ──
-router.get('/emptybet/log', (req, res) => {
+router.get('/emptybet/log', async (req, res) => {
   try {
-    let log = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/emptybet_log.json'), 'utf8'));
+    let log = await dal.readData('emptybet_log.json');
 
-    // 날짜 필터
     const startDate = req.query.start;
     const endDate = req.query.end;
     if (startDate || endDate) {
@@ -890,28 +851,24 @@ router.get('/emptybet/log', (req, res) => {
       });
     }
 
-    // 유저 필터
     if (req.query.username) {
       const u = req.query.username.toLowerCase();
       log = log.filter(l => (l.username || '').toLowerCase().includes(u));
     }
 
-    // 게임타입 필터
     if (req.query.gameType && req.query.gameType !== 'all') {
       log = log.filter(l => l.gameType === req.query.gameType);
     }
 
-    // 게임사 필터
     if (req.query.vendor) {
       const v = req.query.vendor.toLowerCase();
       log = log.filter(l => (l.vendor || '').toLowerCase().includes(v));
     }
 
-    // win 매칭: 서버에서 트랜잭션 조회하여 매칭
     if (req.query.matchWin === 'true') {
       try {
         const txCollector = require('../lib/transactionCollector');
-        const winResult = txCollector.query({
+        const winResult = await txCollector.query({
           start: startDate ? startDate + ' 00:00:00' : undefined,
           end: endDate ? endDate + ' 23:59:59' : undefined,
           types: ['win'],
@@ -933,10 +890,8 @@ router.get('/emptybet/log', (req, res) => {
       } catch(e) {}
     }
 
-    // 최신순 정렬
     log.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
 
-    // 페이지네이션
     const page = parseInt(req.query.page) || 1;
     const perPage = parseInt(req.query.perPage) || 50;
     const total = log.length;
@@ -949,9 +904,9 @@ router.get('/emptybet/log', (req, res) => {
 });
 
 // ── 공베팅 카운터 조회 ──
-router.get('/emptybet/counter', (_req, res) => {
+router.get('/emptybet/counter', async (_req, res) => {
   try {
-    const counter = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/emptybet_counter.json'), 'utf8'));
+    const counter = await dal.readData('emptybet_counter.json');
     res.json({ success: true, data: counter });
   } catch(e) {
     res.json({ success: true, data: {} });
@@ -959,141 +914,138 @@ router.get('/emptybet/counter', (_req, res) => {
 });
 
 // ── 공베팅 모드 설정 (전역) ──
-const SETTINGS_FILE = path.join(__dirname, '../data/admin_settings.json');
-function readSettings() { try { return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8')); } catch(e) { return {}; } }
-function writeSettings(d) { fs.writeFileSync(SETTINGS_FILE, JSON.stringify(d, null, 2), 'utf8'); }
+async function readSettings() { try { return await dal.adminSettings.readAll(); } catch(e) { return {}; } }
+async function writeSettings(d) { await dal.adminSettings.writeAll(d); }
 
-router.get('/emptybet/mode', (_req, res) => {
-  const s = readSettings();
+router.get('/emptybet/mode', async (_req, res) => {
+  const s = await readSettings();
   res.json({ success: true, mode: s.emptyBetMode || 'rolling' });
 });
 
-router.post('/emptybet/mode', (req, res) => {
+router.post('/emptybet/mode', async (req, res) => {
   const mode = req.body && req.body.mode;
   if (mode !== 'rolling' && mode !== 'all') return res.json({ success: false, error: 'invalid mode' });
-  const s = readSettings();
+  const s = await readSettings();
   s.emptyBetMode = mode;
-  writeSettings(s);
-  // 기존 공베팅 로그도 모드 일괄 변경
+  await writeSettings(s);
   try {
-    const ebPath = path.join(__dirname, '../data/emptybet_log.json');
-    const log = JSON.parse(fs.readFileSync(ebPath, 'utf8'));
+    let log = await dal.readData('emptybet_log.json');
     log.forEach(e => { e.mode = mode; });
-    fs.writeFileSync(ebPath, JSON.stringify(log), 'utf8');
+    await dal.writeData('emptybet_log.json', log);
   } catch(e) {}
   res.json({ success: true, mode: mode });
 });
 
 // ── 슬롯 게임사 목록 관리 ──
-router.get('/slot-vendors', (_req, res) => {
-  const s = readSettings();
+router.get('/slot-vendors', async (_req, res) => {
+  const s = await readSettings();
   const defaults = ['pragmatic','habanero','cq9','jili','pg','pgsoft','booongo','netent','relax','nolimit','hacksaw','dreamtech','homeslot','playson','evoplay','dragoonsoft','fachai','jdb','avatarux','bigtimegaming','quickspin','redtiger','playngo','thunderkick','wazdan','spinomenal','yggdrasil','bgaming','gameart','greentube','novomatic','platipus','popok','redrake','rubyplay','amatic','bfgames','blueprint','booming','caletagaming','fantasma','kagaming','kalamba','mancala','merkur','octoplay','petersons','retrogames','revolver','netgame','playstar','fatpanda','yolted','1x2 gaming','7-mojos','smartsoft','microgaming plus slo'];
   res.json({ success: true, data: s.slotVendors || defaults });
 });
 
-router.post('/slot-vendors', (req, res) => {
+router.post('/slot-vendors', async (req, res) => {
   const vendors = req.body && req.body.vendors;
   if (!Array.isArray(vendors)) return res.json({ success: false, error: '올바른 형식이 아닙니다.' });
-  const s = readSettings();
+  const s = await readSettings();
   s.slotVendors = vendors.map(v => v.trim().toLowerCase()).filter(Boolean);
-  writeSettings(s);
+  await writeSettings(s);
   res.json({ success: true, data: s.slotVendors });
 });
 
 // ══ 설정 및 조회 API ══
 
 // 최대당첨금 알람 내역
-router.get('/maxwin-logs', (_req, res) => {
+router.get('/maxwin-logs', async (_req, res) => {
   let logs = [];
-  try { logs = readData('maxwin_logs.json'); } catch(e) {}
+  try { logs = await dal.readData('maxwin_logs.json'); } catch(e) {}
   res.json({ success: true, data: logs });
 });
 
 // 통합 설정 GET/POST
-router.get('/settings', (_req, res) => {
-  res.json({ success: true, data: readSettings() });
+router.get('/settings', async (_req, res) => {
+  res.json({ success: true, data: await readSettings() });
 });
-router.post('/settings', (req, res) => {
-  const s = readSettings();
+router.post('/settings', async (req, res) => {
+  const s = await readSettings();
   Object.assign(s, req.body);
-  writeSettings(s);
+  await writeSettings(s);
   res.json({ success: true });
 });
 
 // 화이트리스트 IP 관리
-router.get('/whitelist-ips', (_req, res) => {
-  const s = readSettings();
+router.get('/whitelist-ips', async (_req, res) => {
+  const s = await readSettings();
   res.json({ success: true, data: s.whitelistIps || [] });
 });
-router.post('/whitelist-ips', (req, res) => {
-  const s = readSettings();
+router.post('/whitelist-ips', async (req, res) => {
+  const s = await readSettings();
   if (!s.whitelistIps) s.whitelistIps = [];
   const { ip, memo } = req.body;
   if (!ip) return res.json({ success: false, error: 'IP를 입력하세요.' });
   if (s.whitelistIps.find(b => b.ip === ip)) return res.json({ success: false, error: '이미 등록된 IP입니다.' });
   s.whitelistIps.push({ ip, memo: memo || '', createdAt: new Date().toISOString() });
-  writeSettings(s);
+  await writeSettings(s);
   res.json({ success: true });
 });
-router.delete('/whitelist-ips/:ip', (req, res) => {
-  const s = readSettings();
+router.delete('/whitelist-ips/:ip', async (req, res) => {
+  const s = await readSettings();
   s.whitelistIps = (s.whitelistIps || []).filter(b => b.ip !== req.params.ip);
-  writeSettings(s);
+  await writeSettings(s);
   res.json({ success: true });
 });
 
 // 차단 IP 관리
-router.get('/blocked-ips', (_req, res) => {
-  const s = readSettings();
+router.get('/blocked-ips', async (_req, res) => {
+  const s = await readSettings();
   res.json({ success: true, data: s.blockedIps || [] });
 });
-router.post('/blocked-ips', (req, res) => {
-  const s = readSettings();
+router.post('/blocked-ips', async (req, res) => {
+  const s = await readSettings();
   if (!s.blockedIps) s.blockedIps = [];
   const { ip, reason } = req.body;
   if (!ip) return res.json({ success: false, error: 'IP를 입력하세요.' });
   if (s.blockedIps.find(b => b.ip === ip)) return res.json({ success: false, error: '이미 차단된 IP입니다.' });
   s.blockedIps.push({ ip, reason: reason || '', createdAt: new Date().toISOString() });
-  writeSettings(s);
+  await writeSettings(s);
   res.json({ success: true });
 });
-router.delete('/blocked-ips/:ip', (req, res) => {
-  const s = readSettings();
+router.delete('/blocked-ips/:ip', async (req, res) => {
+  const s = await readSettings();
   s.blockedIps = (s.blockedIps || []).filter(b => b.ip !== req.params.ip);
-  writeSettings(s);
+  await writeSettings(s);
   res.json({ success: true });
 });
 
 // 유저 차단 IP 관리
-router.get('/blocked-user-ips', (_req, res) => {
-  const s = readSettings();
+router.get('/blocked-user-ips', async (_req, res) => {
+  const s = await readSettings();
   res.json({ success: true, data: s.blockedUserIps || [] });
 });
-router.post('/blocked-user-ips', (req, res) => {
-  const s = readSettings();
+router.post('/blocked-user-ips', async (req, res) => {
+  const s = await readSettings();
   if (!s.blockedUserIps) s.blockedUserIps = [];
   const { ip, reason } = req.body;
   if (!ip) return res.json({ success: false, error: 'IP를 입력하세요.' });
   if (s.blockedUserIps.find(b => b.ip === ip)) return res.json({ success: false, error: '이미 차단된 IP입니다.' });
   s.blockedUserIps.push({ ip, reason: reason || '', createdAt: new Date().toISOString() });
-  writeSettings(s);
+  await writeSettings(s);
   res.json({ success: true });
 });
-router.delete('/blocked-user-ips/:ip', (req, res) => {
-  const s = readSettings();
+router.delete('/blocked-user-ips/:ip', async (req, res) => {
+  const s = await readSettings();
   s.blockedUserIps = (s.blockedUserIps || []).filter(b => b.ip !== req.params.ip);
-  writeSettings(s);
+  await writeSettings(s);
   res.json({ success: true });
 });
 
 // 로그인 기록
-router.get('/login-logs', (_req, res) => {
+router.get('/login-logs', async (_req, res) => {
   let logs = [];
-  try { logs = readData('login_logs.json'); } catch(e) {}
+  try { logs = await dal.readData('login_logs.json'); } catch(e) {}
   res.json({ success: true, data: logs });
 });
 
-// 도메인 목록 (수동 등록)
+// 도메인 목록 (수동 등록) - 아직 JSON 파일 유지
 const domainsPath = path.join(__dirname, '..', 'data/collected_domains.json');
 router.get('/domains', (_req, res) => {
   let domains = {};

@@ -4,35 +4,25 @@
 // ══════════════════════════════════════
 const express = require('express');
 const router  = express.Router();
-const fs      = require('fs');
-const path    = require('path');
 
+const dal      = require('../lib/dal');
 const telegram = require('../lib/telegram');
 
-function readData(file) {
-  const p = path.join(__dirname, '../data', file);
-  return JSON.parse(fs.readFileSync(p, 'utf8'));
-}
-function writeData(file, data) {
-  const p = path.join(__dirname, '../data', file);
-  fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf8');
-}
-
 // ── 롤링전환 로그 저장 ──
-router.post('/rolling-convert-log', (req, res) => {
+router.post('/rolling-convert-log', async (req, res) => {
   let logs = [];
-  try { logs = readData('money_log_rolling-convert.json'); } catch(e) {}
+  try { logs = await dal.readData('money_log_rolling-convert.json'); } catch(e) {}
   if (!Array.isArray(logs)) logs = [];
   logs.unshift(req.body);
   if (logs.length > 5000) logs = logs.slice(0, 5000);
-  writeData('money_log_rolling-convert.json', logs);
+  await dal.writeData('money_log_rolling-convert.json', logs);
   res.json({ success: true });
 });
 
 // ── 공지사항 (읽기 전용, 도메인 필터링) ──
-router.get('/notices', (req, res) => {
+router.get('/notices', async (req, res) => {
   try {
-    const all = readData('notices.json');
+    const all = await dal.readData('notices.json');
     const host = (req.headers['host'] || '').replace(/:\d+$/, '').toLowerCase();
     const filtered = all.filter(n => {
       if (!n.domains || n.domains.length === 0) return true; // 전체
@@ -43,15 +33,15 @@ router.get('/notices', (req, res) => {
 });
 
 // ── 이벤트 (읽기 전용) ──
-router.get('/events', (_req, res) => {
-  try { res.json({ success: true, data: readData('events.json') }); }
+router.get('/events', async (_req, res) => {
+  try { res.json({ success: true, data: await dal.readData('events.json') }); }
   catch(e) { res.json({ success: true, data: [] }); }
 });
 
 // ── 문의 등록 ──
-router.post('/inquiries', (req, res) => {
+router.post('/inquiries', async (req, res) => {
   let list = [];
-  try { list = readData('inquiries.json'); } catch(e) {}
+  try { list = await dal.readData('inquiries.json'); } catch(e) {}
 
   // 입금계좌요청 중복 방지: 같은 유저의 미답변 요청이 있으면 차단
   if (req.body.title === '입금계좌요청') {
@@ -61,7 +51,7 @@ router.post('/inquiries', (req, res) => {
 
   const item = { ...req.body, id: Date.now() + '' + Math.floor(Math.random() * 1000) };
   list.unshift(item);
-  writeData('inquiries.json', list);
+  await dal.writeData('inquiries.json', list);
 
   // 텔레그램 알림
   telegram.send('inquiry', '📩 <b>고객문의 접수</b>\n회원: ' + (item.userId || '') + '\n제목: ' + (item.title || ''));
@@ -70,9 +60,9 @@ router.post('/inquiries', (req, res) => {
 });
 
 // ── 내 문의 목록 ──
-router.get('/inquiries', (req, res) => {
+router.get('/inquiries', async (req, res) => {
   let list = [];
-  try { list = readData('inquiries.json'); } catch(e) {}
+  try { list = await dal.readData('inquiries.json'); } catch(e) {}
   if (req.query.userId) list = list.filter(i => i.userId === req.query.userId);
   if (req.query.status) list = list.filter(i => i.status === req.query.status);
   list = list.filter(i => !i.userDeleted);
@@ -80,35 +70,34 @@ router.get('/inquiries', (req, res) => {
 });
 
 // ── 문의 전체삭제 (유저: 소프트삭제) ──
-router.delete('/inquiries/delete-all', (req, res) => {
+router.delete('/inquiries/delete-all', async (req, res) => {
   let list = [];
-  try { list = readData('inquiries.json'); } catch(e) {}
+  try { list = await dal.readData('inquiries.json'); } catch(e) {}
   const userId = req.query.userId;
   list.forEach(i => { if (i.userId === userId) i.userDeleted = true; });
-  writeData('inquiries.json', list);
+  await dal.writeData('inquiries.json', list);
   res.json({ success: true });
 });
 
 // ── 문의 삭제 (유저: 소프트삭제) ──
-router.delete('/inquiries/:id', (req, res) => {
+router.delete('/inquiries/:id', async (req, res) => {
   let list = [];
-  try { list = readData('inquiries.json'); } catch(e) {}
+  try { list = await dal.readData('inquiries.json'); } catch(e) {}
   const item = list.find(i => i.id === req.params.id);
-  if (item) { item.userDeleted = true; writeData('inquiries.json', list); }
+  if (item) { item.userDeleted = true; await dal.writeData('inquiries.json', list); }
   res.json({ success: true });
 });
 
 // ── 충환전 신청 ──
-router.post('/transfers', (req, res) => {
+router.post('/transfers', async (req, res) => {
   let list = [];
-  try { list = readData('transfers.json'); } catch(e) {}
+  try { list = await dal.readData('transfers.json'); } catch(e) {}
   const item = { ...req.body, id: Date.now() + '' + Math.floor(Math.random() * 1000) };
   const reqAmount = Number(item.amount) || 0;
 
   // 이체 한도 체크
   try {
-    const settingsPath = require('path').join(__dirname, '../data/admin_settings.json');
-    const settings = JSON.parse(require('fs').readFileSync(settingsPath, 'utf8'));
+    const settings = await dal.readData('admin_settings.json');
     const tl = settings.transferLimit || {};
     // 현재 시각 (HH:MM)
     const nowD = new Date();
@@ -164,7 +153,7 @@ router.post('/transfers', (req, res) => {
   // 환전 신청 시 즉시 보유머니 차감
   if (item.type === 'withdraw' && item.userId) {
     let users = [];
-    try { users = readData('users.json'); } catch(e) {}
+    try { users = await dal.readData('users.json'); } catch(e) {}
     const u = users.find(u => u.username === item.userId);
     if (u) {
       const amt = Number(item.amount) || 0;
@@ -172,12 +161,12 @@ router.post('/transfers', (req, res) => {
         return res.json({ success: false, error: '보유 금액이 부족합니다.' });
       }
       u.money = (u.money || 0) - amt;
-      writeData('users.json', users);
+      await dal.writeData('users.json', users);
     }
   }
 
   list.unshift(item);
-  writeData('transfers.json', list);
+  await dal.writeData('transfers.json', list);
 
   // 텔레그램 알림
   const tgType = item.type === 'deposit' ? 'deposit' : 'withdraw';
@@ -189,9 +178,9 @@ router.post('/transfers', (req, res) => {
 });
 
 // ── 내 충환전 목록 ──
-router.get('/transfers', (req, res) => {
+router.get('/transfers', async (req, res) => {
   let list = [];
-  try { list = readData('transfers.json'); } catch(e) {}
+  try { list = await dal.readData('transfers.json'); } catch(e) {}
   if (req.query.userId) list = list.filter(t => t.userId === req.query.userId);
   if (req.query.type)   list = list.filter(t => t.type   === req.query.type);
   if (req.query.status) list = list.filter(t => t.status === req.query.status);
@@ -199,72 +188,71 @@ router.get('/transfers', (req, res) => {
 });
 
 // ── 쪽지 목록 (읽기 전용) ──
-router.get('/messages', (req, res) => {
+router.get('/messages', async (req, res) => {
   let list = [];
-  try { list = readData('messages.json'); } catch(e) {}
+  try { list = await dal.readData('messages.json'); } catch(e) {}
   if (req.query.userId) list = list.filter(m => m.userId === req.query.userId);
   list = list.filter(m => !m.userDeleted);
   res.json({ success: true, data: list });
 });
 
 // ── 쪽지 읽음 처리 ──
-router.patch('/messages/:id/read', (req, res) => {
+router.patch('/messages/:id/read', async (req, res) => {
   let list = [];
-  try { list = readData('messages.json'); } catch(e) {}
+  try { list = await dal.readData('messages.json'); } catch(e) {}
   const item = list.find(m => m.id === req.params.id);
-  if (item) { item.read = true; writeData('messages.json', list); }
+  if (item) { item.read = true; await dal.writeData('messages.json', list); }
   res.json({ success: true });
 });
 
 // ── 쪽지 전체읽기 ──
-router.patch('/messages/read-all', (req, res) => {
+router.patch('/messages/read-all', async (req, res) => {
   let list = [];
-  try { list = readData('messages.json'); } catch(e) {}
+  try { list = await dal.readData('messages.json'); } catch(e) {}
   const userId = req.body.userId;
   list.forEach(m => { if (m.userId === userId) m.read = true; });
-  writeData('messages.json', list);
+  await dal.writeData('messages.json', list);
   res.json({ success: true });
 });
 
 // ── 쪽지 전체삭제 (유저: 소프트삭제) ──
-router.delete('/messages/delete-all', (req, res) => {
+router.delete('/messages/delete-all', async (req, res) => {
   let list = [];
-  try { list = readData('messages.json'); } catch(e) {}
+  try { list = await dal.readData('messages.json'); } catch(e) {}
   const userId = req.query.userId;
   list.forEach(m => { if (m.userId === userId) m.userDeleted = true; });
-  writeData('messages.json', list);
+  await dal.writeData('messages.json', list);
   res.json({ success: true });
 });
 
 // ── 쪽지 삭제 (유저: 소프트삭제) ──
-router.delete('/messages/:id', (req, res) => {
+router.delete('/messages/:id', async (req, res) => {
   let list = [];
-  try { list = readData('messages.json'); } catch(e) {}
+  try { list = await dal.readData('messages.json'); } catch(e) {}
   const item = list.find(m => m.id === req.params.id);
-  if (item) { item.userDeleted = true; writeData('messages.json', list); }
+  if (item) { item.userDeleted = true; await dal.writeData('messages.json', list); }
   res.json({ success: true });
 });
 
 // ── 로컬 머니 변경 (게임 종료 시 잔액 복원용) ──
-router.post('/users/money-local', (req, res) => {
+router.post('/users/money-local', async (req, res) => {
   const { username, amount: rawAmount } = req.body;
   const amount = Number(rawAmount);
   if (!username || !amount || isNaN(amount)) return res.json({ success: false });
   let users = [];
-  try { users = readData('users.json'); } catch(e) { return res.json({ success: false }); }
+  try { users = await dal.readData('users.json'); } catch(e) { return res.json({ success: false }); }
   const u = users.find(u => u.username === username);
   if (!u) return res.json({ success: false });
   const before = u.money || 0;
   u.money = Math.max(0, before + amount);
-  writeData('users.json', users);
+  await dal.writeData('users.json', users);
   res.json({ success: true, before, after: u.money });
 });
 
 // ── 공개 설정 (한줄공지, 자동로그아웃) ──
-router.get('/public-settings', (_req, res) => {
+router.get('/public-settings', async (_req, res) => {
   try {
-    const settingsPath = require('path').join(__dirname, '../data/admin_settings.json');
-    const s = JSON.parse(require('fs').readFileSync(settingsPath, 'utf8'));
+    const s = await dal.readData('admin_settings.json');
     res.json({
       success: true,
       noticeLine: s.noticeLine || '',
@@ -277,11 +265,11 @@ router.get('/public-settings', (_req, res) => {
 });
 
 // ── 최근 충전 승인 확인 (유저별) ──
-router.get('/last-approved-deposit', (req, res) => {
+router.get('/last-approved-deposit', async (req, res) => {
   const { username, since } = req.query;
   if (!username) return res.json({ success: false });
   try {
-    const transfers = readData('transfers.json');
+    const transfers = await dal.readData('transfers.json');
     const found = transfers.find(function(t) {
       return t.userId === username && t.type === 'deposit' && t.status === 'approved'
         && t.processedAt && t.processedAt > (since || '');

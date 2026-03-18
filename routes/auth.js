@@ -1,22 +1,10 @@
 const express = require('express');
 const router  = express.Router();
-const fs      = require('fs');
-const path    = require('path');
+const dal     = require('../lib/dal');
 const hl      = require('../lib/honorlink');
 const cs      = require('../lib/csapi');
 const txCollector = require('../lib/transactionCollector');
 const telegram = require('../lib/telegram');
-
-const USERS_FILE = path.join(__dirname, '../data/users.json');
-
-function readData(file) {
-  const p = path.join(__dirname, '../data', file);
-  return JSON.parse(fs.readFileSync(p, 'utf8'));
-}
-function writeData(file, data) {
-  const p = path.join(__dirname, '../data', file);
-  fs.writeFileSync(p, JSON.stringify(data, null, 2), 'utf8');
-}
 
 // ── HL API 캐시 ──
 const _hlCache = {};
@@ -73,8 +61,8 @@ function findParentGameGroup(nodes, username) {
   return null;
 }
 
-function readUsers()       { try { return JSON.parse(fs.readFileSync(USERS_FILE,'utf8')); } catch(e){ return []; } }
-function writeUsers(data)  { fs.writeFileSync(USERS_FILE, JSON.stringify(data, null, 2), 'utf8'); }
+async function readUsers() { try { return await dal.readData('users.json'); } catch(e) { return []; } }
+async function writeUsers(data) { await dal.writeData('users.json', data); }
 
 // 온라인 유저 ID 목록 반환
 function getOnlineIds() {
@@ -87,7 +75,7 @@ const _settledSet = new Set(); // 이미 정산된 유저 ID (중복 방지)
 
 async function _autoSettleOfflineUsers() {
   const now = Date.now();
-  const users = readUsers();
+  const users = await readUsers();
 
   for (const userId of Object.keys(onlineMap)) {
     // 아직 온라인이면 스킵
@@ -127,14 +115,14 @@ async function _autoSettleOfflineUsers() {
       const totalRecovered = gameBal + csBal;
 
       // 로컬 머니에 추가 + api 동기화 해제
-      const freshUsers = readUsers();
+      const freshUsers = await readUsers();
       const freshUser = freshUsers.find(u => u.id === userId);
       if (freshUser) {
         if (totalRecovered > 0) {
           freshUser.money = (freshUser.money || 0) + totalRecovered;
         }
         freshUser.api = [];
-        writeUsers(freshUsers);
+        await writeUsers(freshUsers);
         console.log('[AutoSettle] ' + user.username + ': HL=' + gameBal + ' CS=' + csBal + ' → local, api cleared');
       }
     } catch(e) {
@@ -160,7 +148,7 @@ setTimeout(_autoSettleOfflineUsers, 30 * 1000);
 
 // ── 서버 시작 시: onlineMap에 없는데 api가 남아있는 유저 정리 ──
 async function _cleanupStaleApi() {
-  const users = readUsers();
+  const users = await readUsers();
   const onlineIds = getOnlineIds();
   let changed = false;
   for (const u of users) {
@@ -191,43 +179,41 @@ async function _cleanupStaleApi() {
       console.log('[Cleanup] ' + u.username + ': stale api cleared');
     }
   }
-  if (changed) writeUsers(users);
+  if (changed) await writeUsers(users);
 }
 setTimeout(_cleanupStaleApi, 5 * 1000);
 
 // ── 추천코드 확인 ──
-router.get('/check-referral', (req, res) => {
+router.get('/check-referral', async (req, res) => {
   const code = (req.query.code || '').trim();
   if (!code) return res.json({ success: false });
-  const refPath = path.join(__dirname, '../data/referrals.json');
   let refs = [];
-  try { refs = JSON.parse(fs.readFileSync(refPath, 'utf8')); } catch(e) {}
+  try { refs = await dal.readData('referrals.json'); } catch(e) {}
   const found = refs.find(r => r.code === code);
   res.json({ success: true, valid: !!found });
 });
 
 // ── 회원가입 ──
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
   const { username, nickname, password, phone, bank, account, holder, referral } = req.body;
   if (!username || !password) return res.json({ success: false, error: '아이디와 비밀번호를 입력해주세요.' });
   if (username.length < 4) return res.json({ success: false, error: '아이디는 4자 이상이어야 합니다.' });
 
-  const users = readUsers();
+  const users = await readUsers();
   if (users.find(u => u.username === username)) return res.json({ success: false, error: '이미 사용 중인 아이디입니다.' });
 
   // 추천코드 유효성 체크
   let referredBy = null;
   if (referral) {
-    const refPath = path.join(__dirname, '../data/referrals.json');
     let refs = [];
-    try { refs = JSON.parse(fs.readFileSync(refPath, 'utf8')); } catch(e) {}
+    try { refs = await dal.readData('referrals.json'); } catch(e) {}
     const found = refs.find(r => r.code === referral);
     if (!found) return res.json({ success: false, error: '유효하지 않은 추천코드입니다.' });
     // 추천코드 사용 기록
     found.usedCount = (found.usedCount || 0) + 1;
     if (!found.usedBy) found.usedBy = [];
     found.usedBy.push(username);
-    fs.writeFileSync(refPath, JSON.stringify(refs, null, 2), 'utf8');
+    await dal.writeData('referrals.json', refs);
     referredBy = found.userId;
   }
 
@@ -254,7 +240,7 @@ router.post('/register', (req, res) => {
   };
 
   users.push(newUser);
-  writeUsers(users);
+  await writeUsers(users);
 
   // 텔레그램 알림
   telegram.send('signup', '🆕 <b>회원가입 신청</b>\n아이디: ' + username + '\n닉네임: ' + (nickname || username) + '\n시간: ' + newUser.registeredAt);
@@ -263,12 +249,11 @@ router.post('/register', (req, res) => {
 });
 
 // ── 로그인 ──
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   // 차단 IP 체크
   const clientIp = req.ip || req.headers['x-forwarded-for'] || '0.0.0.0';
   try {
-    const settingsPath = path.join(__dirname, '../data/admin_settings.json');
-    const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    const settings = await dal.readData('admin_settings.json');
     const blockedIps = settings.blockedIps || [];
     if (blockedIps.some(b => b.ip === clientIp)) {
       return res.json({ success: false, error: '차단된 IP입니다.' });
@@ -279,8 +264,7 @@ router.post('/login', (req, res) => {
 
   // 로그인 실패 잠금 체크
   try {
-    const settingsPath2 = path.join(__dirname, '../data/admin_settings.json');
-    const s2 = JSON.parse(fs.readFileSync(settingsPath2, 'utf8'));
+    const s2 = await dal.readData('admin_settings.json');
     const sec2 = s2.security || {};
     if (sec2.loginLimit !== false && loginFailMap[username]) {
       const fail = loginFailMap[username];
@@ -291,14 +275,13 @@ router.post('/login', (req, res) => {
     }
   } catch(e) {}
 
-  const users = readUsers();
+  const users = await readUsers();
   const user  = users.find(u => u.username === username && u.password === password);
 
   if (!user) {
     // 로그인 실패 카운트
     try {
-      const settingsPath3 = path.join(__dirname, '../data/admin_settings.json');
-      const s3 = JSON.parse(fs.readFileSync(settingsPath3, 'utf8'));
+      const s3 = await dal.readData('admin_settings.json');
       const sec3 = s3.security || {};
       if (sec3.loginLimit !== false) {
         const maxAttempt = sec3.maxAttempt || 10;
@@ -325,7 +308,7 @@ router.post('/login', (req, res) => {
   // 접속 정보 업데이트
   user.lastLoginAt = new Date().toISOString();
   user.lastLoginIp = req.ip || req.headers['x-forwarded-for'] || '0.0.0.0';
-  writeUsers(users);
+  await writeUsers(users);
 
   // 중복 로그인 체크 — 유저는 항상 단일 세션, 관리자/파트너는 설정에 따라
   const isAdmin = user.role === 'admin' || user.role === 'head' || user.role === 'subhead' || user.role === 'distributor' || user.role === 'store';
@@ -337,8 +320,7 @@ router.post('/login', (req, res) => {
   } else {
     // 관리자/파트너: dupLogin 설정 확인
     try {
-      const settingsPath2 = path.join(__dirname, '../data/admin_settings.json');
-      const s2 = JSON.parse(fs.readFileSync(settingsPath2, 'utf8'));
+      const s2 = await dal.readData('admin_settings.json');
       const dupLogin = s2.security && s2.security.dupLogin;
       if (!dupLogin && sessionTokenMap[user.id]) {
         kickedSet.add(user.id + ':' + sessionTokenMap[user.id]);
@@ -357,7 +339,7 @@ router.post('/login', (req, res) => {
   // 로그인 기록 저장
   try {
     let logs = [];
-    try { logs = readData('login_logs.json'); } catch(e) {}
+    try { logs = await dal.readData('login_logs.json'); } catch(e) {}
     logs.unshift({
       username: user.username,
       nickname: user.nickname || '',
@@ -366,7 +348,7 @@ router.post('/login', (req, res) => {
       datetime: user.lastLoginAt
     });
     if (logs.length > 500) logs = logs.slice(0, 500);
-    writeData('login_logs.json', logs);
+    await dal.writeData('login_logs.json', logs);
   } catch(e) {}
 
   res.json({ success: true, data: { id: user.id, username: user.username, nickname: user.nickname, money: user.money, balance: user.money, gameGroup: user.gameGroup || '', bank: user.bank || '', account: user.account || '', holder: user.holder || '', sessionToken: sessionToken } });
@@ -394,20 +376,20 @@ router.post('/ping', (req, res) => {
 });
 
 // ── 유저 gameGroup 조회 ──
-router.get('/game-group', (req, res) => {
+router.get('/game-group', async (req, res) => {
   const { username } = req.query;
   if (!username) return res.json({ gameGroup: '' });
-  const users = readUsers();
+  const users = await readUsers();
   const user = users.find(u => u.username === username || u.id === username);
   if (!user) return res.json({ gameGroup: '' });
   res.json({ gameGroup: user.gameGroup || '' });
 });
 
 // ── 유저 프로필 조회 (은행/계좌/예금주 등) ──
-router.get('/profile', (req, res) => {
+router.get('/profile', async (req, res) => {
   const { userId } = req.query;
   if (!userId) return res.json({ success: false });
-  const users = readUsers();
+  const users = await readUsers();
   const user = users.find(u => u.id === userId);
   if (!user) return res.json({ success: false });
   res.json({ success: true, bank: user.bank || '', account: user.account || '', holder: user.holder || '' });
@@ -417,7 +399,7 @@ router.get('/profile', (req, res) => {
 router.get('/balance', async (req, res) => {
   const { userId } = req.query;
   if (!userId) return res.json({ success: false });
-  const users = readUsers();
+  const users = await readUsers();
   const user = users.find(u => u.id === userId);
   if (!user) return res.json({ success: false });
 
@@ -458,7 +440,7 @@ async function _delayedRecoverCheck(username, source, target) {
       await new Promise(r => setTimeout(r, delay));
 
       // 유저가 다시 게임 전환했으면 중단
-      const checkUsers = readUsers();
+      const checkUsers = await readUsers();
       const checkUser = checkUsers.find(u => u.username === username);
       if (!checkUser) break;
       // source API에 다시 연동됐으면 = 유저가 다시 전환한 것 → 중단
@@ -488,7 +470,7 @@ async function _delayedRecoverCheck(username, source, target) {
           console.log('[DelayedRecover] ' + username + ': ' + source + ' leftover=' + leftover + ' after ' + (delay/1000) + 's');
 
           // 최신 유저 데이터로 다시 확인
-          const freshUsers = readUsers();
+          const freshUsers = await readUsers();
           const freshUser = freshUsers.find(u => u.username === username);
           if (!freshUser) continue;
 
@@ -500,7 +482,7 @@ async function _delayedRecoverCheck(username, source, target) {
               console.log('[DelayedRecover] ' + username + ': auto-deposit ' + leftover + ' to csapi');
             } catch(e) {
               freshUser.money = (freshUser.money || 0) + leftover;
-              writeUsers(freshUsers);
+              await writeUsers(freshUsers);
             }
           } else if (isTargetActive && target === 'honorlink') {
             try {
@@ -508,11 +490,11 @@ async function _delayedRecoverCheck(username, source, target) {
               console.log('[DelayedRecover] ' + username + ': auto-deposit ' + leftover + ' to honorlink');
             } catch(e) {
               freshUser.money = (freshUser.money || 0) + leftover;
-              writeUsers(freshUsers);
+              await writeUsers(freshUsers);
             }
           } else {
             freshUser.money = (freshUser.money || 0) + leftover;
-            writeUsers(freshUsers);
+            await writeUsers(freshUsers);
           }
         }
       } catch(e) {
@@ -528,7 +510,7 @@ async function _delayedRecoverCheck(username, source, target) {
 router.post('/recover-for-switch', async (req, res) => {
   const { username, target } = req.body; // target: 'honorlink' 또는 'csapi' (이동할 곳)
   if (!username || !target) return res.json({ success: false });
-  const users = readUsers();
+  const users = await readUsers();
   const user = users.find(u => u.username === username);
   if (!user) return res.json({ success: false });
 
@@ -566,7 +548,7 @@ router.post('/recover-for-switch', async (req, res) => {
   if (recovered > 0) {
     user.money = (user.money || 0) + recovered;
   }
-  writeUsers(users);
+  await writeUsers(users);
 
   // 백그라운드에서 지연 재확인 (당첨금 타이밍 이슈 방지)
   if (source) {
@@ -581,7 +563,7 @@ router.post('/recover-for-switch', async (req, res) => {
 // ── 온라인 목록 (어드민용) ──
 router.get('/online', async (req, res) => {
   const ids   = getOnlineIds();
-  const users = readUsers();
+  const users = await readUsers();
   const onlineUsers = users.filter(u => ids.includes(u.id));
 
   // 오늘 트랜잭션 조회 (한국시간 기준 오늘 00:00 ~ 23:59)
@@ -592,7 +574,7 @@ router.get('/online', async (req, res) => {
 
   let allTx = [];
   try {
-    const txResult = txCollector.query({ perPage: 100000 });
+    const txResult = await txCollector.query({ perPage: 100000 });
     allTx = txResult.data || [];
   } catch(e) {}
 

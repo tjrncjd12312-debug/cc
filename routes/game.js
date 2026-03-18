@@ -7,14 +7,8 @@ const cs      = require('../lib/csapi');
 const path    = require('path');
 const fs      = require('fs');
 const telegram = require('../lib/telegram');
+const dal     = require('../lib/dal');
 const { gameSessionMap } = require('./auth');
-
-function readUsers() {
-  try { return JSON.parse(fs.readFileSync(path.join(__dirname, '../data/users.json'), 'utf8')); } catch(e) { return []; }
-}
-function writeUsers(data) {
-  fs.writeFileSync(path.join(__dirname, '../data/users.json'), JSON.stringify(data, null, 2), 'utf8');
-}
 
 // ── CS API 회원가입
 router.post('/register', async (req, res) => {
@@ -24,13 +18,13 @@ router.post('/register', async (req, res) => {
       username: req.body.username || req.body.userid,
     });
     // api 필드에 csapi 추가
-    const users = readUsers();
+    const users = await dal.readData('users.json');
     const user = users.find(u => u.username === req.body.userid);
     if (user) {
       if (!user.api) user.api = [];
       if (!user.api.includes('csapi')) {
         user.api.push('csapi');
-        writeUsers(users);
+        await dal.writeData('users.json', users);
       }
     }
     res.json(r);
@@ -286,7 +280,7 @@ router.post('/launch', async (req, res) => {
   try {
     // 베팅 권한 체크
     const userid = req.body.userid;
-    const users = readUsers();
+    const users = await dal.readData('users.json');
     const user = users.find(u => u.username === userid);
     if (user) {
       if (user.casino === 'OFF') return res.json({ result: 0, msg: '현재 게임사가 점검중입니다.' });
@@ -315,13 +309,13 @@ router.post('/launch', async (req, res) => {
         gameType: 'csapi',
         startedAt: new Date().toISOString(),
       };
-      const freshUsers = readUsers();
+      const freshUsers = await dal.readData('users.json');
       const freshUser = freshUsers.find(u => u.username === userid);
       if (freshUser) {
         if (!freshUser.api) freshUser.api = [];
         if (!freshUser.api.includes('csapi')) {
           freshUser.api.push('csapi');
-          writeUsers(freshUsers);
+          await dal.writeData('users.json', freshUsers);
         }
       }
     }
@@ -337,17 +331,17 @@ router.post('/betting', async (req, res) => {
 
     // 최대당첨금 체크
     try {
-      const settingsPath = require('path').join(__dirname, '../data/admin_settings.json');
-      const settings = JSON.parse(require('fs').readFileSync(settingsPath, 'utf8'));
+      const settings = await dal.readData('admin_settings.json');
       const maxSlot = settings.maxwinSlot || 5000000;
       const maxCasino = settings.maxwinCasino || 10000000;
-      const logPath = require('path').join(__dirname, '../data/maxwin_logs.json');
       let logs = [];
-      try { logs = JSON.parse(require('fs').readFileSync(logPath, 'utf8')); } catch(e) {}
+      try { logs = await dal.readData('maxwin_logs.json'); } catch(e) {}
+      if (!Array.isArray(logs)) logs = [];
       const existingIds = new Set(logs.map(l => l.roundId));
 
       const liveNames = ['evolution','pragmatic play live','dream gaming','sa gaming','sexy gaming','wm casino','asia gaming','micro gaming live','all bet','big gaming','skywind live'];
       const txList = r.data || r.list || [];
+      let changed = false;
       if (Array.isArray(txList)) {
         txList.forEach(tx => {
           const winAmt = Number(tx.winAmount || tx.win || 0);
@@ -369,12 +363,15 @@ router.post('/betting', async (req, res) => {
             };
             logs.unshift(logEntry);
             existingIds.add(roundId);
+            changed = true;
             // 텔레그램 알림
             telegram.send('maxwin', '🎰 <b>최대당첨금 알림</b>\n구분: ' + (type === 'slot' ? '슬롯' : '카지노') + '\n회원: ' + logEntry.username + '\n게임: ' + logEntry.gameName + '\n당첨금: ' + winAmt.toLocaleString() + '원');
           }
         });
         if (logs.length > 200) logs = logs.slice(0, 200);
-        require('fs').writeFileSync(logPath, JSON.stringify(logs), 'utf8');
+        if (changed) {
+          await dal.writeData('maxwin_logs.json', logs);
+        }
       }
     } catch(e) {}
 
@@ -420,7 +417,7 @@ router.get('/detail/evo', async (req, res) => {
 
 // ── 로컬 저장된 CS 트랜잭션 조회 (rate limit 없음)
 const csTxCollector = require('../lib/csTransactionCollector');
-router.get('/transactions/local', (req, res) => {
+router.get('/transactions/local', async (req, res) => {
   try {
     const usernames = req.query.usernames
       ? req.query.usernames.split(',').filter(Boolean)
@@ -428,7 +425,7 @@ router.get('/transactions/local', (req, res) => {
     const types = req.query.types
       ? req.query.types.split(',').filter(Boolean)
       : [];
-    const result = csTxCollector.query({
+    const result = await csTxCollector.query({
       start:     req.query.start,
       end:       req.query.end,
       usernames: usernames,

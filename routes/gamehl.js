@@ -6,6 +6,7 @@ const router  = express.Router();
 const path    = require('path');
 const fs      = require('fs');
 const hl      = require('../lib/honorlink');
+const dal     = require('../lib/dal');
 const { gameSessionMap } = require('./auth');
 
 // ── API 캐시 (Rate Limit 방지) ──
@@ -22,15 +23,15 @@ function cachedGet(endpoint, params, ttlMs) {
   });
 }
 
-function readGameSettings() {
+async function readGameSettings() {
   try {
-    return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'games.json'), 'utf8'));
+    return await dal.readData('games.json');
   } catch(e) { return {}; }
 }
 
 // ── 게임 노출설정 (유저용)
-router.get('/settings', (req, res) => {
-  res.json(readGameSettings());
+router.get('/settings', async (req, res) => {
+  res.json(await readGameSettings());
 });
 
 // ── 에이전트 정보 (10초 캐시)
@@ -155,9 +156,8 @@ router.post('/launch', async (req, res) => {
     const nickname = req.body.nickname || username;
 
     // users.json에서 해당 유저의 api 필드 확인
-    const usersPath = path.join(__dirname, '..', 'data', 'users.json');
     let users = [];
-    try { users = JSON.parse(fs.readFileSync(usersPath, 'utf8')); } catch(e) {}
+    try { users = await dal.readData('users.json'); } catch(e) {}
     const user = users.find(u => u.username === username);
 
     // 베팅 권한 체크
@@ -171,7 +171,7 @@ router.post('/launch', async (req, res) => {
     }
 
     // 게임 제한(점검/차단) 체크
-    const gameSettings = readGameSettings();
+    const gameSettings = await readGameSettings();
     const hiddenList = (gameSettings.hiddenGames || {})[req.body.vendor] || [];
     if (hiddenList.indexOf(String(req.body.game_id)) >= 0) {
       return res.status(403).json({ error: '해당 게임은 현재 점검중입니다.' });
@@ -188,14 +188,14 @@ router.post('/launch', async (req, res) => {
         if (user) {
           if (!user.api) user.api = [];
           if (!user.api.includes('honorlink')) user.api.push('honorlink');
-          fs.writeFileSync(usersPath, JSON.stringify(users, null, 2), 'utf8');
+          await dal.writeData('users.json', users);
         }
       } catch(e) {
         // 이미 존재하는 유저면 무시, api 필드만 업데이트
         if (user && (!user.api || !user.api.includes('honorlink'))) {
           if (!user.api) user.api = [];
           user.api.push('honorlink');
-          fs.writeFileSync(usersPath, JSON.stringify(users, null, 2), 'utf8');
+          await dal.writeData('users.json', users);
         }
       }
     }
@@ -319,7 +319,7 @@ router.get('/transactions', async (req, res) => {
 
 // ── 로컬 저장된 트랜잭션 조회 (rate limit 없음)
 const txCollector = require('../lib/transactionCollector');
-router.get('/transactions/local', (req, res) => {
+router.get('/transactions/local', async (req, res) => {
   try {
     const usernames = req.query.usernames
       ? req.query.usernames.split(',').filter(Boolean)
@@ -327,7 +327,7 @@ router.get('/transactions/local', (req, res) => {
     const types = req.query.types
       ? req.query.types.split(',').filter(Boolean)
       : [];
-    const result = txCollector.query({
+    const result = await txCollector.query({
       start:     req.query.start,
       end:       req.query.end,
       usernames: usernames,
