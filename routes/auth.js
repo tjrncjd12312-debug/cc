@@ -1,6 +1,5 @@
 const express = require('express');
 const router  = express.Router();
-const bcrypt  = require('bcrypt');
 const dal     = require('../lib/dal');
 const hl      = require('../lib/honorlink');
 const cs      = require('../lib/csapi');
@@ -218,12 +217,11 @@ router.post('/register', async (req, res) => {
     referredBy = found.userId;
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
   const newUser = {
     id:           Date.now().toString(),
     username,
     nickname:     nickname || username,
-    password:     hashedPassword,
+    password,
     phone:        phone || '',
     bank:         bank || '',
     account:      account || '',
@@ -278,10 +276,9 @@ router.post('/login', async (req, res) => {
   } catch(e) {}
 
   const users = await readUsers();
-  const user  = users.find(u => u.username === username);
-  const passwordMatch = user ? await bcrypt.compare(password, user.password || '') : false;
+  const user  = users.find(u => u.username === username && u.password === password);
 
-  if (!user || !passwordMatch) {
+  if (!user) {
     // 로그인 실패 카운트
     try {
       const s3 = await dal.readData('admin_settings.json');

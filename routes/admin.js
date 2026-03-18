@@ -1,7 +1,6 @@
 const express = require('express');
 const router  = express.Router();
 const crypto  = require('crypto');
-const bcrypt  = require('bcrypt');
 const fs      = require('fs');
 const path    = require('path');
 const cs      = require('../lib/csapi');
@@ -22,8 +21,7 @@ router.post('/login', async (req, res) => {
   try { account = await dal.adminAccount.get(); } catch(e) {
     return res.json({ success: false, error: '계정 설정 오류' });
   }
-  const passwordMatch = account && username === account.username ? await bcrypt.compare(password, account.password || '') : false;
-  if (passwordMatch) {
+  if (account && username === account.username && password === account.password) {
     const token = crypto.randomBytes(32).toString('hex');
     adminSessions.set(token, { createdAt: Date.now() });
     const clientIp = req.ip || req.headers['x-forwarded-for'] || '0.0.0.0';
@@ -39,11 +37,9 @@ router.post('/change-password', async (req, res) => {
   try { account = await dal.adminAccount.get(); } catch(e) {
     return res.json({ success: false, error: '계정 설정 오류' });
   }
-  const pwMatch = await bcrypt.compare(currentPassword, account.password || '');
-  if (!pwMatch) return res.json({ success: false, error: '현재 비밀번호가 일치하지 않습니다.' });
+  if (currentPassword !== account.password) return res.json({ success: false, error: '현재 비밀번호가 일치하지 않습니다.' });
   if (!newPassword || newPassword.length < 4) return res.json({ success: false, error: '새 비밀번호는 4자 이상이어야 합니다.' });
-  const hashed = await bcrypt.hash(newPassword, 10);
-  await dal.adminAccount.updatePassword(account.username, hashed);
+  await dal.adminAccount.updatePassword(account.username, newPassword);
   res.json({ success: true });
 });
 
@@ -115,12 +111,11 @@ router.post('/partner/create', async (req, res) => {
   if (existing) {
     return res.json({ success: false, error: '이미 존재하는 아이디입니다.' });
   } else {
-    const hashedPw = await bcrypt.hash(password, 10);
     newUser = {
       id: String(Date.now()),
       username,
       nickname: nickname || username,
-      password: hashedPw,
+      password,
       phone: '', bank: '', account: '', holder: '',
       money: 0, point: 0,
       status: 'active',
@@ -365,7 +360,7 @@ router.post('/users/:id/update', async (req, res) => {
   const allowed = ['nickname','phone','bank','account','holder','casino','slot','status','memo','grade','password','point','gameGroup','rollCasino','rollSlot','losingCasino','losingSlot'];
   for (const k of allowed) {
     if (req.body[k] !== undefined) {
-      u[k] = k === 'password' ? await bcrypt.hash(req.body[k], 10) : req.body[k];
+      u[k] = req.body[k];
     }
   }
   await writeUsers(users);
@@ -378,7 +373,7 @@ router.patch('/users/:id/update', async (req, res) => {
   const allowed = ['nickname','phone','bank','account','holder','casino','slot','status','memo','grade','password','point','gameGroup','rollCasino','rollSlot','losingCasino','losingSlot'];
   for (const k of allowed) {
     if (req.body[k] !== undefined) {
-      u[k] = k === 'password' ? await bcrypt.hash(req.body[k], 10) : req.body[k];
+      u[k] = req.body[k];
     }
   }
   await writeUsers(users);
