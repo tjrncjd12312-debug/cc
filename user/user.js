@@ -48,6 +48,21 @@ function clearSession() {
   localStorage.removeItem('casino_user');
 }
 
+// ══ 인증 포함 fetch wrapper ══
+function authFetch(url, options) {
+  options = options || {};
+  if (_session && _session.sessionToken) {
+    if (!options.headers) options.headers = {};
+    // 기존 headers가 Headers 객체일 수도 있으므로 처리
+    if (typeof options.headers.set === 'function') {
+      options.headers.set('Authorization', 'Bearer ' + _session.sessionToken);
+    } else {
+      options.headers['Authorization'] = 'Bearer ' + _session.sessionToken;
+    }
+  }
+  return fetch(url, options);
+}
+
 // ══ 비활동 자동 로그아웃 (10분) + 접속 유지 핑 + 잔액 갱신 ══
 (function() {
   var IDLE_TIMEOUT = 10 * 60 * 1000; // 10분
@@ -77,7 +92,7 @@ function clearSession() {
     if (!_session || !_session.id) return;
     // 활동이 없으면 ping도 보내지 않음 (서버에서 5분 후 오프라인 처리)
     if (Date.now() - _lastActivity > IDLE_TIMEOUT) return;
-    fetch('/api/auth/ping', {
+    authFetch('/api/auth/ping', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: _session.id, sessionToken: _session.sessionToken || '' })
@@ -118,7 +133,7 @@ function clearSession() {
   function refreshBalance() {
     if (!_session || !_session.id) return;
     if (Date.now() - _lastActivity > IDLE_TIMEOUT) return;
-    fetch('/api/auth/balance?userId=' + encodeURIComponent(_session.id))
+    authFetch('/api/auth/balance?userId=' + encodeURIComponent(_session.id))
       .then(function(r){ return r.json(); })
       .then(function(res) {
         if (res.success && res.balance !== undefined) {
@@ -134,7 +149,7 @@ function clearSession() {
           if (myBal) myBal.textContent = newBal.toLocaleString() + ' 원';
           // 충전 승인 확인 → 충전 완료 알림
           if (newBal > oldBal && _session && _session.username) {
-            fetch('/api/user/last-approved-deposit?username=' + encodeURIComponent(_session.username) + '&since=' + encodeURIComponent(window._lastDepositCheck || ''))
+            authFetch('/api/user/last-approved-deposit?username=' + encodeURIComponent(_session.username) + '&since=' + encodeURIComponent(window._lastDepositCheck || ''))
               .then(function(r){ return r.json(); })
               .then(function(d) {
                 if (d.success && d.approved) {
@@ -197,12 +212,12 @@ function _loginSetHide(title) { localStorage.setItem(_loginHideKey(title), _logi
 async function showLoginPopupNotices() {
   try {
     // 공지사항
-    var res = await fetch('/api/user/notices');
+    var res = await authFetch('/api/user/notices');
     var data = await res.json();
     var all = data.success ? (data.data || []) : [];
     all.sort(function(a,b){ return (a.rank||99)-(b.rank||99); });
     // 이벤트
-    var evRes = await fetch('/api/user/events');
+    var evRes = await authFetch('/api/user/events');
     var evData = await evRes.json();
     var evAll = (evData.data || []).filter(function(ev){ return ev.loginPopup; });
     // 합치기 (공지 먼저, 이벤트 뒤)
@@ -264,7 +279,7 @@ async function doLogin() {
     if (!data.success) { errEl.textContent = data.error || '로그인 실패'; errEl.style.display='block'; return; }
     saveSession(data.data, remember);
     // 로그인 직후 핑 전송 (접속자 표시)
-    fetch('/api/auth/ping', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId:data.data.id, sessionToken:data.data.sessionToken||''}) }).catch(function(){});
+    authFetch('/api/auth/ping', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId:data.data.id, sessionToken:data.data.sessionToken||''}) }).catch(function(){});
     // gameGroup이 있으면 페이지 새로고침 (벤더 필터링 적용)
     if (data.data.gameGroup) {
       location.reload();
@@ -577,7 +592,7 @@ var _prevAnsweredIds = null;
 function _startInquiryPolling() {
   if (!_session) return;
   // 초기 답변 ID 목록 세팅
-  fetch('/api/user/inquiries?userId=' + encodeURIComponent(_session.username))
+  authFetch('/api/user/inquiries?userId=' + encodeURIComponent(_session.username))
     .then(function(r){ return r.json(); })
     .then(function(d){
       if (d.success) {
@@ -590,7 +605,7 @@ function _startInquiryPolling() {
 
   setInterval(function(){
     if (!_session || _prevAnsweredIds === null) return;
-    fetch('/api/user/inquiries?userId=' + encodeURIComponent(_session.username))
+    authFetch('/api/user/inquiries?userId=' + encodeURIComponent(_session.username))
       .then(function(r){ return r.json(); })
       .then(function(d){
         if (!d.success) return;
@@ -721,7 +736,7 @@ function switchTransferTab(tab) {
     if(ruleHeader) ruleHeader.textContent = '출금 규정';
     // 예금주/계좌 정보 서버에서 최신 조회
     if(_session) {
-      fetch('/api/auth/profile?userId=' + encodeURIComponent(_session.id))
+      authFetch('/api/auth/profile?userId=' + encodeURIComponent(_session.id))
         .then(function(r){ return r.json(); })
         .then(function(res) {
           if(res.success) {
@@ -774,7 +789,7 @@ function requestDepositAccount() {
   if(!_session) { showToast('로그인이 필요합니다.'); return; }
   var now = new Date();
   var dt = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
-  fetch('/api/user/inquiries', {
+  authFetch('/api/user/inquiries', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({
@@ -805,7 +820,7 @@ function twSetMax() {
 // ── 출금 내역 로드 ──
 function loadWithdrawHistory() {
   if(!_session) return;
-  fetch('/api/user/transfers?userId='+encodeURIComponent(_session.username)+'&type=withdraw')
+  authFetch('/api/user/transfers?userId='+encodeURIComponent(_session.username)+'&type=withdraw')
     .then(function(r){ return r.json(); })
     .then(function(res){
       var list = (res.data||[]).slice(0,10);
@@ -1395,7 +1410,7 @@ async function launchGame(code, subcode, title, lobby) {
   try {
     // 1) CS API 회원가입 (최초 1회)
     if (!_session._csRegistered) {
-      var regRes = await fetch('/api/game/register', {
+      var regRes = await authFetch('/api/game/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userid: _session.username, username: _session.nickname || _session.username })
@@ -1405,18 +1420,18 @@ async function launchGame(code, subcode, title, lobby) {
     }
 
     // 2) 아너링크 잔액 회수 → 로컬로 복원 (게임 전환 대비)
-    await fetch('/api/auth/recover-for-switch', {
+    await authFetch('/api/auth/recover-for-switch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: _session.username, target: 'csapi' })
     });
 
     // 3) 로컬 잔액을 CS API로 동기화 (Transfer Wallet)
-    var balRes = await fetch('/api/auth/balance?userId=' + encodeURIComponent(_session.id)).then(function(r){ return r.json(); });
+    var balRes = await authFetch('/api/auth/balance?userId=' + encodeURIComponent(_session.id)).then(function(r){ return r.json(); });
     var localBal = (balRes.success && balRes.local !== undefined) ? Number(balRes.local) : 0;
     console.log('[CS] balance check:', balRes, 'localBal:', localBal);
     if (localBal > 0) {
-      var depRes = await fetch('/api/game/deposit', {
+      var depRes = await authFetch('/api/game/deposit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userid: _session.username, amount: localBal })
@@ -1424,7 +1439,7 @@ async function launchGame(code, subcode, title, lobby) {
       console.log('[CS] deposit:', depRes);
       if (depRes.result === 1) {
         // 입금 성공 시 로컬 잔액 차감
-        await fetch('/api/user/users/money-local', {
+        await authFetch('/api/user/users/money-local', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: _session.username, amount: -localBal })
@@ -1434,7 +1449,7 @@ async function launchGame(code, subcode, title, lobby) {
 
     // 4) 게임 실행
     var isMobile = /Mobi|Android/i.test(navigator.userAgent);
-    var r = await fetch('/api/game/launch', {
+    var r = await authFetch('/api/game/launch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1471,23 +1486,23 @@ async function launchHL(vendor, gameId, title) {
   }
   try {
     // 1) 오닉스 잔액 회수 → 로컬로 복원 (게임 전환 대비)
-    await fetch('/api/auth/recover-for-switch', {
+    await authFetch('/api/auth/recover-for-switch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: _session.username, target: 'honorlink' })
     });
 
     // 2) 로컬 잔액을 게임사로 동기화 (Transfer Wallet)
-    var balRes = await fetch('/api/auth/balance?userId=' + encodeURIComponent(_session.id)).then(function(r){ return r.json(); });
+    var balRes = await authFetch('/api/auth/balance?userId=' + encodeURIComponent(_session.id)).then(function(r){ return r.json(); });
     var localBal = (balRes.success && balRes.local !== undefined) ? Number(balRes.local) : 0;
     if (localBal > 0) {
-      await fetch('/api/hl/user/add-balance', {
+      await authFetch('/api/hl/user/add-balance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: _session.username, amount: localBal })
       });
       // 로컬 잔액을 0으로 차감 (게임사로 이동했으므로) — 게임사 API 호출 안함
-      await fetch('/api/user/users/money-local', {
+      await authFetch('/api/user/users/money-local', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: _session.username, amount: -localBal })
@@ -1495,7 +1510,7 @@ async function launchHL(vendor, gameId, title) {
     }
 
     // 3) 게임 실행
-    var r = await fetch('/api/hl/launch', {
+    var r = await authFetch('/api/hl/launch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1555,7 +1570,7 @@ async function openSlotGameModal(providerCode, providerGameid, providerName) {
     };
     if (_csToHlSorted[providerCode.toLowerCase()]) _hlName = _csToHlSorted[providerCode.toLowerCase()];
 
-    var r = await fetch('/api/game/games/sorted', {
+    var r = await authFetch('/api/game/games/sorted', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ vendor: _hlName, gameid: providerGameid, code: providerCode, gametype: 'slot' })
@@ -1640,7 +1655,7 @@ async function openHLGameModal(vendor, vendorName, filterType) {
     var vendorsToLoad = [vendor].concat(_mergeVendors[vendor] || []);
     var allGames = [];
     for (var vi = 0; vi < vendorsToLoad.length; vi++) {
-      var r = await fetch('/api/hl/games?vendor=' + encodeURIComponent(vendorsToLoad[vi]));
+      var r = await authFetch('/api/hl/games?vendor=' + encodeURIComponent(vendorsToLoad[vi]));
       var g = await r.json();
       if (!g.error && !g._status && Array.isArray(g)) {
         g.forEach(function(game) { game._vendor = vendorsToLoad[vi]; });
@@ -1885,7 +1900,7 @@ async function openHLGameModal(vendor, vendorName, filterType) {
 
   // 로그인된 유저의 gameGroup을 서버에서 최신값으로 갱신
   var sessionRefresh = (_session && _session.username)
-    ? fetch('/api/auth/game-group?username=' + encodeURIComponent(_session.username))
+    ? authFetch('/api/auth/game-group?username=' + encodeURIComponent(_session.username))
         .then(function(r){ return r.json(); })
         .then(function(res){ _session.gameGroup = res.gameGroup || ''; })
         .catch(function(){})
@@ -1893,10 +1908,10 @@ async function openHLGameModal(vendor, vendorName, filterType) {
 
   sessionRefresh.then(function(){
   Promise.all([
-    fetch('/api/hl/vendors').then(function(r){ return r.json(); }),
-    fetch('/api/hl/lobbies').then(function(r){ return r.json(); }),
-    fetch('/api/hl/settings').then(function(r){ return r.json(); }).catch(function(){ return {}; }),
-    fetch('/api/game/providers', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type:'1', gametype:'' }) }).then(function(r){ return r.json(); }).catch(function(){ return { result:0, data:[] }; })
+    authFetch('/api/hl/vendors').then(function(r){ return r.json(); }),
+    authFetch('/api/hl/lobbies').then(function(r){ return r.json(); }),
+    authFetch('/api/hl/settings').then(function(r){ return r.json(); }).catch(function(){ return {}; }),
+    authFetch('/api/game/providers', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ type:'1', gametype:'' }) }).then(function(r){ return r.json(); }).catch(function(){ return { result:0, data:[] }; })
   ])
     .then(function(results){
       var vendors = results[0];
@@ -2392,7 +2407,7 @@ async function openHLGameModal(vendor, vendorName, filterType) {
         slotVendors.forEach(function(v, idx){
           if (lobbyMap[v.name] && lobbyMap[v.name].img) return;
           var _fetchVendor = v._hlVendor || v.name;
-          fetch('/api/hl/games?vendor=' + encodeURIComponent(_fetchVendor))
+          authFetch('/api/hl/games?vendor=' + encodeURIComponent(_fetchVendor))
             .then(function(r){ return r.json(); })
             .then(function(games){
               if (!Array.isArray(games) || !games.length) return;
@@ -2552,7 +2567,7 @@ function makeSlideList(containerId, rows) {
 
   async function loadAllNotices() {
     try {
-      var res = await fetch('/api/user/notices');
+      var res = await authFetch('/api/user/notices');
       var data = await res.json();
       var all = data.success ? (data.data || []) : [];
       return all.sort(function(a,b){ return (a.rank||99)-(b.rank||99); });
@@ -2586,7 +2601,7 @@ function makeSlideList(containerId, rows) {
     var popupList = all.filter(function(n){ return n.userPopup && !isHiddenToday(n.title); });
     // 이벤트 userPopup도 합침
     try {
-      var evRes = await fetch('/api/user/events');
+      var evRes = await authFetch('/api/user/events');
       var evData = await evRes.json();
       (evData.data || []).forEach(function(ev){ if(ev.userPopup && !isHiddenToday(ev.title)) popupList.push(ev); });
     } catch(e) {}
@@ -2661,7 +2676,7 @@ function makeSlideList(containerId, rows) {
     if(!el) return;
     var events = [];
     try {
-      var res = await fetch('/api/user/events');
+      var res = await authFetch('/api/user/events');
       var data = await res.json();
       if(data.success) events = data.data;
     } catch(e) {}
@@ -2698,7 +2713,7 @@ async function submitDeposit() {
   var bonus = bonusEl ? bonusEl.textContent.trim() : '';
 
   try {
-    var res = await fetch('/api/user/transfers', {
+    var res = await authFetch('/api/user/transfers', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         type: 'deposit',
@@ -2735,7 +2750,7 @@ async function submitWithdraw() {
   var dt = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
 
   try {
-    var res = await fetch('/api/user/transfers', {
+    var res = await authFetch('/api/user/transfers', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         type: 'withdraw',
@@ -2775,7 +2790,7 @@ async function submitInquiry() {
   var dt = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
 
   try {
-    var res = await fetch('/api/user/inquiries', {
+    var res = await authFetch('/api/user/inquiries', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         userId: _session.username, nick: _session.nickname||_session.username,
@@ -2801,7 +2816,7 @@ async function loadEventSection() {
   if(!el) return;
   var events = [];
   try {
-    var res = await fetch('/api/user/events');
+    var res = await authFetch('/api/user/events');
     var data = await res.json();
     if(data.success) events = data.data;
   } catch(e) {}
@@ -2854,7 +2869,7 @@ async function loadMessageSection() {
     return;
   }
   try {
-    var res = await fetch('/api/user/messages?userId=' + encodeURIComponent(_session.username));
+    var res = await authFetch('/api/user/messages?userId=' + encodeURIComponent(_session.username));
     var data = await res.json();
     _msgList = data.success ? (data.data || []) : [];
   } catch(e) { _msgList = []; }
@@ -2915,7 +2930,7 @@ function openMsgDetail(idx) {
   // 읽음 처리
   if(!m.read) {
     m.read = true;
-    fetch('/api/user/messages/' + m.id + '/read', { method: 'PATCH' }).catch(function(){});
+    authFetch('/api/user/messages/' + m.id + '/read', { method: 'PATCH' }).catch(function(){});
     _renderMsgTable();
     _updateMsgBadge();
   }
@@ -2935,7 +2950,7 @@ function closeMsgDetail() {
 async function deleteMsg(id) {
   if(!(await customConfirm('이 쪽지를 삭제하시겠습니까?'))) return;
   try {
-    await fetch('/api/user/messages/' + id, { method: 'DELETE' });
+    await authFetch('/api/user/messages/' + id, { method: 'DELETE' });
     _msgList = _msgList.filter(function(m){ return m.id !== id; });
     _renderMsgTable();
     _updateMsgBadge();
@@ -2944,7 +2959,7 @@ async function deleteMsg(id) {
 
 async function readAllMsg() {
   if(!_session) return;
-  await fetch('/api/user/messages/read-all', {
+  await authFetch('/api/user/messages/read-all', {
     method:'PATCH', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ userId: _session.username })
   });
@@ -2957,7 +2972,7 @@ async function readAllMsg() {
 async function deleteAllMsg() {
   if(!_session) return;
   if(!(await customConfirm('모든 쪽지를 삭제하시겠습니까?'))) return;
-  await fetch('/api/user/messages/delete-all?userId=' + encodeURIComponent(_session.username), { method:'DELETE' });
+  await authFetch('/api/user/messages/delete-all?userId=' + encodeURIComponent(_session.username), { method:'DELETE' });
   _msgList = [];
   _renderMsgTable();
   _updateMsgBadge();
@@ -2981,7 +2996,7 @@ var _prevMsgIds = null;
 function _startMsgPolling() {
   if(!_session) return;
   // 초기 로드
-  fetch('/api/user/messages?userId=' + encodeURIComponent(_session.username))
+  authFetch('/api/user/messages?userId=' + encodeURIComponent(_session.username))
     .then(function(r){ return r.json(); })
     .then(function(d){
       if(d.success) {
@@ -2994,7 +3009,7 @@ function _startMsgPolling() {
 
   setInterval(function(){
     if(!_session || _prevMsgIds === null) return;
-    fetch('/api/user/messages?userId=' + encodeURIComponent(_session.username))
+    authFetch('/api/user/messages?userId=' + encodeURIComponent(_session.username))
       .then(function(r){ return r.json(); })
       .then(function(d){
         if(!d.success) return;
@@ -3062,7 +3077,7 @@ var _noticePerPage = 10;
 
 async function loadNoticeSection() {
   try {
-    var res = await fetch('/api/user/notices');
+    var res = await authFetch('/api/user/notices');
     var data = await res.json();
     _noticeData = (data.success ? data.data || [] : []).filter(function(n){ return n.userShow; });
     _noticeData.sort(function(a,b){ return (a.rank||99) - (b.rank||99); });
@@ -3140,7 +3155,7 @@ async function loadSupportSection() {
     return;
   }
   try {
-    var res = await fetch('/api/user/inquiries?userId=' + encodeURIComponent(_session.username));
+    var res = await authFetch('/api/user/inquiries?userId=' + encodeURIComponent(_session.username));
     var data = await res.json();
     if(data.success) _csData = data.data || [];
   } catch(e) { _csData = []; }
@@ -3207,7 +3222,7 @@ function closeInquiryModal() {
 async function deleteAllInquiry() {
   if(!_session) return;
   if(!(await customConfirm('모든 문의를 삭제하시겠습니까?'))) return;
-  await fetch('/api/user/inquiries/delete-all?userId=' + encodeURIComponent(_session.username), { method:'DELETE' });
+  await authFetch('/api/user/inquiries/delete-all?userId=' + encodeURIComponent(_session.username), { method:'DELETE' });
   _csData = [];
   _renderCsTable();
   showToast('모든 문의가 삭제되었습니다.');
@@ -3216,7 +3231,7 @@ async function deleteAllInquiry() {
 async function deleteInquiry(id) {
   if(!(await customConfirm('해당 문의를 삭제하시겠습니까?'))) return;
   try {
-    await fetch('/api/user/inquiries/' + id, { method: 'DELETE' });
+    await authFetch('/api/user/inquiries/' + id, { method: 'DELETE' });
   } catch(e) {}
   _csData = _csData.filter(function(x){ return x.id !== id; });
   _renderCsTable();
@@ -3307,7 +3322,7 @@ async function _itmRenderTab(tab) {
   if(tab === 'event') {
     var events = [];
     try {
-      var res = await fetch('/api/user/events');
+      var res = await authFetch('/api/user/events');
       var data = await res.json();
       if(data.success) events = data.data;
     } catch(e) {}
@@ -3330,7 +3345,7 @@ async function _itmRenderTab(tab) {
   } else if(tab === 'notice') {
     var notices = [];
     try {
-      var res2 = await fetch('/api/user/notices');
+      var res2 = await authFetch('/api/user/notices');
       var data2 = await res2.json();
       if(data2.success) notices = data2.data;
     } catch(e) {}
@@ -3507,7 +3522,7 @@ function submitPointConvert() {
     localStorage.setItem('partnerMoneyLog', JSON.stringify(moneyLogs));
 
     // 서버에 롤링전환 로그 저장
-    fetch('/api/user/rolling-convert-log', {
+    authFetch('/api/user/rolling-convert-log', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
         datetime: nowStr, type: 'rolling-convert',

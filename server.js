@@ -75,13 +75,27 @@ async function userIpCheck(req, res, next) {
   next();
 }
 
+// 유저 API 인증 미들웨어 (sessionToken 검증)
+const { sessionTokenMap } = require('./routes/auth');
+const PUBLIC_PATHS = ['/api/auth/login', '/api/auth/register', '/api/auth/check-referral', '/api/user/public-settings', '/api/user/notices', '/api/user/events'];
+function userAuthCheck(req, res, next) {
+  // 공개 경로는 인증 불필요
+  if (PUBLIC_PATHS.some(p => req.originalUrl.startsWith(p))) return next();
+  const token = (req.headers.authorization || '').replace('Bearer ', '');
+  if (!token) return res.status(401).json({ success: false, error: '로그인이 필요합니다.' });
+  // sessionTokenMap: { userId: token } — 유효한 토큰인지 확인
+  const valid = Object.values(sessionTokenMap).includes(token);
+  if (!valid) return res.status(401).json({ success: false, error: '세션이 만료되었습니다. 다시 로그인해주세요.' });
+  next();
+}
+
 // API 라우트
 app.use('/api/admin',   adminIpCheck, apiLimiter, require('./routes/admin'));
 app.use('/api/partner', apiLimiter, require('./routes/partner'));
-app.use('/api/user',    userIpCheck, apiLimiter, require('./routes/user'));
+app.use('/api/user',    userIpCheck, userAuthCheck, apiLimiter, require('./routes/user'));
 app.use('/api/auth',    userIpCheck, require('./routes/auth').router);
-app.use('/api/game',    userIpCheck, apiLimiter, require('./routes/game'));
-app.use('/api/hl',      userIpCheck, apiLimiter, require('./routes/gamehl'));
+app.use('/api/game',    userIpCheck, userAuthCheck, apiLimiter, require('./routes/game'));
+app.use('/api/hl',      userIpCheck, userAuthCheck, apiLimiter, require('./routes/gamehl'));
 
 // 로그인 엔드포인트에 강화된 Rate Limit 적용
 app.post('/api/auth/login', loginLimiter);
