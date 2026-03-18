@@ -3275,6 +3275,9 @@ function _renderPartnerModal(node) {
         if(ptVal) ptVal.textContent = ((node.point||0)+(node.rollingPoint||0)).toLocaleString();
         if(ptVal2) ptVal2.textContent = ((node.point||0)+(node.rollingPoint||0)).toLocaleString() + 'P';
         loadModalPointData(node, overlay);
+        if(typeof fetchSidebarStats === 'function') fetchSidebarStats();
+        if(typeof _ptRenderTableBody === 'function') _ptRenderTableBody();
+        if(typeof _ptRenderListPage === 'function' && document.getElementById('ptl-tbody')) _ptRenderListPage();
       }
       // 머니 DOM 업데이트는 fetch 콜백 안에서 처리됨
     });
