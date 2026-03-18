@@ -128,16 +128,156 @@ router.post('/providers/refresh', async (req, res) => {
   } catch(e) { res.json({ result: 0, msg: e.message }); }
 });
 
-// ── 게임 리스트 (type=2)
+// ── 게임 리스트 (type=2, 파일 캐시, 1시간마다 자동 갱신)
+const csGamesCachePath = path.join(__dirname, '..', 'data', 'cs_games_cache.json');
+const CS_GAMES_CACHE_TTL = 60 * 60 * 1000; // 1시간
+
+function readCsGamesCache() {
+  try { return JSON.parse(fs.readFileSync(csGamesCachePath, 'utf8')); } catch(e) { return {}; }
+}
+function writeCsGamesCache(data) {
+  fs.writeFileSync(csGamesCachePath, JSON.stringify(data, null, 2), 'utf8');
+}
+
 router.post('/games', async (req, res) => {
   try {
+    const key = (req.body.gameid || '') + '|' + (req.body.code || '');
+    const cache = readCsGamesCache();
+    const entry = cache[key];
+    const now = Date.now();
+
+    if (entry && entry.data && (now - entry.ts) < CS_GAMES_CACHE_TTL) {
+      return res.json(entry.data);
+    }
+
     const r = await cs.post('/csapi/Provider', {
       type:     '2',
       gameid:   req.body.gameid,
       code:     req.body.code,
       gametype: req.body.gametype || '',
     });
+    cache[key] = { data: r, ts: now };
+    writeCsGamesCache(cache);
     res.json(r);
+  } catch(e) { res.json({ result: 0, msg: e.message }); }
+});
+
+// ── 오닉스 게임 목록을 아너링크 순서로 정렬해서 반환
+const hlGamesCachePath = path.join(__dirname, '..', 'data', 'games_cache.json');
+function readHlGamesCache() {
+  try { return JSON.parse(fs.readFileSync(hlGamesCachePath, 'utf8')); } catch(e) { return {}; }
+}
+
+router.post('/games/sorted', async (req, res) => {
+  try {
+    const vendor = req.body.vendor;       // HonorLink vendor name (e.g. "PragmaticPlay")
+    const gameid = req.body.gameid;        // CS API gameid
+    const code   = req.body.code;          // CS API code
+    const gametype = req.body.gametype || '';
+
+    // 1. CS API 게임 목록 가져오기
+    const csKey = (gameid || '') + '|' + (code || '');
+    const csCache = readCsGamesCache();
+    const csEntry = csCache[csKey];
+    const now = Date.now();
+    let csData;
+    if (csEntry && csEntry.data && (now - csEntry.ts) < CS_GAMES_CACHE_TTL) {
+      csData = csEntry.data;
+    } else {
+      csData = await cs.post('/csapi/Provider', { type: '2', gameid, code, gametype });
+      csCache[csKey] = { data: csData, ts: now };
+      writeCsGamesCache(csCache);
+    }
+    const csGames = (csData && csData.data) || [];
+
+    // 2. 아너링크 게임 목록 가져오기 (캐시에서)
+    const csToHlMap = {
+      'pragmaticplay': 'PragmaticPlay',
+      'cq9': 'CQ9',
+      'hbn': 'Habanero',
+      'bng': 'Booongo',
+      'nolimitcity': 'Nolimit City',
+      'pg': 'PG Soft',
+      'hacksaw': 'Hacksaw',
+      'jili': 'jili'
+    };
+    const hlVendor = csToHlMap[vendor.toLowerCase()] || vendor;
+    const hlCache = readHlGamesCache();
+    const hlEntry = hlCache[hlVendor] || hlCache[vendor];
+    const hlGames = (hlEntry && hlEntry.data) || [];
+
+    // 3. 아너링크 순서 맵 만들기 (rank 기준 정렬 후 game id → index)
+    hlGames.sort(function(a, b) {
+      var ra = a.rank !== null && a.rank !== undefined ? a.rank : 99999;
+      var rb = b.rank !== null && b.rank !== undefined ? b.rank : 99999;
+      return ra - rb;
+    });
+    const hlOrderById = {};
+    const hlOrderByTitle = {};
+    const hlDataById = {};
+    const hlDataByTitle = {};
+    hlGames.forEach(function(g, i) {
+      var thumb = (g.thumbnails && (g.thumbnails['300x300'] || g.thumbnails['440x590'])) || g.thumbnail || '';
+      var korName = (g.langs && g.langs.ko) || '';
+      var d = { idx: i, img: thumb, title: g.title || '', korName: korName };
+      hlOrderById[String(g.id)] = i;
+      hlDataById[String(g.id)] = d;
+      if (g.title) {
+        var tKey = g.title.toLowerCase().trim();
+        hlOrderByTitle[tKey] = i;
+        hlDataByTitle[tKey] = d;
+      }
+    });
+
+    function getHlIndex(csGame) {
+      if (hlOrderById.hasOwnProperty(String(csGame.subcode))) return hlOrderById[String(csGame.subcode)];
+      var engName = (csGame.name_eng || csGame.name || '').toLowerCase().trim();
+      if (engName && hlOrderByTitle.hasOwnProperty(engName)) return hlOrderByTitle[engName];
+      return 999999;
+    }
+
+    function applyHlData(csGame) {
+      var d = hlDataById[String(csGame.subcode)];
+      if (!d) {
+        var engName = (csGame.name_eng || csGame.name || '').toLowerCase().trim();
+        if (engName) d = hlDataByTitle[engName];
+      }
+      if (d) {
+        if (d.img) csGame.img = d.img;
+        if (d.title) csGame.name_eng = d.title;
+        if (d.korName) csGame.name_kor = d.korName;
+      }
+    }
+
+    // 4. CS API 게임을 아너링크 순서로 정렬
+    csGames.sort(function(a, b) {
+      const ai = getHlIndex(a);
+      const bi = getHlIndex(b);
+      if (ai === bi) return 0;
+      return ai - bi;
+    });
+
+    // 5. 아너링크 이미지/이름 교체
+    csGames.forEach(function(g) { applyHlData(g); });
+
+    res.json({ result: 1, data: csGames });
+  } catch(e) { res.json({ result: 0, msg: e.message }); }
+});
+
+// 오닉스 게임 목록 강제 갱신
+router.post('/games/refresh', async (req, res) => {
+  try {
+    const key = (req.body.gameid || '') + '|' + (req.body.code || '');
+    const cache = readCsGamesCache();
+    const r = await cs.post('/csapi/Provider', {
+      type:     '2',
+      gameid:   req.body.gameid,
+      code:     req.body.code,
+      gametype: req.body.gametype || '',
+    });
+    cache[key] = { data: r, ts: Date.now() };
+    writeCsGamesCache(cache);
+    res.json({ success: true, count: (r.data || []).length });
   } catch(e) { res.json({ result: 0, msg: e.message }); }
 });
 

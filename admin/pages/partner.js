@@ -268,7 +268,8 @@ var _ptSearchText = '';
 function _ptTreeStats(nodes) {
   var s = { partners: 0, members: 0, money: 0, point: 0 };
   (nodes || []).forEach(function(n) {
-    if (n.level === 'admin') { /* skip */ }
+    if (n.level !== 'admin' && (n.status === 'blocked' || n.status === 'deleted')) { /* skip blocked/deleted */ }
+    else if (n.level === 'admin') { /* skip */ }
     else if (n.level === 'member') { s.members++; s.money += (n.money || 0); s.point += ((n.point||0)+(n.rollingPoint||0)); }
     else { s.partners++; s.money += (n.money || 0); s.point += ((n.point||0)+(n.rollingPoint||0)); }
     if (n.children) {
@@ -282,6 +283,7 @@ function _ptTreeStats(nodes) {
 function _ptMemberCount(node) {
   var c = 0;
   (node.children || []).forEach(function(n) {
+    if (n.status === 'blocked' || n.status === 'deleted') return;
     if (n.level === 'member') c++;
     else c += _ptMemberCount(n);
   });
@@ -290,18 +292,25 @@ function _ptMemberCount(node) {
 
 function _ptSubMoney(node) {
   var s = 0;
-  (node.children || []).forEach(function(n) { s += (n.money || 0) + _ptSubMoney(n); });
+  (node.children || []).forEach(function(n) {
+    if (n.status === 'blocked' || n.status === 'deleted') return;
+    s += (n.money || 0) + _ptSubMoney(n);
+  });
   return s;
 }
 
 function _ptSubPoint(node) {
   var s = 0;
-  (node.children || []).forEach(function(n) { s += ((n.point||0)+(n.rollingPoint||0)) + _ptSubPoint(n); });
+  (node.children || []).forEach(function(n) {
+    if (n.status === 'blocked' || n.status === 'deleted') return;
+    s += ((n.point||0)+(n.rollingPoint||0)) + _ptSubPoint(n);
+  });
   return s;
 }
 
 function _ptFlattenTree(nodes, depth, result) {
   (nodes || []).forEach(function(n) {
+    if (n.level !== 'admin' && (n.status === 'blocked' || n.status === 'deleted')) return;
     result.push({ node: n, depth: depth });
     if ((n.level === 'admin' || n.expanded) && n.children) {
       _ptFlattenTree(n.children, depth + 1, result);
@@ -312,6 +321,7 @@ function _ptFlattenTree(nodes, depth, result) {
 
 function _ptCollectByLevel(nodes, level, result) {
   (nodes || []).forEach(function(n) {
+    if (n.status === 'blocked' || n.status === 'deleted') return;
     if (n.level === level) result.push(n);
     if (n.children) _ptCollectByLevel(n.children, level, result);
   });
@@ -896,7 +906,9 @@ function renderTree() {
 }
 
 function buildTreeHtml(nodes, depth) {
-  return nodes.map(function(node) {
+  return nodes.filter(function(node) {
+    return node.level === 'admin' || (node.status !== 'blocked' && node.status !== 'deleted');
+  }).map(function(node) {
     var hasChildren = node.children && node.children.length > 0;
     var color = levelColor[node.level] || '#888';
     var lbl   = levelLabel[node.level] || node.level;
@@ -3646,58 +3658,118 @@ function _renderPartnerModal(node) {
     _showPasswordSetModal(node);
   });
 
+  // 하부 전체 노드 수집 (자기 자신 포함)
+  function _collectAllDescendants(n, list) {
+    list.push(n);
+    (n.children || []).forEach(function(c) { _collectAllDescendants(c, list); });
+    return list;
+  }
+
   // 정지
   overlay.querySelector('#pd-block-btn').addEventListener('click', function() {
     var isBlocked = node.status === 'blocked' || node.status === '차단';
+    var allNodes = _collectAllDescendants(node, []);
+    var count = allNodes.length;
     showConfirmModal({
       icon: isBlocked ? 'fas fa-unlock' : 'fas fa-ban',
       iconColor: isBlocked ? '#4ade80' : '#f87171',
       iconBg: isBlocked ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)',
-      title: isBlocked ? '회원 차단 해제' : '회원 차단',
-      message: '<strong style="color:var(--text,#e2e8f0);">' + (node.label || node.id) + '</strong> 회원을 ' + (isBlocked ? '차단 해제' : '차단') + '하시겠습니까?',
+      title: isBlocked ? '파트너 차단 해제' : '파트너 차단',
+      message: '<strong style="color:var(--text,#e2e8f0);">' + (node.label || node.id) + '</strong> 파트너' + (count > 1 ? ' 및 하부 ' + (count - 1) + '개' : '') + '를 ' + (isBlocked ? '차단 해제' : '차단') + '하시겠습니까?',
       confirmText: isBlocked ? '해제' : '차단',
       confirmColor: isBlocked ? '#4ade80' : '#f87171',
       onConfirm: function(close) {
-        var endpoint = isBlocked ? '/api/admin/users/' + node.id + '/unblock' : '/api/admin/users/' + node.id + '/block';
-        fetch(endpoint, { method: 'POST' }).then(function(r){ return r.json(); }).then(function(res) {
-          if (res.success) {
-            node.status = isBlocked ? 'active' : 'blocked';
+        if (isBlocked) {
+          // 차단 해제: 하부 전체 순차 처리
+          var chain = Promise.resolve();
+          allNodes.forEach(function(n) {
+            if (n.status !== 'blocked' && n.status !== '차단') return;
+            chain = chain.then(function() {
+              return fetch('/api/admin/users/' + n.id + '/unblock', { method: 'POST' })
+                .then(function(r){ return r.json(); })
+                .then(function(res) {
+                  if (res.success) n.status = 'active';
+                });
+            });
+          });
+          chain.then(function() {
             savePartnerTree();
             close();
-            location.reload();
-          } else {
+            if (overlay.parentNode) overlay.remove();
+            if (typeof _ptRenderTableBody === 'function') _ptRenderTableBody();
+            if (typeof renderTree === 'function') renderTree();
+          });
+        } else {
+          // 차단: 하부 전체 순차 처리
+          // 각 노드의 belongTo를 미리 수집
+          var belongMap = {};
+          allNodes.forEach(function(n) {
+            var pn = (typeof findParentNode === 'function') ? findParentNode(partnerTree, n.id, null) : null;
+            belongMap[n.id] = pn ? pn.id : '';
+          });
+          var chain = Promise.resolve();
+          allNodes.forEach(function(n) {
+            if (n.status === 'blocked' || n.status === 'deleted') return;
+            chain = chain.then(function() {
+              return fetch('/api/admin/users/' + n.id + '/block', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ belongTo: belongMap[n.id] })
+              }).then(function(r){ return r.json(); }).then(function(res) {
+                if (res.success) n.status = 'blocked';
+              });
+            });
+          });
+          chain.then(function() {
+            savePartnerTree();
             close();
-            showConfirmModal({ icon:'fas fa-times-circle', iconColor:'#f87171', title:'처리 실패', message: res.error || '알 수 없는 오류', confirmText:'확인', confirmColor:'var(--text3)', onConfirm:function(c){c();} });
-          }
-        });
+            if (overlay.parentNode) overlay.remove();
+            if (typeof _ptRenderTableBody === 'function') _ptRenderTableBody();
+            if (typeof renderTree === 'function') renderTree();
+          });
+        }
       }
     });
   });
 
   // 삭제
   overlay.querySelector('#pd-delete-btn').addEventListener('click', function() {
+    var allNodes = _collectAllDescendants(node, []);
+    var count = allNodes.length;
     showConfirmModal({
       icon: 'fas fa-trash-alt',
       iconColor: '#f87171',
       iconBg: 'rgba(248,113,113,0.15)',
-      title: '회원 삭제',
-      message: '<strong style="color:var(--text,#e2e8f0);">' + (node.label || node.id) + '</strong> 회원을 정말 삭제하시겠습니까?<br><span style="font-size:0.78rem;color:#f87171;">하부 데이터도 모두 삭제됩니다.</span>',
+      title: '파트너 삭제',
+      message: '<strong style="color:var(--text,#e2e8f0);">' + (node.label || node.id) + '</strong> 파트너' + (count > 1 ? ' 및 하부 ' + (count - 1) + '개' : '') + '를 정말 삭제하시겠습니까?<br><span style="font-size:0.78rem;color:#f87171;">하부 데이터도 모두 삭제됩니다.</span>',
       confirmText: '삭제',
       confirmColor: '#dc2626',
       onConfirm: function(close) {
-        fetch('/api/admin/users/' + node.id + '/delete', { method: 'POST' }).then(function(r){ return r.json(); }).then(function(res) {
-          if (res.success) {
-            var parent = findParentNode(partnerTree, node.id, null);
-            if(parent && parent.children) {
-              parent.children = parent.children.filter(function(c){ return c.id !== node.id; });
-              savePartnerTree();
-            }
-            close();
-            location.reload();
-          } else {
-            close();
-            showConfirmModal({ icon:'fas fa-times-circle', iconColor:'#f87171', title:'삭제 실패', message: res.error || '알 수 없는 오류', confirmText:'확인', confirmColor:'var(--text3)', onConfirm:function(c){c();} });
-          }
+        // 각 노드의 belongTo를 미리 수집
+        var belongMap = {};
+        allNodes.forEach(function(n) {
+          var pn = (typeof findParentNode === 'function') ? findParentNode(partnerTree, n.id, null) : null;
+          belongMap[n.id] = pn ? pn.id : '';
+        });
+        var chain = Promise.resolve();
+        allNodes.forEach(function(n) {
+          if (n.status === 'deleted') return;
+          chain = chain.then(function() {
+            return fetch('/api/admin/users/' + n.id + '/delete', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ belongTo: belongMap[n.id] })
+            }).then(function(r){ return r.json(); }).then(function(res) {
+              if (res.success) n.status = 'deleted';
+            });
+          });
+        });
+        chain.then(function() {
+          savePartnerTree();
+          close();
+          if (overlay.parentNode) overlay.remove();
+          if (typeof _ptRenderTableBody === 'function') _ptRenderTableBody();
+          if (typeof renderTree === 'function') renderTree();
         });
       }
     });

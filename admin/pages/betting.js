@@ -2,12 +2,27 @@
 //  베팅 내역 페이지 (전체 / 슬롯 / 카지노)
 // ══════════════════════════════════════
 
+var _slotVendorList = ['pragmatic','habanero','cq9','jili','pg','pgsoft','booongo','netent','relax','nolimit','hacksaw','dreamtech','homeslot','playson','evoplay','dragoonsoft','fachai','jdb','avatarux','bigtimegaming','quickspin','redtiger','playngo','thunderkick','wazdan','spinomenal','yggdrasil','bgaming','gameart','greentube','novomatic','platipus','popok','redrake','rubyplay','amatic','bfgames','blueprint','booming','caletagaming','fantasma','kagaming','kalamba','mancala','merkur','octoplay','petersons','retrogames','revolver','netgame','playstar','fatpanda','yolted','1x2 gaming','7-mojos','smartsoft','microgaming plus slo'];
+var _slotVendorsLoaded = false;
+
+function _loadSlotVendors() {
+  if (_slotVendorsLoaded) return;
+  _slotVendorsLoaded = true;
+  fetch('/api/admin/slot-vendors').then(function(r){ return r.json(); }).then(function(res) {
+    if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+      _slotVendorList = res.data;
+    }
+  }).catch(function(){});
+}
+
 function _betClassifyVendor(tx) {
   var v = '';
   try { v = ((tx.details && tx.details.game && (tx.details.game.vendor || tx.details.game.type)) || tx.vendor || tx.game_provider || '').toLowerCase(); } catch(e) {}
   if (!v) return 'casino';
   if (v.indexOf('pragmatic') !== -1 && v.indexOf('pragmatic_live') === -1 && v.indexOf('pragmaticlive') === -1) return 'slot';
-  if (v.indexOf('slot') !== -1 || v.indexOf('habanero') !== -1 || v.indexOf('cq9') !== -1 || v.indexOf('jili') !== -1 || v === 'pg' || v.indexOf('pgsoft') !== -1 || v.indexOf('booongo') !== -1 || v.indexOf('netent') !== -1 || v.indexOf('relax') !== -1 || v.indexOf('nolimit') !== -1 || v.indexOf('hacksaw') !== -1) return 'slot';
+  for (var i = 0; i < _slotVendorList.length; i++) {
+    if (v.indexOf(_slotVendorList[i]) !== -1 || v === _slotVendorList[i]) return 'slot';
+  }
   return 'casino';
 }
 
@@ -19,6 +34,7 @@ var _bettingState = {
 };
 
 function renderBettingPage(filter) {
+  _loadSlotVendors();
   _bettingState.filter = filter || 'all';
   _bettingState.page = 1;
   var el = document.getElementById('content');
@@ -823,86 +839,38 @@ function _bindEmptyBetEvents() {
 function _fetchEmptyBetData() {
   var startDate = document.getElementById('eb-date-start').value;
   var endDate = document.getElementById('eb-date-end').value;
-  var userFilter = (document.getElementById('eb-user-filter').value || '').trim().toLowerCase();
-  var vendorFilter = (document.getElementById('eb-vendor-filter').value || '').trim().toLowerCase();
+  var userFilter = (document.getElementById('eb-user-filter').value || '').trim();
+  var vendorFilter = (document.getElementById('eb-vendor-filter').value || '').trim();
   var activeGameBtn = document.querySelector('.eb-game-filter.active');
   var gameFilter = activeGameBtn ? activeGameBtn.dataset.game : 'all';
 
-  // 공베팅 로그 + 트랜잭션(win 매칭용) 동시 조회
-  var ebStart = (startDate || '2020-01-01') + ' 00:00:00';
-  var ebEnd = (endDate || '2099-12-31') + ' 23:59:59';
+  // 서버에 필터+win매칭+페이지네이션 요청
+  var params = 'matchWin=true'
+    + '&page=' + _ebState.page
+    + '&perPage=' + _ebState.perPage;
+  if (startDate) params += '&start=' + encodeURIComponent(startDate);
+  if (endDate) params += '&end=' + encodeURIComponent(endDate);
+  if (userFilter) params += '&username=' + encodeURIComponent(userFilter);
+  if (vendorFilter) params += '&vendor=' + encodeURIComponent(vendorFilter);
+  if (gameFilter && gameFilter !== 'all') params += '&gameType=' + encodeURIComponent(gameFilter);
+
   Promise.all([
-    fetch('/api/admin/emptybet/log').then(function(r){ return r.json(); }),
-    fetch('/api/hl/transactions/local?types=win&perPage=100000&start=' + encodeURIComponent(ebStart) + '&end=' + encodeURIComponent(ebEnd)).then(function(r){ return r.json(); }).catch(function(){ return {data:[]}; }),
+    fetch('/api/admin/emptybet/log?' + params).then(function(r){ return r.json(); }),
     fetch('/api/admin/emptybet/mode').then(function(r){ return r.json(); }).catch(function(){ return {mode:'rolling'}; })
   ]).then(function(results) {
-    var ebLog = results[0].data || [];
-    var winTxs = results[1].data || [];
-    _ebCurrentMode = (results[2] && results[2].mode) || 'rolling';
+    var res = results[0];
+    var ebLog = res.data || [];
+    var total = res.total || 0;
+    _ebCurrentMode = (results[1] && results[1].mode) || 'rolling';
 
-    // roundId+username → win 금액 매핑
-    var winByRound = {};
-    winTxs.forEach(function(tx) {
-      var round = (tx.details && tx.details.game && tx.details.game.round) || '';
-      var uname = '';
-      if (tx.user && typeof tx.user === 'object') uname = tx.user.username || '';
-      else uname = tx.username || tx.user || '';
-      if (round && uname) {
-        var key = uname + ':' + round;
-        winByRound[key] = (winByRound[key] || 0) + Math.abs(tx.amount || 0);
-      }
-    });
-
-    // 파트너 트리에서 회원→본사 롤링% 매핑
-    var _ebTree = [];
-    try { _ebTree = JSON.parse(localStorage.getItem('partnerTree') || '[]'); } catch(ex) {}
-    var _ebMemberHeadMap = {};
-    function _ebMapMembers(nodes, headNode) {
-      if (!nodes) return;
-      for (var i = 0; i < nodes.length; i++) {
-        var n = nodes[i];
-        var curHead = (n.level === 'head') ? n : headNode;
-        if (n.level === 'member' && curHead) {
-          _ebMemberHeadMap[n.id] = {
-            rollSlot: parseFloat(curHead.rollSlot || 0),
-            rollCasino: parseFloat(curHead.rollCasino || 0)
-          };
-        }
-        if (n.children) _ebMapMembers(n.children, curHead);
-      }
-    }
-    _ebMapMembers(_ebTree, null);
-
-    // 공베팅 로그에 실제 당첨금 매칭 + 본사 기준 롤링 계산
+    // 롤링 금액 매핑
     ebLog.forEach(function(l) {
-      var key = (l.username || '') + ':' + (l.roundId || '');
-      l.actualWin = winByRound[key] || 0;
-      // 실제 누락된 롤링 금액 사용 (로그에 저장된 값)
       l.totalRolling = l.rollingAmount || 0;
     });
 
-    // 날짜 필터 적용
-    var filtered = ebLog.filter(function(l) {
-      // UTC timestamp를 로컬 시간 기준 날짜로 변환
-      var ts = '';
-      if (l.timestamp) {
-        var d = new Date(l.timestamp);
-        ts = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-      }
-      if (startDate && ts < startDate) return false;
-      if (endDate && ts > endDate) return false;
-      if (userFilter && (l.username || '').toLowerCase().indexOf(userFilter) === -1) return false;
-      if (vendorFilter && (l.vendor || '').toLowerCase().indexOf(vendorFilter) === -1) return false;
-      if (gameFilter !== 'all' && (l.gameType || '') !== gameFilter) return false;
-      return true;
-    });
-
-    // 최신순 정렬
-    filtered.sort(function(a, b) { return (b.timestamp || '').localeCompare(a.timestamp || ''); });
-
     // 요약
     var totalBet = 0, totalWin = 0, droppedRolling = 0;
-    filtered.forEach(function(l) {
+    ebLog.forEach(function(l) {
       totalBet += l.betAmount || 0;
       totalWin += l.actualWin || 0;
       droppedRolling += l.totalRolling || 0;
@@ -911,7 +879,7 @@ function _fetchEmptyBetData() {
     document.getElementById('eb-summary').innerHTML =
       '<div style="background:#1a1a2e;border:1px solid #333;border-radius:6px;padding:8px 16px;">'
       + '<div style="font-size:0.7rem;color:#888;">누락 건수</div>'
-      + '<div style="font-size:1rem;color:#f59e0b;font-weight:700;">' + filtered.length + '건</div></div>'
+      + '<div style="font-size:1rem;color:#f59e0b;font-weight:700;">' + total + '건</div></div>'
       + '<div style="background:#1a1a2e;border:1px solid #333;border-radius:6px;padding:8px 16px;">'
       + '<div style="font-size:0.7rem;color:#888;">누락 베팅금액</div>'
       + '<div style="font-size:1rem;color:#ef4444;font-weight:700;">' + totalBet.toLocaleString() + '원</div></div>'
@@ -925,24 +893,23 @@ function _fetchEmptyBetData() {
       + '<div style="font-size:0.7rem;color:#888;">누락 롤링</div>'
       + '<div style="font-size:1rem;color:#f59e0b;font-weight:700;">' + droppedRolling.toLocaleString() + '원</div></div>';
 
-    _renderEmptyBetLogTable(filtered);
+    _renderEmptyBetLogTable(ebLog, total);
   }).catch(function() {
     document.getElementById('eb-tbody').innerHTML = '<tr><td colspan="11" style="color:#ef4444;padding:24px;text-align:center;">데이터 로드 실패</td></tr>';
   });
 }
 
-function _renderEmptyBetLogTable(logList) {
+function _renderEmptyBetLogTable(pageData, total) {
   var tbody = document.getElementById('eb-tbody');
   var start = (_ebState.page - 1) * _ebState.perPage;
-  var page = logList.slice(start, start + _ebState.perPage);
 
-  if (page.length === 0) {
+  if (pageData.length === 0) {
     tbody.innerHTML = '<tr><td colspan="11" style="color:#888;padding:24px;text-align:center;">공베팅 내역이 없습니다.</td></tr>';
     document.getElementById('eb-pagination').innerHTML = '';
     return;
   }
 
-  tbody.innerHTML = page.map(function(l, i) {
+  tbody.innerHTML = pageData.map(function(l, i) {
     var time = l.timestamp || '';
     if (time) {
       var d = new Date(time);
@@ -982,21 +949,30 @@ function _renderEmptyBetLogTable(logList) {
       + '</tr>';
   }).join('');
 
-  // 페이지네이션
-  var totalPages = Math.ceil(logList.length / _ebState.perPage);
+  // 서버 사이드 페이지네이션
+  var totalPages = Math.ceil(total / _ebState.perPage);
   if (totalPages > 1) {
     var pagHtml = '';
-    for (var p = 1; p <= totalPages; p++) {
+    if (_ebState.page > 1) {
+      pagHtml += '<button class="eb-page-btn" data-page="' + (_ebState.page - 1) + '" style="padding:4px 10px;border-radius:4px;border:1px solid var(--input-border);background:var(--bg3);color:var(--text2);font-size:0.72rem;cursor:pointer;">&laquo;</button>';
+    }
+    var startP = Math.max(1, _ebState.page - 2);
+    var endP = Math.min(totalPages, _ebState.page + 2);
+    for (var p = startP; p <= endP; p++) {
       pagHtml += '<button class="eb-page-btn" data-page="' + p + '" style="padding:4px 10px;border-radius:4px;border:1px solid var(--input-border);background:' + (p === _ebState.page ? '#6366f1' : 'var(--bg3)') + ';color:' + (p === _ebState.page ? '#fff' : 'var(--text2)') + ';font-size:0.72rem;cursor:pointer;">' + p + '</button>';
     }
+    if (_ebState.page < totalPages) {
+      pagHtml += '<button class="eb-page-btn" data-page="' + (_ebState.page + 1) + '" style="padding:4px 10px;border-radius:4px;border:1px solid var(--input-border);background:var(--bg3);color:var(--text2);font-size:0.72rem;cursor:pointer;">&raquo;</button>';
+    }
+    pagHtml += '<span style="color:#666;font-size:0.72rem;margin-left:8px;">총 ' + total + '건</span>';
     document.getElementById('eb-pagination').innerHTML = pagHtml;
     document.querySelectorAll('.eb-page-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
         _ebState.page = parseInt(this.dataset.page, 10);
-        _renderEmptyBetLogTable(logList);
+        _fetchEmptyBetData();
       });
     });
   } else {
-    document.getElementById('eb-pagination').innerHTML = '';
+    document.getElementById('eb-pagination').innerHTML = total ? '<span style="color:#666;font-size:0.72rem;">총 ' + total + '건</span>' : '';
   }
 }

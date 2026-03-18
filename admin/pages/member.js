@@ -725,7 +725,7 @@ function updateMember(id, fields) {
 
 function _collectMembers(nodes, parentId, result) {
   (nodes || []).forEach(function(n) {
-    if (n.level === 'member') {
+    if (n.level === 'member' && n.status !== 'blocked' && n.status !== 'deleted') {
       result.push({ node: n, belongId: parentId || '-' });
     }
     if (n.children && n.children.length) {
@@ -1106,18 +1106,19 @@ function updateMoneyCells() {
 // 회원 데이터를 파트너 트리에 동기화
 // partnerTree에서 회원 노드 제거 헬퍼
 function _removeFromTree(nodeId) {
-  if (typeof partnerTree === 'undefined') return;
-  (function walk(nodes) {
+  if (typeof partnerTree === 'undefined') { console.error('_removeFromTree: partnerTree undefined'); return; }
+  var removed = (function walk(nodes) {
     for (var i = 0; i < nodes.length; i++) {
       if (nodes[i].children) {
         var before = nodes[i].children.length;
         nodes[i].children = nodes[i].children.filter(function(c) { return c.id !== nodeId; });
-        if (nodes[i].children.length < before) return true;
+        if (nodes[i].children.length < before) { console.log('_removeFromTree: 제거 성공 -', nodeId, '(parent:', nodes[i].id, ')'); return true; }
         if (walk(nodes[i].children)) return true;
       }
     }
     return false;
   })(partnerTree);
+  if (!removed) console.error('_removeFromTree: 노드를 찾지 못함 -', nodeId);
 }
 
 // partnerTree 노드 필드 업데이트 헬퍼
@@ -1158,7 +1159,9 @@ function bindMemberTreeEvents() {
 }
 
 function buildMemberTreeHtml(nodes, depth) {
-  return nodes.map(function(node) {
+  return nodes.filter(function(node) {
+    return node.level === 'admin' || (node.status !== 'blocked' && node.status !== 'deleted');
+  }).map(function(node) {
     var hasChildren = node.children && node.children.length > 0;
     var color = levelColor[node.level] || '#888';
     var lbl   = levelLabel[node.level] || node.level;
@@ -1603,11 +1606,15 @@ function bindMemberEvents() {
       if (!amount || amount <= 0) { showAlertModal({ icon:'fas fa-exclamation-circle', iconColor:'#f59e0b', iconBg:'rgba(245,158,11,0.15)', title:'알림', message:'올바른 금액을 입력하세요.' }); return; }
       this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 처리 중...';
       this.style.opacity = '0.7'; this.style.pointerEvents = 'none';
-      Promise.all(ids.map(function(username) {
-        return fetch('/api/admin/users/' + username + '/give', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({amount:amount}) }).then(function(r){return r.json();}).then(function(res) {
-          if (res.success) _updateTreeNode(username, { money: res.after || 0 });
+      var chain = Promise.resolve();
+      ids.forEach(function(username) {
+        chain = chain.then(function() {
+          return fetch('/api/admin/users/' + username + '/give', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({amount:amount}) }).then(function(r){return r.json();}).then(function(res) {
+            if (res.success) _updateTreeNode(username, { money: res.after || 0 });
+          });
         });
-      })).then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); if(typeof fetchSidebarStats === 'function') fetchSidebarStats(); dim.remove(); renderMemberPage(); });
+      });
+      chain.then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); if(typeof fetchSidebarStats === 'function') fetchSidebarStats(); dim.remove(); renderMemberPage(); });
     });
   });
 
@@ -1649,12 +1656,16 @@ function bindMemberEvents() {
       if (!_takeAll && (!amount || amount <= 0)) { showAlertModal({ icon:'fas fa-exclamation-circle', iconColor:'#f59e0b', iconBg:'rgba(245,158,11,0.15)', title:'알림', message:'금액을 입력하거나 전체 회수를 선택하세요.' }); return; }
       this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 처리 중...';
       this.style.opacity = '0.7'; this.style.pointerEvents = 'none';
-      Promise.all(ids.map(function(username) {
-        var body = _takeAll ? {all:true} : {amount:amount};
-        return fetch('/api/admin/users/' + username + '/take', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }).then(function(r){return r.json();}).then(function(res) {
-          if (res.success) _updateTreeNode(username, { money: res.after || 0 });
+      var chain = Promise.resolve();
+      ids.forEach(function(username) {
+        chain = chain.then(function() {
+          var body = _takeAll ? {all:true} : {amount:amount};
+          return fetch('/api/admin/users/' + username + '/take', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) }).then(function(r){return r.json();}).then(function(res) {
+            if (res.success) _updateTreeNode(username, { money: res.after || 0 });
+          });
         });
-      })).then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); dim.remove(); renderMemberPage(); });
+      });
+      chain.then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); dim.remove(); renderMemberPage(); });
     });
   });
 
@@ -1667,11 +1678,15 @@ function bindMemberEvents() {
       title:'전체 카지노 ON', message:'선택한 <strong style="color:#60a5fa;">'+ids.length+'명</strong>의 카지노를 ON으로 변경하시겠습니까?',
       confirmText:'변경', confirmColor:'#4ade80',
       onConfirm: function(close) {
-        Promise.all(ids.map(function(username) {
-          return fetch('/api/admin/users/' + username + '/update', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({casino:'ON'}) }).then(function(r){return r.json();}).then(function() {
-            _updateTreeNode(username, { casino: 'ON' });
+        var chain = Promise.resolve();
+        ids.forEach(function(username) {
+          chain = chain.then(function() {
+            return fetch('/api/admin/users/' + username + '/update', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({casino:'ON'}) }).then(function(r){return r.json();}).then(function() {
+              _updateTreeNode(username, { casino: 'ON' });
+            });
           });
-        })).then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); close(); renderMemberPage(); });
+        });
+        chain.then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); close(); renderMemberPage(); });
       }
     });
   });
@@ -1685,11 +1700,15 @@ function bindMemberEvents() {
       title:'전체 카지노 OFF', message:'선택한 <strong style="color:#60a5fa;">'+ids.length+'명</strong>의 카지노를 OFF로 변경하시겠습니까?',
       confirmText:'변경', confirmColor:'#38bdf8',
       onConfirm: function(close) {
-        Promise.all(ids.map(function(username) {
-          return fetch('/api/admin/users/' + username + '/update', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({casino:'OFF'}) }).then(function(r){return r.json();}).then(function() {
-            _updateTreeNode(username, { casino: 'OFF' });
+        var chain = Promise.resolve();
+        ids.forEach(function(username) {
+          chain = chain.then(function() {
+            return fetch('/api/admin/users/' + username + '/update', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({casino:'OFF'}) }).then(function(r){return r.json();}).then(function() {
+              _updateTreeNode(username, { casino: 'OFF' });
+            });
           });
-        })).then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); close(); renderMemberPage(); });
+        });
+        chain.then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); close(); renderMemberPage(); });
       }
     });
   });
@@ -1718,44 +1737,79 @@ function bindMemberEvents() {
       if (pw.length < 3) { showAlertModal({ icon:'fas fa-exclamation-circle', iconColor:'#f59e0b', iconBg:'rgba(245,158,11,0.15)', title:'알림', message:'비밀번호는 3자 이상이어야 합니다.' }); return; }
       this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 처리 중...';
       this.style.opacity = '0.7'; this.style.pointerEvents = 'none';
-      Promise.all(ids.map(function(username) {
-        return fetch('/api/admin/users/' + username + '/update', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pw}) }).then(function(r){return r.json();});
-      })).then(function() { dim.remove(); showAlertModal({ icon:'fas fa-check-circle', iconColor:'#4ade80', iconBg:'rgba(74,222,128,0.15)', title:'완료', message:ids.length+'명의 비밀번호가 변경되었습니다.' }); });
+      var chain = Promise.resolve();
+      ids.forEach(function(username) {
+        chain = chain.then(function() {
+          return fetch('/api/admin/users/' + username + '/update', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({password:pw}) }).then(function(r){return r.json();});
+        });
+      });
+      chain.then(function() { dim.remove(); showAlertModal({ icon:'fas fa-check-circle', iconColor:'#4ade80', iconBg:'rgba(74,222,128,0.15)', title:'완료', message:ids.length+'명의 비밀번호가 변경되었습니다.' }); });
     });
   });
 
+  // 현재 표시된 전체 회원 ID 가져오기
+  function _getAllDisplayedMembers() {
+    var ids = [];
+    document.querySelectorAll('#mb-tbody tr').forEach(function(tr) {
+      if (tr.style.display !== 'none' && tr.dataset.id) ids.push(tr.dataset.id);
+    });
+    return ids.filter(Boolean);
+  }
+
   // 하부전체 차단
   document.getElementById('mb-bulk-block').addEventListener('click', function() {
-    var ids = _getCheckedMembers();
-    if (!ids.length) { showAlertModal({ icon:'fas fa-exclamation-circle', iconColor:'#f59e0b', iconBg:'rgba(245,158,11,0.15)', title:'알림', message:'선택된 회원이 없습니다.' }); return; }
+    var ids = _getAllDisplayedMembers();
+    if (!ids.length) { showAlertModal({ icon:'fas fa-exclamation-circle', iconColor:'#f59e0b', iconBg:'rgba(245,158,11,0.15)', title:'알림', message:'표시된 회원이 없습니다.' }); return; }
     showConfirmModal({
       icon:'fas fa-ban', iconColor:'#f59e0b', iconBg:'rgba(245,158,11,0.15)',
-      title:'하부전체 차단', message:'선택한 <strong style="color:#60a5fa;">'+ids.length+'명</strong>을 전부 차단하시겠습니까?',
+      title:'하부전체 차단', message:'현재 목록의 <strong style="color:#60a5fa;">'+ids.length+'명</strong>을 전부 차단하시겠습니까?',
       confirmText:'차단', confirmColor:'#f59e0b',
       onConfirm: function(close) {
-        Promise.all(ids.map(function(username) {
-          return fetch('/api/admin/users/' + username + '/block', { method:'POST' }).then(function(r){return r.json();}).then(function() {
-            _updateTreeNode(username, { status: 'blocked' });
+        _showActionSpinner('하부전체 차단 중...');
+        // 순차 처리 (동시 요청 시 파일 덮어쓰기 방지)
+        var parentIds = {};
+        ids.forEach(function(username) {
+          var pn = (typeof findParentNode === 'function') ? findParentNode(partnerTree, username, null) : null;
+          parentIds[username] = pn ? pn.id : '';
+        });
+        var chain = Promise.resolve();
+        ids.forEach(function(username) {
+          chain = chain.then(function() {
+            return fetch('/api/admin/users/' + username + '/block', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ belongTo: parentIds[username] }) }).then(function(r){return r.json();}).then(function() {
+              _removeFromTree(username);
+            });
           });
-        })).then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); close(); renderMemberPage(); });
+        });
+        chain.then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); _hideActionSpinner(); close(); renderMemberPage(); });
       }
     });
   });
 
   // 하부전체 삭제
   document.getElementById('mb-bulk-delete').addEventListener('click', function() {
-    var ids = _getCheckedMembers();
-    if (!ids.length) { showAlertModal({ icon:'fas fa-exclamation-circle', iconColor:'#f59e0b', iconBg:'rgba(245,158,11,0.15)', title:'알림', message:'선택된 회원이 없습니다.' }); return; }
+    var ids = _getAllDisplayedMembers();
+    if (!ids.length) { showAlertModal({ icon:'fas fa-exclamation-circle', iconColor:'#f59e0b', iconBg:'rgba(245,158,11,0.15)', title:'알림', message:'표시된 회원이 없습니다.' }); return; }
     showConfirmModal({
       icon:'fas fa-trash-alt', iconColor:'#ef4444', iconBg:'rgba(239,68,68,0.15)',
-      title:'하부전체 삭제', message:'선택한 <strong style="color:#60a5fa;">'+ids.length+'명</strong>을 전부 삭제하시겠습니까?<br><span style="font-size:0.78rem;color:#f87171;">이 작업은 되돌릴 수 없습니다.</span>',
+      title:'하부전체 삭제', message:'현재 목록의 <strong style="color:#60a5fa;">'+ids.length+'명</strong>을 전부 삭제하시겠습니까?<br><span style="font-size:0.78rem;color:#f87171;">이 작업은 되돌릴 수 없습니다.</span>',
       confirmText:'삭제', confirmColor:'#dc2626',
       onConfirm: function(close) {
-        Promise.all(ids.map(function(username) {
-          return fetch('/api/admin/users/' + username + '/delete', { method:'POST' }).then(function(r){return r.json();}).then(function() {
-            _removeFromTree(username);
+        _showActionSpinner('하부전체 삭제 중...');
+        // 순차 처리 (동시 요청 시 파일 덮어쓰기 방지)
+        var parentIds = {};
+        ids.forEach(function(username) {
+          var pn = (typeof findParentNode === 'function') ? findParentNode(partnerTree, username, null) : null;
+          parentIds[username] = pn ? pn.id : '';
+        });
+        var chain = Promise.resolve();
+        ids.forEach(function(username) {
+          chain = chain.then(function() {
+            return fetch('/api/admin/users/' + username + '/delete', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ belongTo: parentIds[username] }) }).then(function(r){return r.json();}).then(function() {
+              _removeFromTree(username);
+            });
           });
-        })).then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); close(); renderMemberPage(); });
+        });
+        chain.then(function() { if(typeof savePartnerTree === 'function') savePartnerTree(); _hideActionSpinner(); close(); renderMemberPage(); });
       }
     });
   });
@@ -1832,40 +1886,7 @@ function _filterAndRenderMembers() {
         if (n.level === 'member') subMemberIds[n.id] = true;
         (n.children || []).forEach(collectMembers);
       })(selNode);
-      // 선택된 파트너 자체도 포함 (파트너인 경우)
-      var partnerRow = null;
-      if (selNode.level !== 'admin' && selNode.level !== 'member') {
-        partnerRow = {
-          id: selNode.id,
-          odid: selNode.id,
-          nick: selNode.label || selNode.id,
-          name: selNode.holder || '',
-          phone: selNode.phone || '',
-          bank: selNode.bank || '',
-          account: selNode.account || '',
-          holder: selNode.holder || '',
-          group: selNode.gameGroup || '-',
-          money: selNode.money || 0,
-          point: selNode.point || 0,
-          rollingPoint: selNode.rollingPoint || 0,
-          belong: (levelLabel[selNode.level] || selNode.level).charAt(0),
-          belongId: '-',
-          casino: selNode['perm카지노'] !== false ? 'ON' : 'OFF',
-          slot: selNode['perm슬롯'] !== false ? 'ON' : 'OFF',
-          status: selNode.status === 'active' || selNode.status === '정상' ? '정상' : selNode.status,
-          memo: selNode.memo || '',
-          password: selNode.password || '',
-          gameGroup: selNode.gameGroup || '',
-          api: [],
-          registeredAt: selNode.registeredAt || '',
-          lastLoginAt: selNode.lastLoginAt || '',
-          lastLoginIp: selNode.lastLoginIp || '',
-          totalGive: 0, totalTake: 0, totalBet: 0, totalWin: 0,
-          _isPartner: true
-        };
-      }
       filtered = filtered.filter(function(m) { return subMemberIds[m.id]; });
-      if (partnerRow) filtered.unshift(partnerRow);
     }
   }
 
@@ -2790,8 +2811,10 @@ function __removed_openMemberDetailModal(tr) {
     } else {
       overlay.remove();
       _showActionSpinner('정지 처리중...');
-      fetch('/api/admin/users/' + uid + '/block', { method: 'POST' }).then(function(){
-        _updateTreeNode(uid, { status: 'blocked' });
+      var parentNode = (typeof findParentNode === 'function') ? findParentNode(partnerTree, uid, null) : null;
+      var parentId = parentNode ? parentNode.id : '';
+      fetch('/api/admin/users/' + uid + '/block', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ belongTo: parentId }) }).then(function(){
+        _removeFromTree(uid);
         if(typeof savePartnerTree === 'function') savePartnerTree();
         _showToast(nick + ' 정지 처리 완료', 'success');
         renderMemberPage();
@@ -2805,7 +2828,9 @@ function __removed_openMemberDetailModal(tr) {
     var uid = m.id || id;
     overlay.remove();
     _showActionSpinner('삭제 처리중...');
-    fetch('/api/admin/users/' + uid + '/delete', { method: 'POST' }).then(function() {
+    var parentNode = (typeof findParentNode === 'function') ? findParentNode(partnerTree, uid, null) : null;
+    var parentId = parentNode ? parentNode.id : '';
+    fetch('/api/admin/users/' + uid + '/delete', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ belongTo: parentId }) }).then(function() {
       _removeFromTree(uid);
       if(typeof savePartnerTree === 'function') savePartnerTree();
       _showToast(nick + ' 삭제 완료', 'success');
@@ -3460,9 +3485,13 @@ function renderPendingPage() {
         title:'일괄 승인', message:'대기 중인 <strong style="color:#60a5fa;">' + ids.length + '명</strong>을 일괄 승인하시겠습니까?',
         confirmText:'승인', confirmColor:'#4ade80',
         onConfirm: function(close) {
-          Promise.all(ids.map(function(id) {
-            return fetch('/api/admin/users/' + id + '/approve', { method:'POST' }).then(function(r){ return r.json(); });
-          })).then(function() { close(); renderPendingPage(); });
+          var chain = Promise.resolve();
+          ids.forEach(function(id) {
+            chain = chain.then(function() {
+              return fetch('/api/admin/users/' + id + '/approve', { method:'POST' }).then(function(r){ return r.json(); });
+            });
+          });
+          chain.then(function() { close(); renderPendingPage(); });
         }
       });
     });
@@ -3476,9 +3505,13 @@ function renderPendingPage() {
         title:'일괄 거절', message:'대기 중인 <strong style="color:#60a5fa;">' + ids.length + '명</strong>을 일괄 거절하시겠습니까?<br><span style="font-size:0.78rem;color:#f87171;">거절된 신청은 삭제됩니다.</span>',
         confirmText:'거절', confirmColor:'#dc2626',
         onConfirm: function(close) {
-          Promise.all(ids.map(function(id) {
-            return fetch('/api/admin/users/' + id + '/reject', { method:'POST' }).then(function(r){ return r.json(); });
-          })).then(function() { close(); renderPendingPage(); });
+          var chain = Promise.resolve();
+          ids.forEach(function(id) {
+            chain = chain.then(function() {
+              return fetch('/api/admin/users/' + id + '/reject', { method:'POST' }).then(function(r){ return r.json(); });
+            });
+          });
+          chain.then(function() { close(); renderPendingPage(); });
         }
       });
     });
@@ -3616,6 +3649,42 @@ function _pendRow(label, value, isLast) {
 // ══════════════════════════════════════
 //  블랙리스트 페이지
 // ══════════════════════════════════════
+// 블랙리스트 해제 시 partnerTree에 회원 재추가
+function _restoreToTree(userIds) {
+  return fetch('/api/admin/users').then(function(r){ return r.json(); }).then(function(res) {
+    var users = res.data || [];
+    userIds.forEach(function(uid) {
+      // users.json에서 유저 정보 찾기
+      var u = users.find(function(x){ return x.id === uid || x.username === uid; });
+      if (!u) return;
+      var username = u.username || u.id;
+      // 트리에서 username으로 찾기
+      var existing = (typeof findNode === 'function') ? findNode(partnerTree, username) : null;
+      if (existing) {
+        existing.status = 'active';
+        return;
+      }
+      // 트리에 없으면 belongTo로 원래 상위 파트너 아래에 추가
+      var parentId = u.belongTo || null;
+      var parentNode = parentId && (typeof findNode === 'function') ? findNode(partnerTree, parentId) : null;
+      if (!parentNode) return;
+      if (!parentNode.children) parentNode.children = [];
+      parentNode.children.push({
+        id: username,
+        label: u.nickname || username,
+        level: 'member',
+        money: u.money || 0,
+        point: u.point || 0,
+        status: 'active',
+        children: [],
+        rollingPoint: u.rollingPoint || 0,
+        gameGroup: u.gameGroup || ''
+      });
+    });
+    if (typeof savePartnerTree === 'function') savePartnerTree();
+  });
+}
+
 function renderBlacklistPage() {
   var el = document.getElementById('content');
   el.innerHTML = '<div class="pt-wrap"><div class="db-section" style="padding:20px;color:var(--text3);text-align:center;">불러오는 중...</div></div>';
@@ -3761,6 +3830,7 @@ function renderBlacklistPage() {
               onConfirm: function(close) {
                 fetch('/api/admin/users/' + id + '/unblock', { method:'POST' })
                   .then(function(r){ return r.json(); })
+                  .then(function() { return _restoreToTree([id]); })
                   .then(function() { close(); renderBlacklistPage(); });
               }
             });
@@ -3768,6 +3838,7 @@ function renderBlacklistPage() {
             if (!(await customConfirm('해제하시겠습니까?'))) return;
             fetch('/api/admin/users/' + id + '/unblock', { method:'POST' })
               .then(function(r){ return r.json(); })
+              .then(function() { return _restoreToTree([id]); })
               .then(function() { renderBlacklistPage(); });
           }
         });
@@ -3796,7 +3867,13 @@ function renderBlacklistPage() {
             confirmText:'해제', confirmColor:'#4ade80',
             onConfirm: function(close) {
               var ids = []; checked.forEach(function(cb){ ids.push(cb.dataset.id); });
-              Promise.all(ids.map(function(id){ return fetch('/api/admin/users/'+id+'/unblock',{method:'POST'}).then(function(r){return r.json();}); }))
+              var chain = Promise.resolve();
+              ids.forEach(function(id) {
+                chain = chain.then(function() {
+                  return fetch('/api/admin/users/'+id+'/unblock',{method:'POST'}).then(function(r){return r.json();});
+                });
+              });
+              chain.then(function(){ return _restoreToTree(ids); })
                 .then(function(){ close(); renderBlacklistPage(); });
             }
           });
@@ -3812,7 +3889,14 @@ function renderBlacklistPage() {
             title:'일괄 해제', message:'블랙리스트의 <strong style="color:#60a5fa;">모든 회원(' + list.length + '명)</strong>을 해제하시겠습니까?',
             confirmText:'전체 해제', confirmColor:'#4ade80',
             onConfirm: function(close) {
-              Promise.all(list.map(function(u){ return fetch('/api/admin/users/'+u.id+'/unblock',{method:'POST'}).then(function(r){return r.json();}); }))
+              var allIds = list.map(function(u){ return u.id; });
+              var chain = Promise.resolve();
+              list.forEach(function(u) {
+                chain = chain.then(function() {
+                  return fetch('/api/admin/users/'+u.id+'/unblock',{method:'POST'}).then(function(r){return r.json();});
+                });
+              });
+              chain.then(function(){ return _restoreToTree(allIds); })
                 .then(function(){ close(); renderBlacklistPage(); });
             }
           });

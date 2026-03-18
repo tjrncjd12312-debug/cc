@@ -308,6 +308,7 @@ router.post('/users/:id/block', async (req, res) => {
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
   u.status = 'blocked';
+  if (req.body && req.body.belongTo) u.belongTo = req.body.belongTo;
   // CS API 잔액 회수
   try {
     await cs.post('/csapi/kick', { userid: u.username });
@@ -336,6 +337,7 @@ router.post('/users/:id/delete', async (req, res) => {
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
   u.status = 'deleted';
+  if (req.body && req.body.belongTo) u.belongTo = req.body.belongTo;
   // CS API 잔액 회수
   try {
     await cs.post('/csapi/kick', { userid: u.username });
@@ -870,12 +872,79 @@ router.get('/rolling/log', (_req, res) => {
 });
 
 // ── 공베팅 로그 조회 ──
-router.get('/emptybet/log', (_req, res) => {
+router.get('/emptybet/log', (req, res) => {
   try {
-    const log = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/emptybet_log.json'), 'utf8'));
-    res.json({ success: true, data: log });
+    let log = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/emptybet_log.json'), 'utf8'));
+
+    // 날짜 필터
+    const startDate = req.query.start;
+    const endDate = req.query.end;
+    if (startDate || endDate) {
+      log = log.filter(l => {
+        if (!l.timestamp) return false;
+        const d = new Date(l.timestamp);
+        const ds = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+        if (startDate && ds < startDate) return false;
+        if (endDate && ds > endDate) return false;
+        return true;
+      });
+    }
+
+    // 유저 필터
+    if (req.query.username) {
+      const u = req.query.username.toLowerCase();
+      log = log.filter(l => (l.username || '').toLowerCase().includes(u));
+    }
+
+    // 게임타입 필터
+    if (req.query.gameType && req.query.gameType !== 'all') {
+      log = log.filter(l => l.gameType === req.query.gameType);
+    }
+
+    // 게임사 필터
+    if (req.query.vendor) {
+      const v = req.query.vendor.toLowerCase();
+      log = log.filter(l => (l.vendor || '').toLowerCase().includes(v));
+    }
+
+    // win 매칭: 서버에서 트랜잭션 조회하여 매칭
+    if (req.query.matchWin === 'true') {
+      try {
+        const txCollector = require('../lib/transactionCollector');
+        const winResult = txCollector.query({
+          start: startDate ? startDate + ' 00:00:00' : undefined,
+          end: endDate ? endDate + ' 23:59:59' : undefined,
+          types: ['win'],
+          perPage: 999999
+        });
+        const winByRound = {};
+        (winResult.data || []).forEach(tx => {
+          const round = (tx.details && tx.details.game && tx.details.game.round) || '';
+          const uname = (tx.user && typeof tx.user === 'object') ? (tx.user.username || '') : (tx.username || tx.user || '');
+          if (round && uname) {
+            const key = uname + ':' + round;
+            winByRound[key] = (winByRound[key] || 0) + Math.abs(tx.amount || 0);
+          }
+        });
+        log.forEach(l => {
+          const key = (l.username || '') + ':' + (l.roundId || '');
+          l.actualWin = winByRound[key] || 0;
+        });
+      } catch(e) {}
+    }
+
+    // 최신순 정렬
+    log.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+
+    // 페이지네이션
+    const page = parseInt(req.query.page) || 1;
+    const perPage = parseInt(req.query.perPage) || 50;
+    const total = log.length;
+    const paged = log.slice((page - 1) * perPage, page * perPage);
+
+    res.json({ success: true, data: paged, total, page, perPage });
   } catch(e) {
-    res.json({ success: true, data: [] });
+    res.json({ success: true, data: [], total: 0, page: 1, perPage: 50 });
   }
 });
 
@@ -913,6 +982,22 @@ router.post('/emptybet/mode', (req, res) => {
     fs.writeFileSync(ebPath, JSON.stringify(log), 'utf8');
   } catch(e) {}
   res.json({ success: true, mode: mode });
+});
+
+// ── 슬롯 게임사 목록 관리 ──
+router.get('/slot-vendors', (_req, res) => {
+  const s = readSettings();
+  const defaults = ['pragmatic','habanero','cq9','jili','pg','pgsoft','booongo','netent','relax','nolimit','hacksaw','dreamtech','homeslot','playson','evoplay','dragoonsoft','fachai','jdb','avatarux','bigtimegaming','quickspin','redtiger','playngo','thunderkick','wazdan','spinomenal','yggdrasil','bgaming','gameart','greentube','novomatic','platipus','popok','redrake','rubyplay','amatic','bfgames','blueprint','booming','caletagaming','fantasma','kagaming','kalamba','mancala','merkur','octoplay','petersons','retrogames','revolver','netgame','playstar','fatpanda','yolted','1x2 gaming','7-mojos','smartsoft','microgaming plus slo'];
+  res.json({ success: true, data: s.slotVendors || defaults });
+});
+
+router.post('/slot-vendors', (req, res) => {
+  const vendors = req.body && req.body.vendors;
+  if (!Array.isArray(vendors)) return res.json({ success: false, error: '올바른 형식이 아닙니다.' });
+  const s = readSettings();
+  s.slotVendors = vendors.map(v => v.trim().toLowerCase()).filter(Boolean);
+  writeSettings(s);
+  res.json({ success: true, data: s.slotVendors });
 });
 
 // ══ 설정 및 조회 API ══

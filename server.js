@@ -3,13 +3,11 @@ const path = require('path');
 const app = express();
 
 app.use(express.json({ limit: '10mb' }));
-// JS/CSS 캐시 방지
+// 캐시 방지 (모든 파일)
 app.use((req, res, next) => {
-  if (req.path.endsWith('.js') || req.path.endsWith('.css')) {
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-  }
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
   next();
 });
 
@@ -61,20 +59,23 @@ function userIpCheck(req, res, next) {
 }
 
 // API 라우트
-app.use('/api/admin', adminIpCheck, require('./routes/admin'));
-app.use('/api/user',  userIpCheck, require('./routes/user'));
-app.use('/api/auth',  userIpCheck, require('./routes/auth').router);
-app.use('/api/game',  userIpCheck, require('./routes/game'));
-app.use('/api/hl',    userIpCheck, require('./routes/gamehl'));
+app.use('/api/admin',   adminIpCheck, require('./routes/admin'));
+app.use('/api/partner', require('./routes/partner'));
+app.use('/api/user',    userIpCheck, require('./routes/user'));
+app.use('/api/auth',    userIpCheck, require('./routes/auth').router);
+app.use('/api/game',    userIpCheck, require('./routes/game'));
+app.use('/api/hl',      userIpCheck, require('./routes/gamehl'));
 
 // 페이지 라우트 (static보다 먼저 선언)
-app.get('/',      userIpCheck, (req, res) => res.sendFile(path.join(__dirname, 'user/index.html')));
-app.get('/admin', adminIpCheck, (req, res) => res.sendFile(path.join(__dirname, 'admin/index.html')));
+app.get('/',        userIpCheck, (req, res) => res.sendFile(path.join(__dirname, 'user/index.html')));
+app.get('/admin',   adminIpCheck, (req, res) => res.sendFile(path.join(__dirname, 'admin/index.html')));
+app.get('/partner', (req, res) => res.sendFile(path.join(__dirname, 'partner/index.html')));
 
 // 정적 파일
-app.use('/static', express.static(path.join(__dirname, 'public/static')));
-app.use('/admin',  adminIpCheck, express.static(path.join(__dirname, 'admin')));
-app.use('/user',   express.static(path.join(__dirname, 'user')));
+app.use('/static',  express.static(path.join(__dirname, 'public/static')));
+app.use('/admin',   adminIpCheck, express.static(path.join(__dirname, 'admin'), { maxAge: 0, etag: false }));
+app.use('/partner', express.static(path.join(__dirname, 'partner'), { maxAge: 0, etag: false }));
+app.use('/user',    express.static(path.join(__dirname, 'user')));
 
 // 트랜잭션 자동 수집기 시작
 const txCollector = require('./lib/transactionCollector');

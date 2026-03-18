@@ -313,7 +313,6 @@ const pageTitles = {
   'settlement-provider':     '정산 관리 > 프로바이더별 정산',
   'point-rolling':           '포인트 내역 > 롤링내역',
   'point-convert':           '포인트 내역 > 롤링전환내역',
-  'game-restrict':           '게임 설정 > 게임사 제한관리',
   'game-default':            '게임 설정 > 게임사 기본설정',
   'game-group':              '게임 설정 > 게임사 그룹설정',
   'emptybet-slot':           '공베팅 설정 > 슬롯 공베팅 설정',
@@ -1115,9 +1114,6 @@ function renderPage(page) {
   } else if(page === 'betting-empty') {
     document.getElementById('page-title').textContent = pageTitles[page] || page;
     renderEmptyBettingPage();
-  } else if(page === 'game-restrict') {
-    document.getElementById('page-title').textContent = pageTitles[page] || page;
-    renderGameRestrict();
   } else if(page === 'game-default') {
     document.getElementById('page-title').textContent = pageTitles[page] || page;
     renderGameDefault();

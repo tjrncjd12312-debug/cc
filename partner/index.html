@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>파트너 페이지</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+
+  <!-- 로그인 화면 -->
+  <div id="login-screen" style="position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;align-items:center;justify-content:center;">
+    <div style="width:360px;padding:40px;background:var(--bg2);border:1px solid var(--border);border-radius:16px;text-align:center;">
+      <div style="margin-bottom:24px;">
+        <i class="fas fa-handshake" style="font-size:2.5rem;color:#10b981;"></i>
+        <h2 style="color:var(--text1);font-size:1.2rem;margin-top:12px;font-weight:600;">파트너 로그인</h2>
+      </div>
+      <div style="margin-bottom:14px;">
+        <input type="text" id="login-id" placeholder="파트너 아이디" autocomplete="username"
+          style="width:100%;padding:12px 14px;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:0.9rem;outline:none;">
+      </div>
+      <div style="margin-bottom:20px;">
+        <input type="password" id="login-pw" placeholder="비밀번호" autocomplete="current-password"
+          style="width:100%;padding:12px 14px;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;color:var(--text1);font-size:0.9rem;outline:none;">
+      </div>
+      <div id="login-error" style="color:#ef4444;font-size:0.8rem;margin-bottom:12px;display:none;"></div>
+      <button id="login-btn"
+        style="width:100%;padding:12px;background:#10b981;color:#fff;border:none;border-radius:8px;font-size:0.95rem;font-weight:600;cursor:pointer;transition:background 0.2s;">
+        로그인
+      </button>
+    </div>
+  </div>
+
+  <aside class="sidebar" style="display:none;">
+    <div class="sidebar-logo" style="gap:10px;">
+      <i class="fas fa-handshake" style="color:#10b981;"></i>
+      <span>PARTNER</span>
+    </div>
+
+    <div id="partner-info-box" style="margin:0 14px 10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:0.7rem;color:#10b981;font-weight:600;">내 정보</span>
+        <button id="partner-info-refresh" style="background:none;border:1px solid var(--border2);color:var(--text3);border-radius:4px;cursor:pointer;font-size:0.7rem;padding:1px 6px;" title="새로고침">&#x21bb;</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.65rem;color:var(--text3);">아이디</span>
+          <span id="partner-id-display" style="font-size:0.8rem;color:var(--text1);font-weight:600;">-</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.65rem;color:var(--text3);">등급</span>
+          <span id="partner-level-display" style="font-size:0.8rem;color:#a78bfa;font-weight:600;">-</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.65rem;color:var(--text3);">보유머니</span>
+          <span id="partner-money-display" style="font-size:0.9rem;color:#60a5fa;font-weight:700;">0 원</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.65rem;color:var(--text3);">보유롤링</span>
+          <span id="partner-rolling-display" style="font-size:0.9rem;color:#f59e0b;font-weight:700;">0 P</span>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <ul>
+
+        <li class="nav-single active" data-page="dashboard">
+          <i class="fas fa-chart-line"></i>
+          <span>대시보드</span>
+        </li>
+
+        <li class="nav-group">
+          <div class="nav-item" data-group="member">
+            <i class="fas fa-users"></i>
+            <span>회원관리</span>
+            <i class="fas fa-chevron-down arrow"></i>
+          </div>
+          <ul class="sub-menu">
+            <li class="sub-item" data-page="partner-tree">하위 파트너</li>
+            <li class="sub-item" data-page="member-list">회원 목록</li>
+          </ul>
+        </li>
+
+        <li class="nav-group">
+          <div class="nav-item" data-group="betting">
+            <i class="fas fa-dice"></i>
+            <span>베팅 내역</span>
+            <i class="fas fa-chevron-down arrow"></i>
+          </div>
+          <ul class="sub-menu">
+            <li class="sub-item" data-page="betting-all">전체 베팅 내역</li>
+          </ul>
+        </li>
+
+        <li class="nav-group">
+          <div class="nav-item" data-group="money">
+            <i class="fas fa-coins"></i>
+            <span>머니 관리</span>
+            <i class="fas fa-chevron-down arrow"></i>
+          </div>
+          <ul class="sub-menu">
+            <li class="sub-item" data-page="money-give">머니 지급/차감</li>
+            <li class="sub-item" data-page="money-log">머니 내역</li>
+          </ul>
+        </li>
+
+        <li class="nav-group">
+          <div class="nav-item" data-group="transfer">
+            <i class="fas fa-exchange-alt"></i>
+            <span>충환전 내역</span>
+            <i class="fas fa-chevron-down arrow"></i>
+          </div>
+          <ul class="sub-menu">
+            <li class="sub-item" data-page="transfer-list">충환전 내역</li>
+          </ul>
+        </li>
+
+        <li class="nav-group">
+          <div class="nav-item" data-group="settlement">
+            <i class="fas fa-calculator"></i>
+            <span>정산</span>
+            <i class="fas fa-chevron-down arrow"></i>
+          </div>
+          <ul class="sub-menu">
+            <li class="sub-item" data-page="settlement-daily">일자별 정산</li>
+          </ul>
+        </li>
+
+        <li class="nav-group">
+          <div class="nav-item" data-group="notice">
+            <i class="fas fa-bullhorn"></i>
+            <span>공지사항</span>
+            <i class="fas fa-chevron-down arrow"></i>
+          </div>
+          <ul class="sub-menu">
+            <li class="sub-item" data-page="notice-list">공지사항</li>
+          </ul>
+        </li>
+
+        <li class="nav-group">
+          <div class="nav-item" data-group="settings">
+            <i class="fas fa-cog"></i>
+            <span>설정</span>
+            <i class="fas fa-chevron-down arrow"></i>
+          </div>
+          <ul class="sub-menu">
+            <li class="sub-item" data-page="settings-password">비밀번호 변경</li>
+          </ul>
+        </li>
+
+      </ul>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="nav-item logout" id="logout-btn">
+        <i class="fas fa-sign-out-alt"></i>
+        <span>로그아웃</span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main-wrap" style="display:none;">
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="page-title" id="page-title">파트너 페이지</span>
+      </div>
+      <div class="topbar-right">
+        <button class="theme-toggle" id="theme-toggle" title="테마 전환">
+          <i class="fas fa-moon" id="theme-icon"></i>
+          <span id="theme-label">다크</span>
+        </button>
+        <div class="topbar-info">
+          <i class="fas fa-circle status-dot" style="color:#10b981;"></i>
+          <span id="topbar-partner-name">파트너</span>
+        </div>
+        <div class="topbar-time" id="topbar-time"></div>
+      </div>
+    </header>
+
+    <main class="content" id="content">
+      <div class="placeholder">
+        <i class="fas fa-handshake placeholder-icon" style="color:#10b981;"></i>
+        <p>메뉴를 선택하세요</p>
+      </div>
+    </main>
+  </div>
+
+  <script>
+  // ── 공통 날짜 필터 프리셋 바인딩 ──
+  function _dfLocalDate(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function bindDatePresets(presetClass, fromId, toId, onApply) {
+    document.querySelectorAll('.' + presetClass).forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var p = btn.dataset.preset;
+        var s = new Date(), e = new Date();
+        if (p === 'today') { /* default */ }
+        else if (p === 'yesterday') { s.setDate(s.getDate()-1); e.setDate(e.getDate()-1); }
+        else if (p === 'week') { var day = s.getDay(); s.setDate(s.getDate() - (day===0?6:day-1)); }
+        else if (p === 'month') { s.setDate(1); }
+        else if (p === 'lastmonth') { s.setDate(1); s.setMonth(s.getMonth()-1); e.setDate(0); }
+        else if (p === 'all') { s = new Date('2020-01-01'); }
+        var fromEl = document.getElementById(fromId);
+        var toEl = document.getElementById(toId);
+        if (fromEl) fromEl.value = _dfLocalDate(s);
+        if (toEl) toEl.value = _dfLocalDate(e);
+        document.querySelectorAll('.' + presetClass).forEach(function(b) {
+          b.style.background=''; b.style.color=''; b.style.border='';
+        });
+        btn.style.background='#6366f1'; btn.style.color='#fff'; btn.style.border='none';
+        if (onApply) onApply();
+      });
+    });
+  }
+  </script>
+  <script src="/partner/partner_main.js?v=1"></script>
+</body>
+</html>

@@ -1384,8 +1384,14 @@ function _showGameErrorModal(msg) {
 }
 
 // ── 게임 실행 (CSAPI용 — 기존 게임사) ────────────────────────
-async function launchGame(code, subcode, title) {
+async function launchGame(code, subcode, title, lobby) {
   if (!_session) { openModal('login'); return; }
+  // 점검 게임 체크 (blockedGames 기준, 오닉스는 _cs 키)
+  var _csBg = (window._hlBlockedGames && window._hlBlockedGames[code + '_cs']) || [];
+  if (_csBg.indexOf(String(subcode)) >= 0) {
+    _showGameErrorModal('해당 게임은 현재 점검중 입니다.');
+    return;
+  }
   try {
     // 1) CS API 회원가입 (최초 1회)
     if (!_session._csRegistered) {
@@ -1437,7 +1443,7 @@ async function launchGame(code, subcode, title) {
         userid: _session.username,
         username: _session.nickname || _session.username,
         platform: isMobile ? 'mobile' : 'pc',
-        lobby: '0',
+        lobby: lobby || '0',
         gameTitle: title || code
       })
     });
@@ -1457,9 +1463,9 @@ async function launchGame(code, subcode, title) {
 // ── 게임 실행 (HonorLink용) ────────────────────────
 async function launchHL(vendor, gameId, title) {
   if (!_session) { openModal('login'); return; }
-  // 점검 게임 체크 (클라이언트)
-  var hg = (window._hlHiddenGames && window._hlHiddenGames[vendor]) || [];
-  if (hg.indexOf(String(gameId)) >= 0) {
+  // 점검 게임 체크 (blockedGames 기준)
+  var _bg = (window._hlBlockedGames && window._hlBlockedGames[vendor]) || [];
+  if (_bg.indexOf(String(gameId)) >= 0) {
     _showGameErrorModal('해당 게임은 현재 점검중 입니다.');
     return;
   }
@@ -1521,10 +1527,10 @@ async function openSlotGameModal(providerCode, providerGameid, providerName) {
 
   var overlay = document.createElement('div');
   overlay.id = 'slot-game-modal-overlay';
-  overlay.className = 'pt-modal-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML =
-    '<div class="pt-modal" style="width:900px;max-width:96vw;max-height:80vh;display:flex;flex-direction:column;">'
-    + '<div class="pt-modal-header"><span>' + providerName + ' 게임 목록</span>'
+    '<div style="width:900px;max-width:96vw;max-height:80vh;display:flex;flex-direction:column;background:#141824;border-radius:12px;border:1px solid #2a3040;box-shadow:0 8px 32px rgba(0,0,0,0.6);">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #2a3040;"><span style="font-size:1rem;font-weight:600;color:#fff;">' + providerName + ' 게임 목록</span>'
     + '<button onclick="document.getElementById(\'slot-game-modal-overlay\').remove()" style="background:none;border:none;color:#ccc;font-size:1.2rem;cursor:pointer;">✕</button></div>'
     + '<div style="padding:12px;overflow-y:auto;flex:1;">'
     + '<div id="slot-game-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;">'
@@ -1534,25 +1540,67 @@ async function openSlotGameModal(providerCode, providerGameid, providerName) {
   overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
 
   try {
-    var r = await fetch('/api/game/games', {
+    // 아너링크 순서로 정렬된 게임 목록 가져오기
+    var _hlName = providerName;
+    // CS code → HL name 매핑 확인
+    var _csToHlSorted = {
+      'pragmaticplay': 'PragmaticPlay',
+      'cq9': 'CQ9',
+      'hbn': 'Habanero',
+      'bng': 'Booongo',
+      'nolimitcity': 'Nolimit City',
+      'pg': 'PG Soft',
+      'hacksaw': 'Hacksaw',
+      'jili': 'jili'
+    };
+    if (_csToHlSorted[providerCode.toLowerCase()]) _hlName = _csToHlSorted[providerCode.toLowerCase()];
+
+    var r = await fetch('/api/game/games/sorted', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: '2', gameid: providerGameid, code: providerCode, gametype: 'slot' })
+      body: JSON.stringify({ vendor: _hlName, gameid: providerGameid, code: providerCode, gametype: 'slot' })
     });
     var data = await r.json();
     var games = data.data || [];
+    // 숨김 게임 목록에서 제거 (아예 안 보임) - 오닉스는 _cs 접미사 키 사용
+    var _csHiddenKey = providerCode + '_cs';
+    var _csHidden = (window._hlHiddenGames && window._hlHiddenGames[_csHiddenKey]) || [];
+    if (_csHidden.length) {
+      games = games.filter(function(g) {
+        return _csHidden.indexOf(String(g.subcode)) < 0;
+      });
+    }
+    // 점검 게임 목록 (보이지만 클릭 시 점검 메시지) - 오닉스는 _cs 접미사 키 사용
+    var _csBlocked = (window._hlBlockedGames && window._hlBlockedGames[_csHiddenKey]) || [];
     var grid = document.getElementById('slot-game-grid');
     if (!grid) return;
     if (!games.length) {
       grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#888;padding:24px;">게임 목록이 없습니다.</div>';
       return;
     }
+    // 인기게임 상단 고정 (CS API: subcode로 식별)
+    var _csPinned = (window._pinnedGames && window._pinnedGames[providerCode]) || [];
+    if (_csPinned.length) {
+      games.sort(function(a, b) {
+        var ai = _csPinned.indexOf(String(a.subcode));
+        var bi = _csPinned.indexOf(String(b.subcode));
+        if (ai >= 0 && bi >= 0) return ai - bi;
+        if (ai >= 0) return -1;
+        if (bi >= 0) return 1;
+        return 0;
+      });
+    }
     grid.innerHTML = games.map(function(g) {
       var name    = g.name_kor || g.name_eng || '';
       var subcode = g.subcode || '';
       var img     = g.img || '';
-      return '<div style="cursor:pointer;border-radius:8px;overflow:hidden;background:#1a2030;border:1px solid #2a3040;" onclick="launchGame(\'' + providerCode + '\',\'' + subcode + '\',\'' + name.replace(/'/g,'') + '\')">'
-        + (img ? '<img src="'+img+'" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block;">' : '<div style="width:100%;aspect-ratio:4/3;background:#2a3040;display:flex;align-items:center;justify-content:center;font-size:0.7rem;color:#666;padding:4px;text-align:center;">'+name+'</div>')
+      var isBlocked = _csBlocked.indexOf(String(subcode)) >= 0;
+      var clickAction = isBlocked
+        ? '_showGameErrorModal(\'해당 게임은 현재 점검중 입니다.\')'
+        : 'launchGame(\'' + providerCode + '\',\'' + subcode + '\',\'' + name.replace(/'/g,'') + '\')';
+      return '<div style="cursor:pointer;border-radius:8px;overflow:hidden;background:#1a2030;border:1px solid #2a3040;position:relative;' + (isBlocked ? 'opacity:0.5;' : '') + '" onclick="' + clickAction + '">'
+        + (isBlocked ? '<div style="position:absolute;top:6px;right:6px;background:#dc2626;color:#fff;font-size:0.6rem;padding:2px 6px;border-radius:4px;z-index:1;">점검중</div>' : '')
+        + (img ? '<img src="'+img+'" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#0a0800;">' : '<div style="width:100%;aspect-ratio:4/3;background:#2a3040;display:flex;align-items:center;justify-content:center;font-size:0.7rem;color:#666;padding:4px;text-align:center;">'+name+'</div>')
         + '<div style="padding:5px 6px;font-size:0.72rem;color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</div>'
         + '</div>';
     }).join('');
@@ -1600,16 +1648,20 @@ async function openHLGameModal(vendor, vendorName, filterType) {
       }
     }
     var games = allGames;
-    // 어드민에서 차단된 게임만 목록에서 제거 (점검 게임은 보이되 접속 차단)
-    var bg = (window._hlBlockedGames && window._hlBlockedGames[vendor]) || [];
-    if (bg.length) {
+    // 숨김 게임 목록에서 제거 (아예 안 보임)
+    var hg = (window._hlHiddenGames && window._hlHiddenGames[vendor]) || [];
+    if (hg.length) {
       games = games.filter(function(g) {
-        return bg.indexOf(String(g.id)) < 0;
+        return hg.indexOf(String(g.id)) < 0;
       });
     }
-    // 호텔카지노: 슬롯 제외 (라이브 게임만)
+    // 점검 게임 목록 (보이지만 클릭 시 점검 메시지)
+    var bg = (window._hlBlockedGames && window._hlBlockedGames[vendor]) || [];
+    // 타입 필터링
     if (filterType === 'live') {
       games = games.filter(function(g) { return g.type !== 'slot'; });
+    } else if (filterType === 'slot') {
+      games = games.filter(function(g) { return g.type === 'slot'; });
     }
     var grid = document.getElementById('slot-game-grid');
     if (!grid) return;
@@ -1623,14 +1675,31 @@ async function openHLGameModal(vendor, vendorName, filterType) {
       var rb = b.rank !== null && b.rank !== undefined ? b.rank : 99999;
       return ra - rb;
     });
+    // 인기게임 상단 고정
+    var _pinned = (window._pinnedGames && window._pinnedGames[vendor]) || [];
+    if (_pinned.length) {
+      games.sort(function(a, b) {
+        var ai = _pinned.indexOf(String(a.id));
+        var bi = _pinned.indexOf(String(b.id));
+        if (ai >= 0 && bi >= 0) return ai - bi;
+        if (ai >= 0) return -1;
+        if (bi >= 0) return 1;
+        return 0;
+      });
+    }
     grid.innerHTML = games.map(function(g) {
       var name = (g.langs && g.langs.ko) || g.title || '';
       var img  = (g.thumbnails && g.thumbnails['300x300']) || g.thumbnail || '';
       var safeVendor = (g._vendor || vendor).replace(/'/g, '');
       var safeId     = String(g.id).replace(/'/g, '');
       var safeName2  = name.replace(/'/g, '');
-      return '<div style="cursor:pointer;border-radius:8px;overflow:hidden;background:#1a2030;border:1px solid #2a3040;" onclick="launchHL(\'' + safeVendor + '\',\'' + safeId + '\',\'' + safeName2 + '\')">'
-        + (img ? '<img src="'+img+'" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block;" loading="lazy">' : '<div style="width:100%;aspect-ratio:4/3;background:#2a3040;display:flex;align-items:center;justify-content:center;font-size:0.7rem;color:#666;padding:4px;text-align:center;">'+name+'</div>')
+      var isBlocked = bg.indexOf(String(g.id)) >= 0;
+      var clickAction = isBlocked
+        ? '_showGameErrorModal(\'해당 게임은 현재 점검중 입니다.\')'
+        : 'launchHL(\'' + safeVendor + '\',\'' + safeId + '\',\'' + safeName2 + '\')';
+      return '<div style="cursor:pointer;border-radius:8px;overflow:hidden;background:#1a2030;border:1px solid #2a3040;position:relative;' + (isBlocked ? 'opacity:0.5;' : '') + '" onclick="' + clickAction + '">'
+        + (isBlocked ? '<div style="position:absolute;top:6px;right:6px;background:#dc2626;color:#fff;font-size:0.6rem;padding:2px 6px;border-radius:4px;z-index:1;">점검중</div>' : '')
+        + (img ? '<img src="'+img+'" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#0a0800;" loading="lazy">' : '<div style="width:100%;aspect-ratio:4/3;background:#2a3040;display:flex;align-items:center;justify-content:center;font-size:0.7rem;color:#666;padding:4px;text-align:center;">'+name+'</div>')
         + '<div style="padding:5px 6px;font-size:0.72rem;color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</div>'
         + '</div>';
     }).join('');
@@ -1662,41 +1731,121 @@ async function openHLGameModal(vendor, vendorName, filterType) {
   // ── 벤더명 → 로고 매핑 ──
   var logoMap = {
     'evolution':'/static/logos/logo_evolution.png',
-    '1X2 Gaming':'/static/logos/logo_1x2gaming.png',
+    '1X2 Gaming':'/static/slot_logos/1x2_gaming_logo.png',
     'Asia Gaming':'/static/ag.png',
-    'Asia Gaming Slot':'/static/ag.png',
+    'Asia Gaming Slot':'/static/slot_logos/asia_gaming_slot_logo.png',
     'bbin':'/static/logos/logo_bbin.png',
-    'Booongo':'/static/logos/logo_booongo.png',
+    'Booongo':'/static/slot_logos/booongo_logo.png',
     'CQ9':'/static/logos/logo_cq9.png',
-    'dragoonsoft':'/static/logos/logo_dragoonsoft.png',
-    'DreamGame':'/static/logos/logo_dreamgaming.png',
-    'evoplay':'/static/logos/logo_evoplay.png',
-    'Fantasma':'/static/logos/logo_fantasma.png',
-    'GameArt':'/static/logos/logo_gameart.png',
-    'Hacksaw':'/static/logos/logo_hacksaw.png',
-    'MicroGaming':'/static/logos/logo_microgaming.png',
-    'MicroGaming Plus':'/static/logos/logo_microgaming.png',
-    'MicroGaming Plus Slo':'/static/logos/logo_microgaming.png',
-    'MicroGamingSlot':'/static/logos/logo_microgaming.png',
+    'dragoonsoft':'/static/slot_logos/dragoonsoft_logo.png',
+    'DreamGame':'/static/casino_logos/dreamgame_logo.png',
+    'evoplay':'/static/slot_logos/evoplay_logo.png',
+    'Fantasma':'/static/slot_logos/fantasma_logo.png',
+    'GameArt':'/static/slot_logos/gameart_logo.png',
+    'Hacksaw':'/static/slot_logos/hacksaw_logo.png',
+    'MicroGaming':'/static/casino_logos/microgaming_logo.png',
+    'MicroGaming Plus':'/static/slot_logos/microgaming_plus_slot_logo.png',
+    'MicroGaming Plus Slo':'/static/slot_logos/microgaming_plus_slot_logo.png',
+    'MicroGamingSlot':'/static/slot_logos/microgaming_plus_slot_logo.png',
     'Nolimit City':'/static/logos/logo_nolimit.png',
-    'playngo':'/static/logos/logo_playngo.png',
-    'PragmaticPlay':'/static/logos/logo_pragmatic.png',
+    'playngo':'/static/slot_logos/playngo_logo.png',
+    'PragmaticPlay':'/static/slot_logos/pragmatic_play_logo.png',
     'PragmaticPlay Live':'/static/logos/logo_pragmatic.png',
-    'Relax Gaming':'/static/logos/logo_relax.png',
+    'Relax Gaming':'/static/slot_logos/relax_gaming_logo.png',
     'Skywind Live':'/static/logos/logo_skywind.png',
     'Skywind Slot':'/static/logos/logo_skywind.png',
-    'spribe':'/static/logos/logo_spribe.png',
+    'spribe':'/static/slot_logos/spribe_logo.png',
     'WM Live':'/static/logos/logo_vmcasino.png',
     'ELK':'/static/logos/logo_elk.png',
     'mobilots':'/static/logos/logo_mobilots.png',
-    'AllBet':'/static/allbet.png',
-    'ezugi':'/static/ezugi_new.png'
+    'AllBet':'/static/casino_logos/allbet_logo.png',
+    'ezugi':'/static/ezugi_new.png',
+    '7777':'/static/slot_logos/7777_logo.png',
+    '7-mojos':'/static/slot_logos/7_mojos_logo.png',
+    '7-mojos-slots':'/static/slot_logos/7_mojos_logo.png',
+    'amigogaming':'/static/slot_logos/amigogaming_logo.png',
+    'AvatarUX':'/static/slot_logos/avatarux_logo.png',
+    'Betgames.tv':'/static/slot_logos/betgames_tv_slot_logo.png',
+    'bfgames':'/static/slot_logos/bfgames_logo.png',
+    'bgaming':'/static/slot_logos/bgaming_logo.png',
+    'BigTimeGaming':'/static/slot_logos/bigtimegaming_logo.png',
+    'Blueprint Gaming':'/static/slot_logos/blueprint_gaming_logo.png',
+    'booming':'/static/slot_logos/booming_logo.png',
+    'caletagaming':'/static/slot_logos/caletagaming_logo.png',
+    'dreamtech':'/static/slot_logos/dreamtech_logo.png',
+    'eagaming':'/static/slot_logos/eagaming_logo.png',
+    'expanse':'/static/slot_logos/expanse_logo.png',
+    'ezugiZ':'/static/slot_logos/ezugiz_logo.png',
+    'fils':'/static/slot_logos/fils_logo.png',
+    'galaxsys':'/static/slot_logos/galaxsys_logo.png',
+    'greentube':'/static/slot_logos/greentube_logo.png',
+    'iconix':'/static/slot_logos/iconix_logo.png',
+    'Imoon':'/static/slot_logos/imoon_logo.png',
+    'intouch-games':'/static/slot_logos/intouch_games_logo.png',
+    'JDB':'/static/slot_logos/jdb_logo.png',
+    'jili':'/static/slot_logos/jili_logo.png',
+    'kagaming':'/static/slot_logos/kagaming_logo.png',
+    'Kalamba':'/static/slot_logos/kalamba_logo.png',
+    'macaw':'/static/slot_logos/macaw_logo.png',
+    'mancala':'/static/slot_logos/mancala_logo.png',
+    'merkur':'/static/slot_logos/merkur_logo.png',
+    'mplay':'/static/slot_logos/mplay_logo.png',
+    'netent':'/static/slot_logos/netent_logo.png',
+    'Novomatic':'/static/slot_logos/novomatic_logo.png',
+    'Octoplay':'/static/slot_logos/octoplay_logo.png',
+    'onetouch':'/static/slot_logos/onetouch_logo.png',
+    'oriental':'/static/slot_logos/oriental_logo.png',
+    'PeterSons':'/static/slot_logos/petersons_logo.png',
+    'PG Soft':'/static/slot_logos/pg_soft_logo.png',
+    'platingaming':'/static/slot_logos/platingaming_logo.png',
+    'platipus':'/static/slot_logos/platipus_logo.png',
+    'PlayStar':'/static/slot_logos/playstar_logo.png',
+    'PlayTech':'/static/slot_logos/playtech_logo.png',
+    'PlayTechSlot':'/static/slot_logos/playtech_logo.png',
+    'popok':'/static/slot_logos/popok_logo.png',
+    'quickspin':'/static/slot_logos/quickspin_logo.png',
+    'redrake':'/static/slot_logos/redrake_logo.png',
+    'redtiger':'/static/slot_logos/redtiger_logo.png',
+    'retrogames':'/static/slot_logos/retrogames_logo.png',
+    'revolver':'/static/slot_logos/revolver_logo.png',
+    'rsg':'/static/slot_logos/rsg_logo.png',
+    'RubyPlay':'/static/slot_logos/rubyplay_logo.png',
+    'Slotmill':'/static/slot_logos/slotmill_logo.png',
+    'Smartsoft':'/static/slot_logos/smartsoft_logo.png',
+    'spinomenal':'/static/slot_logos/spinomenal_logo.png',
+    'Thunderkick':'/static/slot_logos/thunderkick_logo.png',
+    'Wazdan':'/static/slot_logos/wazdan_logo.png',
+    'Yggdrasil':'/static/slot_logos/yggdrasil_logo.png',
+    'Habanero':'/static/slot_logos/habanero.png',
+    'Yolted':'/static/slot_logos/yolted_logo.png',
+    'amatic':'/static/slot_logos/아마틱.png',
+    'homeslot':'/static/slot_logos/homeslot_logo.png',
+    'playson':'/static/slot_logos/playson_logo.png',
+    'fachai':'/static/slot_logos/fachai_logo.png',
+    'netgame':'/static/slot_logos/netgame_logo.png',
+    'SA Gaming':'/static/casino_logos/sagaming_logo.png',
+    'saGaming':'/static/casino_logos/sagaming_logo.png',
+    'casino-sa':'/static/casino_logos/sagaming_logo.png',
+    'sexybcrt':'/static/casino_logos/sexybcrt_logo.png',
+    'Sexy Baccarat':'/static/casino_logos/sexybcrt_logo.png',
+    'rocketman':'/static/casino_logos/rocketman_logo.png',
+    'tvbet':'/static/casino_logos/tvbet_logo.png',
+    'SuperSpade':'/static/casino_logos/superspade_logo.png',
+    'XPro Gaming':'/static/casino_logos/xprogaming_logo.png',
+    'XProGaming':'/static/casino_logos/xprogaming_logo.png',
+    'xprogaming':'/static/casino_logos/xprogaming_logo.png',
+    'Vivo Gaming':'/static/casino_logos/vivo_logo.png',
+    'vivo':'/static/casino_logos/vivo_logo.png',
+    'Live88':'/static/casino_logos/live88_logo.png',
+    'live88':'/static/casino_logos/live88_logo.png',
+    'Absolute':'/static/casino_logos/absolute_logo.png',
+    'absolute':'/static/casino_logos/absolute_logo.png',
   };
 
   // ── 공통 카드 생성 함수 ──
-  function makeCard(name, img, onclick) {
+  function makeCard(name, img, onclick, origName) {
     var bgImg = nextCardImg();
-    var logo = logoMap[name] || '';
+    var logo = logoMap[name] || logoMap[origName] || '';
     var logoHtml = logo
       ? '<img src="'+logo+'" alt="'+name+'" style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);height:48px;max-width:85%;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.8));pointer-events:none;">'
       : '<span style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);color:#fff;font-size:0.8rem;font-weight:bold;text-shadow:0 2px 6px rgba(0,0,0,0.9);white-space:nowrap;pointer-events:none;">'+name+'</span>';
@@ -1712,8 +1861,8 @@ async function openHLGameModal(vendor, vendorName, filterType) {
   }
 
   // ── 슬롯 전용 카드 (게임사 이미지 배경 + 로고) ──
-  function makeSlotCard(name, img, onclick) {
-    var logo = logoMap[name] || '';
+  function makeSlotCard(name, img, onclick, origName) {
+    var logo = logoMap[name] || logoMap[origName] || '';
     var logoHtml = logo
       ? '<img src="'+logo+'" alt="'+name+'" style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);height:48px;max-width:85%;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.8));pointer-events:none;">'
       : '<span style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);color:#fff;font-size:0.8rem;font-weight:bold;text-shadow:0 2px 6px rgba(0,0,0,0.9);white-space:nowrap;pointer-events:none;">'+name+'</span>';
@@ -1732,7 +1881,7 @@ async function openHLGameModal(vendor, vendorName, filterType) {
   }
 
   // ═══ HonorLink 벤더/게임 로딩 ═══
-  var liveNames = ['evolution','PragmaticPlay Live','Asia Gaming','DreamGame','WM Live','ezugi','bota','sexybcrt','SuperSpade','Skywind Live','vivo','AllBet','saGaming','Live88','XProGaming','MicroGaming','oriental'];
+  var liveNames = ['evolution','PragmaticPlay Live','Asia Gaming','DreamGame','WM Live','ezugi','bota','sexybcrt','SuperSpade','Skywind Live','vivo','AllBet','saGaming','Live88','XProGaming','MicroGaming','oriental','7-mojos','absolute','ezugiZ','PlayTech','rocketman','tvbet'];
 
   // 로그인된 유저의 gameGroup을 서버에서 최신값으로 갱신
   var sessionRefresh = (_session && _session.username)
@@ -1767,12 +1916,27 @@ async function openHLGameModal(vendor, vendorName, filterType) {
           hiddenVendors = userGroup.hiddenVendors || [];
           hiddenGames = userGroup.hiddenGames || {};
           blockedGames = userGroup.blockedGames || {};
+          // 그룹별 vendorApi 오버라이드
+          if (userGroup.vendorApi) {
+            Object.keys(userGroup.vendorApi).forEach(function(k) {
+              vendorApi[k] = userGroup.vendorApi[k];
+            });
+          }
+          // 그룹별 vendorOrder 오버라이드
+          if (userGroup.vendorOrder) {
+            Object.keys(userGroup.vendorOrder).forEach(function(k) {
+              if (userGroup.vendorOrder[k] && userGroup.vendorOrder[k].length) {
+                vendorOrder[k] = userGroup.vendorOrder[k];
+              }
+            });
+          }
         }
       }
 
       // 글로벌에 저장 (게임 목록 모달에서 사용)
       window._hlHiddenGames = hiddenGames;
       window._hlBlockedGames = blockedGames;
+      window._pinnedGames = gameSettings.pinnedGames || {};
 
       if (vendors.error || vendors._status) return;
       if (!Array.isArray(lobbies)) lobbies = [];
@@ -1780,7 +1944,89 @@ async function openHLGameModal(vendor, vendorName, filterType) {
       // 로비 맵 (vendor → {thumbnail, id})
       var lobbyMap = {};
       // 커스텀 로고 (로비 데이터 없는 벤더용)
-      var _customLogos = {};
+      var _customLogos = {
+        '1X2 Gaming':'/static/slots/1x2_gaming.png',
+        '7777':'/static/slots/7777.png',
+        '7-mojos':'/static/slots/7_mojos.png',
+        '7-mojos-slots':'/static/slots/7_mojos.png',
+        'amatic':'/static/slots/amatic.png',
+        'amigogaming':'/static/slots/amigogaming.png',
+        'Asia Gaming Slot':'/static/slots/asia_gaming_slot.png',
+        'AvatarUX':'/static/slots/avatarux.png',
+        'Betgames.tv':'/static/slots/betgames_tv_slot.png',
+        'bfgames':'/static/slots/bfgames.png',
+        'bgaming':'/static/slots/bgaming.png',
+        'BigTimeGaming':'/static/slots/bigtimegaming.png',
+        'Blueprint Gaming':'/static/slots/blueprint_gaming.png',
+        'booming':'/static/slots/booming.png',
+        'Booongo':'/static/slots/booongo.png',
+        'caletagaming':'/static/slots/caletagaming.png',
+        'CQ9':'/static/slots/cq9.png',
+        'dragoonsoft':'/static/slots/dragoonsoft.png',
+        'dreamtech':'/static/slots/dreamtech.png',
+        'eagaming':'/static/slots/eagaming.png',
+        'evoplay':'/static/slots/evoplay.png',
+        'expanse':'/static/slots/expanse.png',
+        'ezugiZ':'/static/slots/ezugiz.png',
+        'Fantasma':'/static/slots/fantasma.png',
+        'fils':'/static/slots/fils.png',
+        'galaxsys':'/static/slots/galaxsys.png',
+        'GameArt':'/static/slots/gameart.png',
+        'greentube':'/static/slots/greentube.png',
+        'Habanero':'/static/slots/habanero.png',
+        'Hacksaw':'/static/slots/hacksaw.png',
+        'iconix':'/static/slots/iconix.png',
+        'Imoon':'/static/slots/imoon.png',
+        'intouch-games':'/static/slots/intouch_games.png',
+        'JDB':'/static/slots/jdb.png',
+        'jili':'/static/slots/jili.png',
+        'kagaming':'/static/slots/kagaming.png',
+        'Kalamba':'/static/slots/kalamba.png',
+        'macaw':'/static/slots/macaw.png',
+        'mancala':'/static/slots/mancala.png',
+        'merkur':'/static/slots/merkur.png',
+        'MicroGaming Plus':'/static/slots/microgaming_plus_slot.png',
+        'MicroGaming Plus Slo':'/static/slots/microgaming_plus_slot.png',
+        'MicroGamingSlot':'/static/slots/microgaming_plus_slot.png',
+        'mplay':'/static/slots/mplay.png',
+        'netent':'/static/slots/netent.png',
+        'Nolimit City':'/static/slots/nolimit_city.png',
+        'Novomatic':'/static/slots/novomatic.png',
+        'Octoplay':'/static/slots/octoplay.png',
+        'onetouch':'/static/slots/onetouch.png',
+        'oriental':'/static/slots/oriental.png',
+        'PeterSons':'/static/slots/petersons.png',
+        'PG Soft':'/static/slots/pg_soft.png',
+        'platingaming':'/static/slots/platingaming.png',
+        'platipus':'/static/slots/platipus.png',
+        'playngo':'/static/slots/playngo.png',
+        'PlayStar':'/static/slots/playstar.png',
+        'PlayTech':'/static/slots/playtech.png',
+        'PlayTechSlot':'/static/slots/playtech.png',
+        'popok':'/static/slots/popok.png',
+        'PragmaticPlay':'/static/slots/pragmatic_play.png',
+        'quickspin':'/static/slots/quickspin.png',
+        'redrake':'/static/slots/redrake.png',
+        'redtiger':'/static/slots/redtiger.png',
+        'Relax Gaming':'/static/slots/retrogames.png',
+        'retrogames':'/static/slots/retrogames.png',
+        'homeslot':'/static/slots/homeslot.webp',
+        'playson':'/static/slots/playson.png',
+        'revolver':'/static/slots/revolver.png',
+        'rsg':'/static/slots/rsg.png',
+        'RubyPlay':'/static/slots/rubyplay.png',
+        'Skywind Slot':'/static/slots/skywind_slot.png',
+        'Slotmill':'/static/slots/slotmill.png',
+        'Smartsoft':'/static/slots/smartsoft.png',
+        'spinomenal':'/static/slots/spinomenal.png',
+        'spribe':'/static/slots/spribe.png',
+        'Thunderkick':'/static/slots/thunderkick.png',
+        'Wazdan':'/static/slots/wazdan.png',
+        'Yggdrasil':'/static/slots/yggdrasil.png',
+        'Yolted':'/static/slots/yolted.png',
+        'fachai':'/static/slots/fc_slot.png',
+        'netgame':'/static/slots/netgame.png'
+      };
       lobbies.forEach(function(lb){
         if (!lobbyMap[lb.vendor]) {
           lobbyMap[lb.vendor] = {
@@ -1790,6 +2036,18 @@ async function openHLGameModal(vendor, vendorName, filterType) {
           };
         }
       });
+      // 로비 직접 접속 설정 (게임 목록 대신 바로 로비로 이동)
+      var _directLobby = {
+        'AllBet': 'allBet_lobby',
+        'saGaming': 'sacasino',
+        'sexybcrt': 'MX-LIVE-001',
+        'Skywind Live': 'sw_liveGame_all_live'
+      };
+      Object.keys(_directLobby).forEach(function(k) {
+        if (!lobbyMap[k]) lobbyMap[k] = { img: '', id: _directLobby[k], vendor: k };
+        else if (!lobbyMap[k].id) lobbyMap[k].id = _directLobby[k];
+      });
+
       // 커스텀 로고 강제 적용
       Object.keys(_customLogos).forEach(function(k) {
         if (lobbyMap[k]) lobbyMap[k].img = _customLogos[k];
@@ -1810,27 +2068,127 @@ async function openHLGameModal(vendor, vendorName, filterType) {
       Object.keys(vendors).forEach(function(k){ hlVendorNames[(vendors[k].name||'').toLowerCase()] = true; });
 
       // 벤더 표시이름 매핑
-      var _csDisplayNames = { 'oriental': 'oriental casino hotel' };
-
-      // 1) HonorLink 게임사 중 vendorApi가 'csapi'인 것을 CS API로 교체
-      Object.keys(vendors).forEach(function(k) {
-        var v = vendors[k];
-        var api = vendorApi[v.name];
-        if (api === 'csapi') {
-          // CS API에 같은 이름의 게임사가 있는지 확인
-          var csMatch = csVendorByCode[v.name.toLowerCase()];
-          if (csMatch) {
-            vendors[k] = {
-              name: v.name,
-              displayName: v.displayName || v.name,
-              enabled: true,
-              _csapi: true,
-              _gameid: csMatch.gameid,
-              _code: csMatch.code
-            };
-          }
-        }
-      });
+      var _csDisplayNames = { 'oriental': '오리엔탈 카지노 호텔' };
+      // 한국어 게임사명 매핑
+      var _krNames = {
+        // 라이브 카지노
+        'evolution': '에볼루션',
+        'PragmaticPlay Live': '프라그마틱플레이 라이브',
+        'Asia Gaming': '아시아게이밍',
+        'DreamGame': '드림게임',
+        'WM Live': 'WM 카지노',
+        'ezugi': '에주기',
+        'bota': '보타',
+        'sexybcrt': '섹시바카라',
+        'SuperSpade': '슈퍼스페이드',
+        'Skywind Live': '스카이윈드 라이브',
+        'vivo': '비보게이밍',
+        'AllBet': '올벳',
+        'saGaming': 'SA 게이밍',
+        'SA Gaming': 'SA 게이밍',
+        'Live88': '라이브88',
+        'XProGaming': 'X프로게이밍',
+        'MicroGaming': '마이크로게이밍',
+        'oriental': '오리엔탈 카지노',
+        '7-mojos': '세븐모조스',
+        'absolute': '앱솔루트',
+        'PlayTech': '플레이텍',
+        'rocketman': '로켓맨',
+        'tvbet': 'TV벳',
+        'Betgames.tv': '벳게임즈TV',
+        'bigGaming': '빅게이밍',
+        // 슬롯
+        'PragmaticPlay': '프라그마틱플레이',
+        'Booongo': '부운고',
+        'CQ9': 'CQ9',
+        'evoplay': '에보플레이',
+        'Nolimit City': '노리밋시티',
+        'playngo': '플레이앤고',
+        'Relax Gaming': '릴랙스게이밍',
+        'retrogames': '레트로게임즈',
+        'spribe': '스프라이브',
+        'ELK': '엘크 스튜디오',
+        'mobilots': '모비롯',
+        'Hacksaw': '핵소',
+        'dragoonsoft': '드라군소프트',
+        'JILI': '질리',
+        'jili': '질리',
+        'PG Soft': 'PG소프트',
+        'pgsoft': 'PG소프트',
+        '1X2 Gaming': '1X2 게이밍',
+        '7777': '7777',
+        '7-mojos-slots': '세븐모조스 슬롯',
+        'amatic': '아마틱',
+        'amigogaming': '아미고게이밍',
+        'AvatarUX': '아바타UX',
+        'bfgames': 'BF게임즈',
+        'bgaming': 'B게이밍',
+        'Blueprint Gaming': '블루프린트 게이밍',
+        'Booming': '부밍게임즈',
+        'caletagaming': '칼레타게이밍',
+        'eagaming': 'EA게이밍',
+        'Expanse': '익스팬스',
+        'Fantasma': '판타즈마',
+        'FILS': 'FILS',
+        'Galaxsys': '갤럭시스',
+        'GameArt': '게임아트',
+        'Greentube': '그린튜브',
+        'Habanero': '하바네로',
+        'homeslot': '홈슬롯',
+        'iCONiX': '아이코닉스',
+        'iMoon': '아이문',
+        'Intouch Games': '인터치 게임즈',
+        'JDB': 'JDB',
+        'KA Gaming': 'KA게이밍',
+        'kagaming': 'KA게이밍',
+        'Kalamba': '칼람바',
+        'Macaw': '마카오',
+        'Mancala': '만칼라',
+        'Merkur': '메르쿠르',
+        'MicroGaming Plus': '마이크로게이밍 플러스',
+        'MicroGaming Plus Slo': '마이크로게이밍 플러스',
+        'MicroGamingSlot': '마이크로게이밍 슬롯',
+        'mplay': 'M플레이',
+        'NetEnt': '넷엔트',
+        'netent': '넷엔트',
+        'Octoplay': '옥토플레이',
+        'OneTouch': '원터치',
+        'onetouch': '원터치',
+        'Petersons': '피터슨즈',
+        'Platin Gaming': '플래틴게이밍',
+        'Platipus': '플라티푸스',
+        'PlayStar': '플레이스타',
+        'playson': '플레이슨',
+        'Popok': '포폭',
+        'Quickspin': '퀵스핀',
+        'Red Rake': '레드레이크',
+        'redrake': '레드레이크',
+        'Revolver': '리볼버',
+        'RSG': 'RSG',
+        'RubyPlay': '루비플레이',
+        'Slotmill': '슬롯밀',
+        'SmartSoft': '스마트소프트',
+        'Spinomenal': '스피노메날',
+        'Thunderkick': '썬더킥',
+        'Wazdan': '와즈단',
+        'Yggdrasil': '이그드라실',
+        'Yolted': '욜티드',
+        'fachai': '파차이',
+        'netgame': '넷게임',
+        'Asia Gaming Slot': '아시아게이밍 슬롯',
+        'Skywind Slot': '스카이윈드 슬롯',
+        'Betgames.tv Slot': '벳게임즈TV 슬롯',
+        'Red Tiger': '레드타이거',
+        'redtiger': '레드타이거',
+        'Big Time Gaming': '빅타임게이밍',
+        'bigtimegaming': '빅타임게이밍',
+        'DreamTech': '드림텍',
+        'dreamtech': '드림텍',
+        'Novomatic': '노보매틱',
+        'novomatic': '노보매틱'
+      };
+      // HonorLink 벤더 표시이름 오버라이드
+      var _hlDisplayNames = {};
 
       // CS code → HL name 수동 매핑
       var csToHlMap = {
@@ -1844,8 +2202,34 @@ async function openHLGameModal(vendor, vendorName, filterType) {
         'hbn': 'Habanero',
         'bng': 'Booongo',
         'nolimitcity': 'Nolimit City',
-        'pg': 'PG Soft'
+        'pg': 'PG Soft',
+        'casino-playace': 'Asia Gaming'
       };
+      // HL name → CS code 역방향 매핑
+      var hlToCsMap = {};
+      Object.keys(csToHlMap).forEach(function(code) { hlToCsMap[csToHlMap[code]] = code; });
+
+      // 1) HonorLink 게임사 중 vendorApi가 'csapi'인 것을 CS API로 교체
+      Object.keys(vendors).forEach(function(k) {
+        var v = vendors[k];
+        if (_hlDisplayNames[v.name]) v.displayName = _hlDisplayNames[v.name];
+        var api = vendorApi[v.name];
+        if (api === 'csapi') {
+          // CS API에 같은 이름의 게임사가 있는지 확인 (직접 매칭 또는 수동 매핑)
+          var csCode = hlToCsMap[v.name] || v.name.toLowerCase();
+          var csMatch = csVendorByCode[csCode];
+          if (csMatch) {
+            vendors[k] = {
+              name: v.name,
+              displayName: v.displayName || v.name,
+              enabled: true,
+              _csapi: true,
+              _gameid: csMatch.gameid,
+              _code: csMatch.code
+            };
+          }
+        }
+      });
 
       // 2) CS API에만 있는 게임사 추가 (vendorApi가 'csapi'이거나 HonorLink에 없는 것)
       if (csProviders && csProviders.result === 1 && Array.isArray(csProviders.data)) {
@@ -1886,7 +2270,7 @@ async function openHLGameModal(vendor, vendorName, filterType) {
         });
       }
 
-      var sportsNames = ['bti'];
+      var sportsNames = ['bti','xj'];
       var hotelNames = (vendorOrder.hotel || []).map(function(n){ return n.toLowerCase(); });
       var liveVendors = [];
       var slotVendors = [];
@@ -1898,12 +2282,24 @@ async function openHLGameModal(vendor, vendorName, filterType) {
         _mergeVendors[k].forEach(function(sub) { _mergedSubs[sub] = true; });
       });
 
+      // 라이브+슬롯 혼합 벤더 (양쪽에 모두 표시)
+      var mixedVendors = ['Betgames.tv','onetouch'];
+
       Object.keys(vendors).forEach(function(key){
         var v = vendors[key];
         if (!v.enabled) return;
+        if (_mergedSubs[v.name]) return;
+        // 혼합 벤더: hiddenVendors/vendorApi를 각 clone별로 개별 체크
+        if (mixedVendors.indexOf(v.name) >= 0) {
+          var liveApi = vendorApi[v.name] || 'honorlink';
+          if (hiddenVendors.indexOf(v.name) < 0 && liveApi !== 'none') liveVendors.push(v);
+          var slotClone = Object.assign({}, v, { name: v.name + '_slot', _mixedSlot: true, _hlVendor: v.name, displayName: v.name + '_slot' });
+          var slotApi = vendorApi[slotClone.name] || 'honorlink';
+          if (hiddenVendors.indexOf(slotClone.name) < 0 && slotApi !== 'none') slotVendors.push(slotClone);
+          return;
+        }
         if (hiddenVendors.indexOf(v.name) >= 0) return;
         if (vendorApi[v.name] === 'none') return;
-        if (_mergedSubs[v.name]) return; // 합쳐진 하위 게임사는 카드 표시 안함
         if (sportsNames.indexOf(v.name.toLowerCase()) >= 0) sportsVendors.push(v);
         else if (v._csapi && v._gameid === 'SxHotel') hotelVendors.push(v);
         else if (hotelNames.indexOf(v.name.toLowerCase()) >= 0) hotelVendors.push(v);
@@ -1928,6 +2324,7 @@ async function openHLGameModal(vendor, vendorName, filterType) {
       sortByOrder(liveVendors, vendorOrder.live);
       sortByOrder(slotVendors, vendorOrder.slot);
       sortByOrder(hotelVendors, vendorOrder.hotel);
+      sortByOrder(sportsVendors, vendorOrder.sports);
 
       // ── 라이브 카지노: 클릭 시 바로 로비 접속 ──
       {
@@ -1940,14 +2337,26 @@ async function openHLGameModal(vendor, vendorName, filterType) {
             var lobbyId = lobby ? lobby.id : '';
             var click;
             if (v._csapi) {
-              // CS API 라이브: 바로 게임 실행 (subcode = code)
-              click = 'launchGame(\'' + (v._code||'').replace(/'/g,'') + '\',\'' + (v._code||'').replace(/'/g,'') + '\',\'' + safeName + '\')';
+              // CS API 라이브: subcode는 게임 리스트의 subcode 사용 (evolution만 특수)
+              var _liveSub = (v._code||'').toLowerCase() === 'evolution' ? 'evolution' : 'lobby';
+              click = 'launchGame(\'' + (v._code||'').replace(/'/g,'') + '\',\'' + _liveSub + '\',\'' + safeName + '\')';
+            } else if (v.name === '7-mojos') {
+              click = 'launchHL(\'7-mojos\',\'30511\',\'Turkish Roulette\')';
+            } else if (v.name === 'Betgames.tv') {
+              click = 'launchHL(\'Betgames.tv\',\'bg_combination_game\',\'Betgames.tv\')';
+            } else if (v.name === 'PlayTech') {
+              click = 'launchHL(\'PlayTech\',\'ubal\',\'Baccarat Live\')';
+            } else if (v.name === 'rocketman') {
+              click = 'launchHL(\'rocketman\',\'256\',\'Rocketman\')';
+            } else if (v.name === 'tvbet') {
+              click = 'launchHL(\'tvbet\',\'46012\',\'TVBet\')';
             } else {
               click = lobbyId
                 ? 'launchHL(\'' + safeName + '\',\'' + lobbyId + '\',\'' + safeName + '\')'
-                : 'openHLGameModal(\'' + safeName + '\',\'' + safeName + '\')';
+                : 'openHLGameModal(\'' + safeName + '\',\'' + safeName + '\',\'live\')';
             }
-            return makeCard(v.displayName || v.name, img, click);
+            var _dn = v.displayName || v.name;
+            return makeCard(_krNames[_dn] || _krNames[v.name] || _dn, img, click, v.name);
           }).join('');
         }
         // 라이브 벤더 없으면 섹션 숨기기 (현재 탭 상태 유지)
@@ -1971,15 +2380,19 @@ async function openHLGameModal(vendor, vendorName, filterType) {
             // CS API 슬롯: 게임 목록 모달
             click = 'openSlotGameModal(\'' + (v._code||'').replace(/'/g,'') + '\',\'' + (v._gameid||'').replace(/'/g,'') + '\',\'' + (v.displayName||v.name).replace(/'/g,'') + '\')';
           } else {
-            click = 'openHLGameModal(\'' + safeName + '\',\'' + safeName + '\')';
+            var _hlName = v._hlVendor ? v._hlVendor.replace(/'/g,'') : safeName;
+            var _slotFilter = v._mixedSlot ? ',\'slot\'' : '';
+            click = 'openHLGameModal(\'' + _hlName + '\',\'' + (v.displayName || v.name).replace(/'/g,'') + '\'' + _slotFilter + ')';
           }
-          return makeSlotCard(v.displayName || v.name, img, click);
+          var _sdn = v.displayName || v.name;
+          return makeSlotCard(_krNames[_sdn] || _krNames[v.name] || _sdn, img, click, v.name);
         }).join('');
 
         // 썸네일 없는 벤더만 첫 게임 이미지 비동기 로드
         slotVendors.forEach(function(v, idx){
           if (lobbyMap[v.name] && lobbyMap[v.name].img) return;
-          fetch('/api/hl/games?vendor=' + encodeURIComponent(v.name))
+          var _fetchVendor = v._hlVendor || v.name;
+          fetch('/api/hl/games?vendor=' + encodeURIComponent(_fetchVendor))
             .then(function(r){ return r.json(); })
             .then(function(games){
               if (!Array.isArray(games) || !games.length) return;
@@ -2019,7 +2432,8 @@ async function openHLGameModal(vendor, vendorName, filterType) {
           } else {
             click = 'launchHL(\'' + safeName + '\',\'1\',\'' + (v.displayName || v.name).replace(/'/g,'') + '\')';
           }
-          return makeCard(v.displayName || v.name, img, click);
+          var _hdn = v.displayName || v.name;
+          return makeCard(_krNames[_hdn] || _krNames[v.name] || _hdn, img, click, v.name);
         }).join('');
       }
       var hotelSection = document.getElementById('hotel-section');
@@ -2037,10 +2451,7 @@ async function openHLGameModal(vendor, vendorName, filterType) {
           var safeName = v.name.replace(/'/g, '');
           var lobby = lobbyMap[v.name];
           var img = lobby ? lobby.img : '';
-          var lobbyId = lobby ? lobby.id : '';
-          var click = lobbyId
-            ? 'launchHL(\'' + safeName + '\',\'' + lobbyId + '\',\'' + safeName + '\')'
-            : 'openHLGameModal(\'' + safeName + '\',\'' + safeName + '\')';
+          var click = 'openHLGameModal(\'' + safeName + '\',\'' + safeName + '\')';
           return makeCard(v.name, img, click);
         }).join('');
       }

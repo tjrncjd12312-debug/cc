@@ -78,10 +78,68 @@ router.get('/vendors/refresh', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── 게임 목록
+// ── 게임 목록 (파일 캐시, 1시간마다 자동 갱신)
+const gamesCachePath = path.join(__dirname, '..', 'data', 'games_cache.json');
+const GAMES_CACHE_TTL = 60 * 60 * 1000; // 1시간
+
+function readGamesCache() {
+  try { return JSON.parse(fs.readFileSync(gamesCachePath, 'utf8')); } catch(e) { return {}; }
+}
+function writeGamesCache(data) {
+  fs.writeFileSync(gamesCachePath, JSON.stringify(data, null, 2), 'utf8');
+}
+
 router.get('/games', async (req, res) => {
-  try { res.json(await hl.get('/game-list', { vendor: req.query.vendor })); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  try {
+    const vendor = req.query.vendor;
+    if (!vendor) return res.json({});
+
+    const cache = readGamesCache();
+    const entry = cache[vendor];
+    const now = Date.now();
+
+    // 캐시가 있고 1시간 이내면 캐시 반환
+    if (entry && entry.data && (now - entry.ts) < GAMES_CACHE_TTL) {
+      return res.json(entry.data);
+    }
+
+    // API 호출 후 캐시 저장
+    const data = await hl.get('/game-list', { vendor });
+    cache[vendor] = { data, ts: now };
+    writeGamesCache(cache);
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// 게임 목록 강제 갱신 (특정 게임사 또는 전체)
+router.get('/games/refresh', async (req, res) => {
+  try {
+    const vendor = req.query.vendor;
+    const cache = readGamesCache();
+    const now = Date.now();
+
+    if (vendor) {
+      // 특정 게임사만 갱신
+      const data = await hl.get('/game-list', { vendor });
+      cache[vendor] = { data, ts: now };
+      writeGamesCache(cache);
+      return res.json({ success: true, vendor, count: Array.isArray(data) ? data.length : Object.keys(data).length });
+    }
+
+    // 전체 게임사 갱신
+    const vendorsCache = readVendorsCache();
+    const vendors = vendorsCache && vendorsCache.hl ? Object.keys(vendorsCache.hl) : [];
+    let total = 0;
+    for (const v of vendors) {
+      try {
+        const data = await hl.get('/game-list', { vendor: v });
+        cache[v] = { data, ts: now };
+        total++;
+      } catch(e) {}
+    }
+    writeGamesCache(cache);
+    res.json({ success: true, refreshed: total, total: vendors.length });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // ── 로비 목록
