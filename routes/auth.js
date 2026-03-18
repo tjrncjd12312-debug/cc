@@ -350,7 +350,7 @@ router.post('/login', async (req, res) => {
     await dal.writeData('login_logs.json', logs);
   } catch(e) {}
 
-  res.json({ success: true, data: { id: user.id, username: user.username, nickname: user.nickname, money: user.money, balance: user.money, gameGroup: user.gameGroup || '', bank: user.bank || '', account: user.account || '', holder: user.holder || '', sessionToken: sessionToken } });
+  res.json({ success: true, data: { id: user.id, username: user.username, nickname: user.nickname, money: user.money, balance: user.money, point: Number(user.point || 0), rollingPoint: Number(user.rollingPoint || 0), gameGroup: user.gameGroup || '', bank: user.bank || '', account: user.account || '', holder: user.holder || '', sessionToken: sessionToken } });
 });
 
 // ── 핑 (접속 유지) ──
@@ -427,7 +427,9 @@ router.get('/balance', async (req, res) => {
     } catch(e) {}
   }
 
-  res.json({ success: true, balance: localBal + gameBal, local: localBal, game: gameBal });
+  const point = Number(user.point || 0);
+  const rollingPoint = Number(user.rollingPoint || 0);
+  res.json({ success: true, balance: localBal + gameBal, local: localBal, game: gameBal, point: point, rollingPoint: rollingPoint });
 });
 
 // ── 게임 전환 후 지연 잔액 재확인 (당첨금 타이밍 이슈 방지) ──

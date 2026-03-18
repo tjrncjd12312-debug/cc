@@ -141,12 +141,16 @@ function authFetch(url, options) {
           var oldBal = _prevBalance;
           _session.balance = res.balance;
           _session.money = res.balance;
+          if (res.point !== undefined) _session.point = Number(res.point);
+          if (res.rollingPoint !== undefined) _session.rollingPoint = Number(res.rollingPoint);
           var s = JSON.stringify(_session);
           sessionStorage.setItem('casino_user', s);
           if (localStorage.getItem('casino_user')) localStorage.setItem('casino_user', s);
           renderHeader();
           var myBal = document.getElementById('my-balance');
           if (myBal) myBal.textContent = newBal.toLocaleString() + ' 원';
+          var myPt = document.getElementById('my-point');
+          if (myPt) myPt.textContent = ((_session.point||0)+(_session.rollingPoint||0)).toLocaleString() + 'P';
           // 충전 승인 확인 → 충전 완료 알림
           if (newBal > oldBal && _session && _session.username) {
             authFetch('/api/user/last-approved-deposit?username=' + encodeURIComponent(_session.username) + '&since=' + encodeURIComponent(window._lastDepositCheck || ''))
@@ -3449,11 +3453,7 @@ function _findUserNode(tree, username) {
 
 function _getUserPoint() {
   if(!_session) return 0;
-  try {
-    var tree = JSON.parse(localStorage.getItem('partnerTree') || 'null');
-    var node = _findUserNode(tree, _session.username);
-    return node ? ((node.point||0)+(node.rollingPoint||0)) : 0;
-  } catch(e) { return 0; }
+  return (Number(_session.point||0) + Number(_session.rollingPoint||0));
 }
 
 function openPointConvert() {
@@ -3483,47 +3483,31 @@ function submitPointConvert() {
   var point = _getUserPoint();
   if(val > point) { alert('보유 포인트가 부족합니다. (보유: ' + point.toLocaleString() + 'P)'); return; }
 
-  // partnerTree에서 노드 업데이트
-  try {
-    var tree = JSON.parse(localStorage.getItem('partnerTree') || 'null');
-    var node = _findUserNode(tree, _session.username);
-    if(!node) { alert('유저 정보를 찾을 수 없습니다.'); return; }
+  var beforePoint = point;
+  var beforeMoney = Number(_session.balance || _session.money || 0);
 
-    var beforePoint = (node.point||0) + (node.rollingPoint||0);
-    var afterPoint = beforePoint - val;
-    node.point = (node.point||0) - val;
-    var beforeMoney = node.money || 0;
-    var afterMoney = beforeMoney + val;
-    node.money = afterMoney;
-    localStorage.setItem('partnerTree', JSON.stringify(tree));
+  authFetch('/api/user/point-convert', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ username: _session.username, amount: val })
+  }).then(function(r){ return r.json(); }).then(function(res) {
+    if(!res.success) { alert(res.error || '전환 실패'); return; }
 
-    // 포인트 로그 기록
+    var afterPoint = (res.point||0) + (res.rollingPoint||0);
+    var afterMoney = res.money || 0;
+
+    // 세션 업데이트
+    _session.point = res.point || 0;
+    _session.rollingPoint = res.rollingPoint || 0;
+    _session.balance = afterMoney;
+    _session.money = afterMoney;
+    var s = JSON.stringify(_session);
+    sessionStorage.setItem('casino_user', s);
+    if(localStorage.getItem('casino_user')) localStorage.setItem('casino_user', s);
+
+    // 롤링전환 로그 저장
     var now = new Date();
     var pad = function(n){ return String(n).padStart(2,'0'); };
     var nowStr = now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+' '+pad(now.getHours())+':'+pad(now.getMinutes())+':'+pad(now.getSeconds());
-
-    var pointLogs = [];
-    try { pointLogs = JSON.parse(localStorage.getItem('partnerPointLog') || '[]'); } catch(e){}
-    pointLogs.unshift({
-      datetime: nowStr, type: 'take', processor: _session.username,
-      targetId: _session.username, targetNick: _session.nickname || _session.username,
-      amount: val, before: beforePoint, after: afterPoint, memo: '포인트 전환 (→ 머니)'
-    });
-    if(pointLogs.length > 2000) pointLogs = pointLogs.slice(0, 2000);
-    localStorage.setItem('partnerPointLog', JSON.stringify(pointLogs));
-
-    // 머니 로그 기록
-    var moneyLogs = [];
-    try { moneyLogs = JSON.parse(localStorage.getItem('partnerMoneyLog') || '[]'); } catch(e){}
-    moneyLogs.unshift({
-      datetime: nowStr, type: 'give', processor: _session.username,
-      targetId: _session.username, targetNick: _session.nickname || _session.username,
-      amount: val, before: beforeMoney, after: afterMoney, memo: '포인트 전환'
-    });
-    if(moneyLogs.length > 2000) moneyLogs = moneyLogs.slice(0, 2000);
-    localStorage.setItem('partnerMoneyLog', JSON.stringify(moneyLogs));
-
-    // 서버에 롤링전환 로그 저장
     authFetch('/api/user/rolling-convert-log', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -3536,13 +3520,6 @@ function submitPointConvert() {
       })
     }).catch(function(){});
 
-    // 세션 잔액 업데이트
-    _session.balance = afterMoney;
-    _session.money = afterMoney;
-    var s = JSON.stringify(_session);
-    sessionStorage.setItem('casino_user', s);
-    if(localStorage.getItem('casino_user')) localStorage.setItem('casino_user', s);
-
     // UI 업데이트
     document.getElementById('point-convert-modal').style.display = 'none';
     renderHeader();
@@ -3552,7 +3529,7 @@ function submitPointConvert() {
     if(myPt) myPt.textContent = afterPoint.toLocaleString() + 'P';
 
     showToast('✅ ' + val.toLocaleString() + 'P → ' + val.toLocaleString() + '원 전환 완료!');
-  } catch(e) {
+  }).catch(function(e) {
     alert('전환 중 오류가 발생했습니다.');
-  }
+  });
 }

@@ -8,6 +8,25 @@ const router  = express.Router();
 const dal      = require('../lib/dal');
 const telegram = require('../lib/telegram');
 
+// ── 포인트 → 머니 전환 (DB 업데이트) ──
+router.post('/point-convert', async (req, res) => {
+  const { username, amount } = req.body;
+  if (!username || !amount || Number(amount) <= 0) return res.json({ success: false, error: '잘못된 요청' });
+  const val = Number(amount);
+  try {
+    const pts = await dal.users.getPoint(username);
+    const totalPoint = (pts.point || 0) + (pts.rollingPoint || 0);
+    if (val > totalPoint) return res.json({ success: false, error: '보유 포인트가 부족합니다.' });
+    await dal.users.addPoint(username, -val);
+    await dal.users.addMoney(username, val);
+    const afterPts = await dal.users.getPoint(username);
+    const afterMoney = await dal.users.getMoney(username);
+    res.json({ success: true, point: afterPts.point, rollingPoint: afterPts.rollingPoint, money: afterMoney });
+  } catch(e) {
+    res.json({ success: false, error: e.message });
+  }
+});
+
 // ── 롤링전환 로그 저장 ──
 router.post('/rolling-convert-log', async (req, res) => {
   let logs = [];
