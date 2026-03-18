@@ -92,8 +92,21 @@ router.post('/games',     async (req, res) => { await dal.writeData('games.json'
 
 // 파트너 트리 (서버 동기화)
 router.get('/partner-tree', async (_req, res) => {
-  try { res.json({ success: true, data: await dal.readData('partnerTree.json') }); }
-  catch(e) { res.json({ success: true, data: [] }); }
+  try {
+    const tree = await dal.readData('partnerTree.json');
+    // DB users 테이블에서 실제 머니를 가져와서 트리에 동기화
+    const users = await dal.users.readAll();
+    const userMap = {};
+    users.forEach(u => { userMap[u.username] = u; userMap[u.id] = u; });
+    (function syncMoney(nodes) {
+      (nodes || []).forEach(n => {
+        const u = userMap[n.id];
+        if (u) { n.money = Number(u.money) || 0; n.point = Number(u.point) || 0; n.rollingPoint = Number(u.rollingPoint) || 0; }
+        if (n.children) syncMoney(n.children);
+      });
+    })(tree);
+    res.json({ success: true, data: tree });
+  } catch(e) { res.json({ success: true, data: [] }); }
 });
 router.post('/partner-tree', async (req, res) => { await dal.writeData('partnerTree.json', req.body); res.json({ success: true }); });
 
@@ -608,22 +621,17 @@ router.post('/transfers', async (req, res) => {
 });
 
 router.patch('/transfers/:id/approve', asyncHandler(async (req, res) => {
-  console.log('[Approve] id:', req.params.id);
   const list = await readTransfers();
-  console.log('[Approve] list count:', list.length, 'ids:', list.slice(0,5).map(t => t.id));
   const item = list.find(t => String(t.id) === String(req.params.id));
   if (!item) return res.json({ success: false, error: '항목 없음' });
   if (item.status !== 'pending') return res.json({ success: false, error: '이미 처리된 신청입니다.' });
   item.status = 'approved';
   item.processedAt = new Date().toISOString();
   const username = item.userId || item.username;
-  console.log('[Approve] username:', username, 'amount:', item.amount, 'type:', item.type);
   if (item.type === 'deposit') {
     await dal.users.addMoney(username, Number(item.amount));
-    console.log('[Approve] addMoney done');
   }
   await writeTransfers(list);
-  console.log('[Approve] writeTransfers done');
   try {
     const csType = item.type === 'deposit' ? '1' : '2';
     await cs.post('/csapi/amount', { userid: username, amount: Number(item.amount), type: csType });
