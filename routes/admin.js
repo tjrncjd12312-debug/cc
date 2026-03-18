@@ -608,17 +608,22 @@ router.post('/transfers', async (req, res) => {
 });
 
 router.patch('/transfers/:id/approve', asyncHandler(async (req, res) => {
+  console.log('[Approve] id:', req.params.id);
   const list = await readTransfers();
+  console.log('[Approve] list count:', list.length, 'ids:', list.slice(0,5).map(t => t.id));
   const item = list.find(t => String(t.id) === String(req.params.id));
   if (!item) return res.json({ success: false, error: '항목 없음' });
   if (item.status !== 'pending') return res.json({ success: false, error: '이미 처리된 신청입니다.' });
   item.status = 'approved';
   item.processedAt = new Date().toISOString();
   const username = item.userId || item.username;
+  console.log('[Approve] username:', username, 'amount:', item.amount, 'type:', item.type);
   if (item.type === 'deposit') {
     await dal.users.addMoney(username, Number(item.amount));
+    console.log('[Approve] addMoney done');
   }
   await writeTransfers(list);
+  console.log('[Approve] writeTransfers done');
   try {
     const csType = item.type === 'deposit' ? '1' : '2';
     await cs.post('/csapi/amount', { userid: username, amount: Number(item.amount), type: csType });
