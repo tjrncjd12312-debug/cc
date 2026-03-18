@@ -54,7 +54,7 @@ router.post('/inquiries', async (req, res) => {
   if (!userId || typeof userId !== 'string') return res.json({ success: false, error: '잘못된 요청입니다.' });
   if (!title || typeof title !== 'string' || title.length > 200) return res.json({ success: false, error: '제목을 입력해주세요.' });
   if (content && typeof content === 'string' && content.length > 5000) return res.json({ success: false, error: '내용이 너무 깁니다.' });
-  const item = { title, content: content || '', userId, status: 'open', datetime: new Date().toISOString(), id: Date.now() + '' + Math.floor(Math.random() * 1000) };
+  const item = { title, content: content || '', userId, status: 'open', datetime: new Date().toISOString(), id: Date.now().toString(36) + Math.random().toString(36).slice(2) };
   list.unshift(item);
   await dal.writeData('inquiries.json', list);
 
@@ -105,7 +105,7 @@ router.post('/transfers', async (req, res) => {
   let list = [];
   try { list = await dal.readData('transfers.json'); } catch(e) {}
   // 허용된 필드만 추출 (임의 필드 주입 차단)
-  const item = { type, amount: reqAmount, userId, datetime: datetime || new Date().toISOString(), status: 'pending', id: Date.now() + '' + Math.floor(Math.random() * 1000) };
+  const item = { type, amount: reqAmount, userId, datetime: datetime || new Date().toISOString(), status: 'pending', id: Date.now().toString(36) + Math.random().toString(36).slice(2) };
 
   // 이체 한도 체크
   try {

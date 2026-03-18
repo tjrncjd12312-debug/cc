@@ -222,7 +222,7 @@ router.post('/register', async (req, res) => {
   }
 
   const newUser = {
-    id:           Date.now().toString(),
+    id:           Date.now().toString(36) + Math.random().toString(36).slice(2),
     username,
     nickname:     nickname || username,
     password,
@@ -383,7 +383,10 @@ router.post('/ping', (req, res) => {
     kickedSet.delete(userId + ':' + sessionToken);
     return res.json({ success: false, kicked: true, reason: 'duplicate_login' });
   }
-  if (userId) onlineMap[userId] = Date.now();
+  // 세션 토큰이 유효한 경우에만 onlineMap에 등록
+  if (userId && sessionTokenMap[userId] && sessionToken && sessionTokenMap[userId].token === sessionToken) {
+    onlineMap[userId] = Date.now();
+  }
   res.json({ success: true });
 });
 

@@ -5,7 +5,7 @@ const express = require('express');
 const router  = express.Router();
 const cs      = require('../lib/csapi');
 const path    = require('path');
-const fs      = require('fs');
+const fs      = require('fs').promises;
 const telegram = require('../lib/telegram');
 const dal     = require('../lib/dal');
 const { gameSessionMap } = require('./auth');
@@ -88,16 +88,16 @@ router.post('/kick', async (req, res) => {
 // ── 게임사 목록 (파일 캐시)
 const vendorsCachePath = path.join(__dirname, '..', 'data', 'vendors_cache.json');
 
-function readVendorsCache() {
-  try { return JSON.parse(fs.readFileSync(vendorsCachePath, 'utf8')); } catch(e) { return null; }
+async function readVendorsCache() {
+  try { return JSON.parse(await fs.readFile(vendorsCachePath, 'utf8')); } catch(e) { return null; }
 }
-function writeVendorsCache(data) {
-  fs.writeFileSync(vendorsCachePath, JSON.stringify(data, null, 2), 'utf8');
+async function writeVendorsCache(data) {
+  await fs.writeFile(vendorsCachePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
 router.post('/providers', async (req, res) => {
   try {
-    const cached = readVendorsCache();
+    const cached = await readVendorsCache();
     if (cached && cached.cs) {
       return res.json(cached.cs);
     }
@@ -109,7 +109,7 @@ router.post('/providers', async (req, res) => {
     const existing = cached || {};
     existing.cs = r;
     existing.updatedAt = new Date().toISOString();
-    writeVendorsCache(existing);
+    await writeVendorsCache(existing);
     res.json(r);
   } catch(e) { res.json({ result: 0, msg: e.message }); }
 });
@@ -121,10 +121,10 @@ router.post('/providers/refresh', async (req, res) => {
       type:     '1',
       gametype: req.body.gametype || '',
     });
-    const existing = readVendorsCache() || {};
+    const existing = await readVendorsCache() || {};
     existing.cs = r;
     existing.updatedAt = new Date().toISOString();
-    writeVendorsCache(existing);
+    await writeVendorsCache(existing);
     res.json({ success: true, count: (r.data || []).length });
   } catch(e) { res.json({ result: 0, msg: e.message }); }
 });
@@ -133,17 +133,17 @@ router.post('/providers/refresh', async (req, res) => {
 const csGamesCachePath = path.join(__dirname, '..', 'data', 'cs_games_cache.json');
 const CS_GAMES_CACHE_TTL = 60 * 60 * 1000; // 1시간
 
-function readCsGamesCache() {
-  try { return JSON.parse(fs.readFileSync(csGamesCachePath, 'utf8')); } catch(e) { return {}; }
+async function readCsGamesCache() {
+  try { return JSON.parse(await fs.readFile(csGamesCachePath, 'utf8')); } catch(e) { return {}; }
 }
-function writeCsGamesCache(data) {
-  fs.writeFileSync(csGamesCachePath, JSON.stringify(data, null, 2), 'utf8');
+async function writeCsGamesCache(data) {
+  await fs.writeFile(csGamesCachePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
 router.post('/games', async (req, res) => {
   try {
     const key = (req.body.gameid || '') + '|' + (req.body.code || '');
-    const cache = readCsGamesCache();
+    const cache = await readCsGamesCache();
     const entry = cache[key];
     const now = Date.now();
 
@@ -158,15 +158,15 @@ router.post('/games', async (req, res) => {
       gametype: req.body.gametype || '',
     });
     cache[key] = { data: r, ts: now };
-    writeCsGamesCache(cache);
+    await writeCsGamesCache(cache);
     res.json(r);
   } catch(e) { res.json({ result: 0, msg: e.message }); }
 });
 
 // ── 오닉스 게임 목록을 아너링크 순서로 정렬해서 반환
 const hlGamesCachePath = path.join(__dirname, '..', 'data', 'games_cache.json');
-function readHlGamesCache() {
-  try { return JSON.parse(fs.readFileSync(hlGamesCachePath, 'utf8')); } catch(e) { return {}; }
+async function readHlGamesCache() {
+  try { return JSON.parse(await fs.readFile(hlGamesCachePath, 'utf8')); } catch(e) { return {}; }
 }
 
 router.post('/games/sorted', async (req, res) => {
@@ -178,7 +178,7 @@ router.post('/games/sorted', async (req, res) => {
 
     // 1. CS API 게임 목록 가져오기
     const csKey = (gameid || '') + '|' + (code || '');
-    const csCache = readCsGamesCache();
+    const csCache = await readCsGamesCache();
     const csEntry = csCache[csKey];
     const now = Date.now();
     let csData;
@@ -187,7 +187,7 @@ router.post('/games/sorted', async (req, res) => {
     } else {
       csData = await cs.post('/csapi/Provider', { type: '2', gameid, code, gametype });
       csCache[csKey] = { data: csData, ts: now };
-      writeCsGamesCache(csCache);
+      await writeCsGamesCache(csCache);
     }
     const csGames = (csData && csData.data) || [];
 
@@ -203,7 +203,7 @@ router.post('/games/sorted', async (req, res) => {
       'jili': 'jili'
     };
     const hlVendor = csToHlMap[vendor.toLowerCase()] || vendor;
-    const hlCache = readHlGamesCache();
+    const hlCache = await readHlGamesCache();
     const hlEntry = hlCache[hlVendor] || hlCache[vendor];
     const hlGames = (hlEntry && hlEntry.data) || [];
 
@@ -269,7 +269,7 @@ router.post('/games/sorted', async (req, res) => {
 router.post('/games/refresh', async (req, res) => {
   try {
     const key = (req.body.gameid || '') + '|' + (req.body.code || '');
-    const cache = readCsGamesCache();
+    const cache = await readCsGamesCache();
     const r = await cs.post('/csapi/Provider', {
       type:     '2',
       gameid:   req.body.gameid,
@@ -277,7 +277,7 @@ router.post('/games/refresh', async (req, res) => {
       gametype: req.body.gametype || '',
     });
     cache[key] = { data: r, ts: Date.now() };
-    writeCsGamesCache(cache);
+    await writeCsGamesCache(cache);
     res.json({ success: true, count: (r.data || []).length });
   } catch(e) { res.json({ result: 0, msg: e.message }); }
 });

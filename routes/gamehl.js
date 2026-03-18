@@ -4,13 +4,14 @@
 const express = require('express');
 const router  = express.Router();
 const path    = require('path');
-const fs      = require('fs');
+const fs      = require('fs').promises;
 const hl      = require('../lib/honorlink');
 const dal     = require('../lib/dal');
 const { gameSessionMap } = require('./auth');
 
 // ── API 캐시 (Rate Limit 방지) ──
 const _cache = {};
+const _cacheTtls = {}; // key -> ttlMs (각 항목의 TTL 기록)
 function cachedGet(endpoint, params, ttlMs) {
   const key = endpoint + '|' + JSON.stringify(params || {});
   const now = Date.now();
@@ -19,9 +20,22 @@ function cachedGet(endpoint, params, ttlMs) {
   }
   return hl.get(endpoint, params).then(function(r) {
     _cache[key] = { data: r, ts: now };
+    _cacheTtls[key] = ttlMs;
     return r;
   });
 }
+
+// 5분마다 만료된 캐시 항목 정리
+setInterval(function() {
+  const now = Date.now();
+  for (const key of Object.keys(_cache)) {
+    const ttl = _cacheTtls[key] || 60000; // 기본 TTL 1분
+    if (now - _cache[key].ts >= ttl) {
+      delete _cache[key];
+      delete _cacheTtls[key];
+    }
+  }
+}, 5 * 60 * 1000);
 
 async function readGameSettings() {
   try {
@@ -43,17 +57,17 @@ router.get('/my-info', async (req, res) => {
 // ── 벤더(게임사) 목록 (파일 캐시)
 const vendorsCachePath = path.join(__dirname, '..', 'data', 'vendors_cache.json');
 
-function readVendorsCache() {
-  try { return JSON.parse(fs.readFileSync(vendorsCachePath, 'utf8')); } catch(e) { return null; }
+async function readVendorsCache() {
+  try { return JSON.parse(await fs.readFile(vendorsCachePath, 'utf8')); } catch(e) { return null; }
 }
-function writeVendorsCache(data) {
-  fs.writeFileSync(vendorsCachePath, JSON.stringify(data, null, 2), 'utf8');
+async function writeVendorsCache(data) {
+  await fs.writeFile(vendorsCachePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
 // 게임사 목록 반환 (파일 있으면 파일, 없으면 API 호출 후 저장)
 router.get('/vendors', async (req, res) => {
   try {
-    const cached = readVendorsCache();
+    const cached = await readVendorsCache();
     if (cached && cached.hl) {
       return res.json(cached.hl);
     }
@@ -62,7 +76,7 @@ router.get('/vendors', async (req, res) => {
     const existing = cached || {};
     existing.hl = data;
     existing.updatedAt = new Date().toISOString();
-    writeVendorsCache(existing);
+    await writeVendorsCache(existing);
     res.json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -71,10 +85,10 @@ router.get('/vendors', async (req, res) => {
 router.get('/vendors/refresh', async (req, res) => {
   try {
     const data = await hl.get('/vendor-list');
-    const existing = readVendorsCache() || {};
+    const existing = await readVendorsCache() || {};
     existing.hl = data;
     existing.updatedAt = new Date().toISOString();
-    writeVendorsCache(existing);
+    await writeVendorsCache(existing);
     res.json({ success: true, count: Object.keys(data).length });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -83,11 +97,11 @@ router.get('/vendors/refresh', async (req, res) => {
 const gamesCachePath = path.join(__dirname, '..', 'data', 'games_cache.json');
 const GAMES_CACHE_TTL = 60 * 60 * 1000; // 1시간
 
-function readGamesCache() {
-  try { return JSON.parse(fs.readFileSync(gamesCachePath, 'utf8')); } catch(e) { return {}; }
+async function readGamesCache() {
+  try { return JSON.parse(await fs.readFile(gamesCachePath, 'utf8')); } catch(e) { return {}; }
 }
-function writeGamesCache(data) {
-  fs.writeFileSync(gamesCachePath, JSON.stringify(data, null, 2), 'utf8');
+async function writeGamesCache(data) {
+  await fs.writeFile(gamesCachePath, JSON.stringify(data, null, 2), 'utf8');
 }
 
 router.get('/games', async (req, res) => {
@@ -95,7 +109,7 @@ router.get('/games', async (req, res) => {
     const vendor = req.query.vendor;
     if (!vendor) return res.json({});
 
-    const cache = readGamesCache();
+    const cache = await readGamesCache();
     const entry = cache[vendor];
     const now = Date.now();
 
@@ -107,7 +121,7 @@ router.get('/games', async (req, res) => {
     // API 호출 후 캐시 저장
     const data = await hl.get('/game-list', { vendor });
     cache[vendor] = { data, ts: now };
-    writeGamesCache(cache);
+    await writeGamesCache(cache);
     res.json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -116,19 +130,19 @@ router.get('/games', async (req, res) => {
 router.get('/games/refresh', async (req, res) => {
   try {
     const vendor = req.query.vendor;
-    const cache = readGamesCache();
+    const cache = await readGamesCache();
     const now = Date.now();
 
     if (vendor) {
       // 특정 게임사만 갱신
       const data = await hl.get('/game-list', { vendor });
       cache[vendor] = { data, ts: now };
-      writeGamesCache(cache);
+      await writeGamesCache(cache);
       return res.json({ success: true, vendor, count: Array.isArray(data) ? data.length : Object.keys(data).length });
     }
 
     // 전체 게임사 갱신
-    const vendorsCache = readVendorsCache();
+    const vendorsCache = await readVendorsCache();
     const vendors = vendorsCache && vendorsCache.hl ? Object.keys(vendorsCache.hl) : [];
     let total = 0;
     for (const v of vendors) {
@@ -138,7 +152,7 @@ router.get('/games/refresh', async (req, res) => {
         total++;
       } catch(e) {}
     }
-    writeGamesCache(cache);
+    await writeGamesCache(cache);
     res.json({ success: true, refreshed: total, total: vendors.length });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

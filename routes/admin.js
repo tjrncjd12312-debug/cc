@@ -10,6 +10,15 @@ const txCollector = require('../lib/transactionCollector');
 const telegram = require('../lib/telegram');
 const dal     = require('../lib/dal');
 
+function asyncHandler(fn) {
+  return (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(err => {
+      console.error('[Admin] Route error:', err.message);
+      if (!res.headersSent) res.status(500).json({ success: false, error: '서버 오류가 발생했습니다.' });
+    });
+  };
+}
+
 // ══════════════════════════════════════
 //  관리자 세션 관리
 // ══════════════════════════════════════
@@ -108,7 +117,7 @@ router.get('/deposits/pending', async (_req, res) => {
 });
 
 // ── 파트너 생성 시 회원 등록 (게임사 연동은 게임 접속 시 자동) ──
-router.post('/partner/create', async (req, res) => {
+router.post('/partner/create', asyncHandler(async (req, res) => {
   const { username, nickname, password } = req.body;
   if (!username || !password) return res.json({ success: false, error: '아이디와 비밀번호를 입력하세요.' });
 
@@ -120,7 +129,7 @@ router.post('/partner/create', async (req, res) => {
     return res.json({ success: false, error: '이미 존재하는 아이디입니다.' });
   } else {
     newUser = {
-      id: String(Date.now()),
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2),
       username,
       nickname: nickname || username,
       password,
@@ -138,7 +147,7 @@ router.post('/partner/create', async (req, res) => {
   }
 
   res.json({ success: true, user: newUser });
-});
+}));
 
 // ── 회원 목록 전체 ──
 router.get('/users', async (_req, res) => {
@@ -249,7 +258,7 @@ router.get('/users/blacklist', async (_req, res) => {
 });
 
 // ── 승인 ──
-router.post('/users/:id/approve', async (req, res) => {
+router.post('/users/:id/approve', asyncHandler(async (req, res) => {
   const users = await readUsers();
   const u = users.find(u => u.id === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
@@ -258,7 +267,7 @@ router.post('/users/:id/approve', async (req, res) => {
   if (!u.api) u.api = [];
   await writeUsers(users);
   res.json({ success: true });
-});
+}));
 
 // ── API 연동 해제 (킥 + 잔액회수 + 연동 제거) ──
 router.post('/users/:id/api-disconnect', async (req, res) => {
@@ -290,14 +299,14 @@ router.post('/users/:id/api-disconnect', async (req, res) => {
 });
 
 // ── 거절 (삭제) ──
-router.post('/users/:id/reject', async (req, res) => {
+router.post('/users/:id/reject', asyncHandler(async (req, res) => {
   const users = (await readUsers()).filter(u => u.id !== req.params.id);
   await writeUsers(users);
   res.json({ success: true });
-});
+}));
 
 // ── 차단 ──
-router.post('/users/:id/block', async (req, res) => {
+router.post('/users/:id/block', asyncHandler(async (req, res) => {
   const users = await readUsers();
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
@@ -321,10 +330,10 @@ router.post('/users/:id/block', async (req, res) => {
   u.api = [];
   await writeUsers(users);
   res.json({ success: true });
-});
+}));
 
 // ── 삭제 (soft) ──
-router.post('/users/:id/delete', async (req, res) => {
+router.post('/users/:id/delete', asyncHandler(async (req, res) => {
   const users = await readUsers();
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
@@ -348,17 +357,17 @@ router.post('/users/:id/delete', async (req, res) => {
   u.api = [];
   await writeUsers(users);
   res.json({ success: true });
-});
+}));
 
 // ── 블랙리스트 해제 ──
-router.post('/users/:id/unblock', async (req, res) => {
+router.post('/users/:id/unblock', asyncHandler(async (req, res) => {
   const users = await readUsers();
   const u = users.find(u => u.id === req.params.id || u.username === req.params.id);
   if (!u) return res.json({ success: false, error: '유저 없음' });
   u.status = 'active';
   await writeUsers(users);
   res.json({ success: true });
-});
+}));
 
 // ── 회원 정보 수정 ──
 router.post('/users/:id/update', async (req, res) => {
@@ -432,7 +441,7 @@ router.post('/users/:id/take', async (req, res) => {
 });
 
 // ── 관리자 머니 지급/회수 (username 기준) ──
-router.post('/users/money', async (req, res) => {
+router.post('/users/money', asyncHandler(async (req, res) => {
   const { username, amount: rawAmount } = req.body;
   const amount = Number(rawAmount);
   if (!username) return res.json({ success: false, error: '유저명을 입력하세요.' });
@@ -472,7 +481,7 @@ router.post('/users/money', async (req, res) => {
     await writeUsers(users);
   }
   res.json({ success: true, before, after, hlResult });
-});
+}));
 
 // ── 게임 종료: 게임사 잔액 전액 회수 → 로컬 DB에 복원 ──
 router.post('/users/withdraw-game', async (req, res) => {
@@ -594,13 +603,13 @@ router.get('/transfers', async (req, res) => {
 
 router.post('/transfers', async (req, res) => {
   const list = await readTransfers();
-  const item = { ...req.body, id: Date.now() + '' + Math.floor(Math.random() * 1000) };
+  const item = { ...req.body, id: Date.now().toString(36) + Math.random().toString(36).slice(2) };
   list.unshift(item);
   await writeTransfers(list);
   res.json({ success: true, data: item });
 });
 
-router.patch('/transfers/:id/approve', async (req, res) => {
+router.patch('/transfers/:id/approve', asyncHandler(async (req, res) => {
   const list = await readTransfers();
   const item = list.find(t => t.id === req.params.id);
   if (!item) return res.json({ success: false, error: '항목 없음' });
@@ -628,9 +637,9 @@ router.patch('/transfers/:id/approve', async (req, res) => {
     }
   } catch(e) {}
   res.json({ success: true });
-});
+}));
 
-router.patch('/transfers/:id/reject', async (req, res) => {
+router.patch('/transfers/:id/reject', asyncHandler(async (req, res) => {
   const list = await readTransfers();
   const item = list.find(t => t.id === req.params.id);
   if (!item) return res.json({ success: false, error: '항목 없음' });
@@ -648,7 +657,7 @@ router.patch('/transfers/:id/reject', async (req, res) => {
 
   await writeTransfers(list);
   res.json({ success: true });
-});
+}));
 
 // ══════════════════════════════════════
 //  문의 API
@@ -665,7 +674,7 @@ router.get('/inquiries', async (req, res) => {
 
 router.post('/inquiries', async (req, res) => {
   const list = await readInquiries();
-  const item = { ...req.body, id: Date.now() + '' + Math.floor(Math.random() * 1000) };
+  const item = { ...req.body, id: Date.now().toString(36) + Math.random().toString(36).slice(2) };
   list.unshift(item);
   await writeInquiries(list);
   res.json({ success: true, data: item });
@@ -710,7 +719,7 @@ router.get('/quickreplies', async (_req, res) => {
 router.post('/quickreplies', async (req, res) => {
   const list = await readQuickReplies();
   const item = {
-    id: Date.now() + '' + Math.floor(Math.random() * 1000),
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2),
     title: req.body.title || '',
     content: req.body.content || '',
     createdAt: new Date().toISOString()
@@ -786,7 +795,7 @@ router.post('/referrals', async (req, res) => {
   if (!userId || !code) return res.json({ success: false, error: '유저ID와 코드를 입력하세요.' });
   if (list.find(r => r.code === code)) return res.json({ success: false, error: '이미 존재하는 코드입니다.' });
   const item = {
-    id: Date.now() + '' + Math.floor(Math.random() * 1000),
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2),
     userId,
     code,
     usedCount: 0,
@@ -821,7 +830,7 @@ router.post('/messages', async (req, res) => {
   const { userId, title, content } = req.body;
   if (!userId || !title) return res.json({ success: false, error: '제목을 입력하세요.' });
   const item = {
-    id: Date.now() + '' + Math.floor(Math.random() * 1000),
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2),
     userId,
     title,
     content: content || '',
